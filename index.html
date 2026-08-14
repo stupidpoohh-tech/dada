@@ -16,42 +16,36 @@
 </head>
 <body>
 
-<a class="skip" href="#list-page">본문 목록으로 건너뛰기</a>
-
 <header class="topbar">
   <div class="brand">
-    <span class="wordmark">DADA TOWN</span>
-    <span class="tagline">만든 것들이 사는 마을</span>
+    <h1 class="wordmark">DADA TOWN</h1>
+    <p class="tagline">만든 것들이 사는 마을</p>
   </div>
   <button type="button" class="list-btn" id="openList" aria-haspopup="dialog">
     <span aria-hidden="true">☰</span> 웹서비스 한눈에 보기
   </button>
 </header>
 
-<main>
-  <div class="stage">
-    <div class="map-holder">
-      <div class="map" id="map">
-        <img class="map-img" id="mapImg" src="assets/map/town-web.jpg"
-             alt="DADA TOWN 마을 지도. 미술관, 학교, 성균관 한옥, 공원, 회사, 카페, 은행, 세모집이 도로로 이어져 있습니다."
-             width="1792" height="1434" fetchpriority="high">
-        <div class="layer sky" id="sky" aria-hidden="true"></div>
-        <div class="layer road" id="road" aria-hidden="true"></div>
-        <div class="layer folks" id="folks" aria-hidden="true"></div>
-        <div class="layer hotspots" id="hotspots"></div>
-      </div>
-      <div class="panel-wrap" id="panelWrap" hidden>
-        <section class="panel" id="panel" tabindex="-1" aria-live="polite"></section>
-      </div>
+<main class="stage" id="stage">
+  <div class="map-holder">
+    <div class="map" id="map">
+      <img class="map-img" id="mapImg" src="assets/map/town-web.jpg"
+           alt="DADA TOWN 마을 지도. 미술관, 학교, 성균관 한옥, 공원, 회사, 카페, 은행, 세모집이 도로로 이어져 있습니다."
+           width="1792" height="1434" fetchpriority="high">
+      <div class="layer sky" id="sky" aria-hidden="true"></div>
+      <div class="layer road" id="road" aria-hidden="true"></div>
+      <div class="layer folks" id="folks" aria-hidden="true"></div>
+      <div class="layer hotspots" id="hotspots"></div>
     </div>
-    <p class="hint" id="hint">건물을 눌러 그 안의 작업물을 볼 수 있어요.</p>
+    <div class="panel-wrap" id="panelWrap" hidden>
+      <section class="panel" id="panel" tabindex="-1" aria-live="polite"></section>
+    </div>
   </div>
 
-  <section class="list-page" id="list-page">
-    <h2>전체 목록</h2>
-    <p class="list-note">지도를 쓰기 어려운 환경을 위한 전체 목록입니다.</p>
-    <div id="staticList"></div>
-  </section>
+  <div class="under-map">
+    <p class="hint" id="hint">건물을 눌러 그 안의 작업물을 볼 수 있어요.</p>
+    <button type="button" class="motion-btn" id="motionBtn" aria-pressed="false"></button>
+  </div>
 </main>
 
 <footer class="site-footer">

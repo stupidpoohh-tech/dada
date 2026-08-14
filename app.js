@@ -182,6 +182,54 @@
 
   /* ── 구역 패널 ───────────────────────────── */
 
+  const isNarrow = () => window.matchMedia('(max-width: 699px)').matches;
+
+  /** 누른 건물 바로 옆에 패널을 붙인다. 오른쪽에 자리가 없으면 왼쪽,
+   *  양쪽 다 좁으면 건물 중앙에 맞춰 지도 안으로 밀어 넣는다. */
+  function placePanel(d) {
+    const panel = $('panel');
+    if (isNarrow()) {
+      panel.style.cssText = '';
+      return;
+    }
+
+    const map = $('map');
+    const MW = map.clientWidth, MH = map.clientHeight;
+    const PAD = 12, GAP = 14;
+
+    const w = Math.round(Math.min(360, MW * 0.46));
+    panel.style.width = w + 'px';
+    panel.style.maxHeight = (MH - PAD * 2) + 'px';
+
+    // 지도 바깥 여백까지 놓을 자리로 친다. 학교처럼 넓고 가운데 있는 건물은
+    // 지도 안에만 두면 건물을 덮어버리기 때문.
+    const mapBox = map.getBoundingClientRect();
+    const stageBox = $('stage').getBoundingClientRect();
+    const minLeft = stageBox.left - mapBox.left + PAD;
+    const maxLeft = stageBox.right - mapBox.left - w - PAD;
+
+    // 구역 영역(px). 캐릭터는 발끝 기준이라 위로 키를 잡아준다.
+    const box = d.character
+      ? { x: d.character[0] / 100 * MW - MW * 0.018, y: d.character[1] / 100 * MH - MH * 0.075,
+          w: MW * 0.036, h: MH * 0.075 }
+      : { x: d.rect[0] / 100 * MW, y: d.rect[1] / 100 * MH,
+          w: d.rect[2] / 100 * MW, h: d.rect[3] / 100 * MH };
+
+    const right = box.x + box.w + GAP;      // 건물 오른쪽
+    const leftOf = box.x - w - GAP;         // 건물 왼쪽
+    let left;
+    if (right <= maxLeft) left = right;
+    else if (leftOf >= minLeft) left = leftOf;
+    else left = Math.min(Math.max(box.x + box.w / 2 - w / 2, minLeft), maxLeft);
+
+    const h = panel.offsetHeight;
+    let top = box.y + box.h / 2 - h / 2;    // 건물과 세로 중심을 맞춘다
+    top = Math.min(Math.max(top, PAD), Math.max(PAD, MH - h - PAD));
+
+    panel.style.left = Math.round(left) + 'px';
+    panel.style.top = Math.round(top) + 'px';
+  }
+
   function toggle(id, btn) {
     if (openId === id) return closePanel();
     openPanel(id, btn);
@@ -241,14 +289,11 @@
       panel.appendChild(e);
     }
 
-    // 누른 구역이 지도 오른쪽에 있으면 패널을 왼쪽에 붙인다 (클릭한 곳을 안 가리게)
-    const cx = d.character ? d.character[0] : d.rect[0] + d.rect[2] / 2;
-    panel.dataset.side = cx > 50 ? 'left' : 'right';
-
     $('panelWrap').hidden = false;
     panel.scrollTop = 0;
     openId = id;
     lastSpot = btn;
+    placePanel(d);
     panel.focus({ preventScroll: true });
     $('hint').classList.add('gone');
   }
@@ -303,15 +348,27 @@
     });
   }
 
-  function renderStaticList() {
-    const root = $('staticList');
-    data.districts.forEach((d) => {
-      const items = byDistrict[d.id] || [];
-      if (!items.length) return;
-      const sec = el('section', 'list-district');
-      sec.appendChild(el('h3', null, `${d.icon} ${d.name}`));
-      groupCards(items, sec);
-      root.appendChild(sec);
+  /* ── 움직임 토글 ─────────────────────────── */
+
+  const KEY = 'dada-motion';
+
+  function applyMotion(on) {
+    document.documentElement.dataset.motion = on ? 'on' : 'off';
+    const b = $('motionBtn');
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = on ? '⏸ 움직임 끄기' : '▶ 움직임 켜기';
+  }
+
+  function initMotion() {
+    const saved = localStorage.getItem(KEY);
+    const prefersLess = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // 저장된 선택이 우선, 없으면 OS 설정을 따른다
+    applyMotion(saved ? saved === 'on' : !prefersLess);
+
+    $('motionBtn').addEventListener('click', () => {
+      const on = document.documentElement.dataset.motion !== 'on';
+      localStorage.setItem(KEY, on ? 'on' : 'off');
+      applyMotion(on);
     });
   }
 
@@ -369,7 +426,7 @@
     makeSpots();
     makeChips();
     renderModalList();
-    renderStaticList();
+    initMotion();
 
     $('footName').textContent = `${data.profile.name} · ${data.profile.tagline}`;
     const fc = $('footContact');
@@ -390,6 +447,14 @@
         else if (openId) { const b = lastSpot; closePanel(); b?.focus(); }
       }
       trapFocus(e);
+    });
+
+    // 창 크기가 바뀌면 열려 있는 패널을 다시 붙인다
+    let t;
+    window.addEventListener('resize', () => {
+      if (!openId) return;
+      clearTimeout(t);
+      t = setTimeout(() => placePanel(data.districts.find((x) => x.id === openId)), 80);
     });
 
     if (new URLSearchParams(location.search).has('tune')) enableTuning();
