@@ -40,10 +40,10 @@
         36
       ],
       "building": [
-        38.5,
-        2,
-        24.5,
-        23
+        42.5,
+        2.5,
+        22.5,
+        24
       ]
     },
     {
@@ -106,10 +106,10 @@
         33
       ],
       "building": [
-        52.5,
-        47,
+        55,
+        46.5,
         13.5,
-        24
+        25.5
       ]
     },
     {
@@ -226,19 +226,6 @@
       "needsReview": true
     },
     {
-      "id": "team-building",
-      "no": 5,
-      "name": "팀빌딩 도구",
-      "district": "school",
-      "group": "강당",
-      "type": "app",
-      "url": "https://team-building-workshop.pages.dev/",
-      "description": "팀빌딩 세션을 화면 하나로 진행합니다.",
-      "icon": "🧩",
-      "status": "live",
-      "needsReview": true
-    },
-    {
       "id": "sindorang-demo",
       "no": 9,
       "name": "업무공유관리툴",
@@ -324,18 +311,6 @@
       "status": "live",
       "needsReview": true,
       "featured": true
-    },
-    {
-      "id": "ukulele",
-      "no": 25,
-      "name": "우쿨렐레 악보",
-      "district": "house",
-      "type": "app",
-      "url": "https://ukulele-3e0.pages.dev/",
-      "description": "코드를 짚어가며 우쿨렐레 곡을 따라 칩니다.",
-      "icon": "🎸",
-      "status": "live",
-      "needsReview": true
     }
   ]
 }
