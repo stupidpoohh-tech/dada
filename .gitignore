@@ -1,0 +1,9 @@
+# 편집용 원본 — 배포 저장소에 두지 않는다.
+# 루트가 그대로 게시되므로 여기 있으면 URL만 알면 누구나 받아갈 수 있다.
+# 필요할 때 git 이력에서 꺼내 쓴다 (README 「편집용 원본」 참고).
+assets/map/town.jpg
+assets/sprites/*.png
+!assets/sprites/cut/
+
+# 회귀 테스트 의존성
+node_modules/

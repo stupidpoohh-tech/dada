@@ -1,0 +1,12 @@
+{
+  "name": "dada-town",
+  "private": true,
+  "description": "만든 것들이 사는 마을 — 빌드 없는 정적 사이트. 이 package.json은 회귀 테스트에만 쓴다.",
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "test": "node tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

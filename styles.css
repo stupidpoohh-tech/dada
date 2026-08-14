@@ -290,15 +290,19 @@ button, input { font: inherit; color: inherit; }
 
 /* ── 지도 아래 줄 ────────────────────────── */
 
-/* 지도 바로 아래 안내. 눌러볼 수 있다는 걸 알려주는 유일한 글이라
-   아주 느리게 숨쉬듯 밝기가 오간다 — 눈에는 걸리되 시끄럽지 않게. */
+/* 지도 바로 아래 안내. 눌러볼 수 있다는 걸 알려주는 유일한 글이다.
+
+   색은 --faint(2.68:1)가 아니라 --sub(5.49:1)를 쓴다 — 눈에 띄게 하려고
+   흐린 색에 숨쉬기까지 얹었더니 최저점에서 1.64:1까지 떨어져 오히려 안 읽혔다.
+   진하게 만드는 편이 흐리게 깜빡이는 것보다 훨씬 잘 보인다.
+   숨쉬기는 남기되 WCAG AA(4.5:1)를 깨지 않는 폭(.92~1, 최저 4.60:1)으로만. */
 .hint {
   text-align: center;
-  font-size: 13.5px; color: var(--faint);
+  font-size: 13.5px; color: var(--sub);
   margin: 14px 0 0;
   animation: hint-breathe 3.6s ease-in-out infinite;
 }
-@keyframes hint-breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@keyframes hint-breathe { 0%, 100% { opacity: .92; } 50% { opacity: 1; } }
 /* 자리는 남겨둔 채 숨긴다 — 사라질 때 아래 것들이 들썩이지 않게 */
 .hint.gone { visibility: hidden; }
 
