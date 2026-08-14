@@ -1,0 +1,409 @@
+/* DADA TOWN — 마을이 주인공이므로 UI는 조용하게 둔다. */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #F3F1EA;
+  --surface: #FFFFFF;
+  --surface-2: #F7F6F1;
+  --ink: #23261F;
+  --sub: #6A6E62;
+  --faint: #979C8C;
+  --line: #E2E0D6;
+  --accent: #3D7A4E;
+  --accent-ink: #FFFFFF;
+  --accent-tint: #E6EFE6;
+  --shadow: 0 6px 24px rgba(35, 38, 31, .12);
+  --radius: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14170F;
+    --surface: #1E221A;
+    --surface-2: #262B21;
+    --ink: #ECEEE4;
+    --sub: #A3A897;
+    --faint: #7C8172;
+    --line: #333829;
+    --accent: #7FB98C;
+    --accent-ink: #12160E;
+    --accent-tint: #24301F;
+    --shadow: 0 6px 24px rgba(0, 0, 0, .45);
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* display를 지정한 요소에도 hidden이 먹도록 (모달이 display:grid라 필요) */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+               "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input { font: inherit; color: inherit; }
+
+.skip {
+  position: absolute; left: -9999px; top: 0;
+  background: var(--accent); color: var(--accent-ink);
+  padding: 10px 16px; border-radius: 0 0 8px 0; z-index: 100;
+}
+.skip:focus { left: 0; }
+
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── 상단 바 ─────────────────────────────── */
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  max-width: 1440px; margin: 0 auto;
+  padding: 18px 20px 12px;
+}
+
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+
+.wordmark {
+  font-size: 22px; font-weight: 800; letter-spacing: .06em;
+}
+
+.tagline { font-size: 14px; color: var(--sub); }
+
+.list-btn {
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 9px 16px; font-size: 14px; font-weight: 600;
+  cursor: pointer; box-shadow: var(--shadow);
+}
+.list-btn:hover { background: var(--surface-2); }
+
+/* ── 지도 ────────────────────────────────── */
+
+.stage { max-width: 1440px; margin: 0 auto; padding: 0 20px; }
+
+/* 마을 전체가 한 화면에 들어오도록 세로 여유에 맞춰 폭을 제한한다.
+   1792/1434 = 1.2496 */
+.map-holder { position: relative; }
+
+@media (min-width: 700px) {
+  .map-holder { max-width: min(1440px, calc((100dvh - 200px) * 1.2496)); margin-inline: auto; }
+}
+
+.map {
+  position: relative;
+  aspect-ratio: 1792 / 1434;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+}
+
+.map-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.layer { position: absolute; inset: 0; pointer-events: none; }
+.hotspots { pointer-events: none; }
+
+/* 구역 버튼 — 평소엔 보이지 않고, 상호작용할 때만 드러난다 */
+.spot {
+  position: absolute;
+  pointer-events: auto;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color .16s ease, border-color .16s ease;
+}
+.spot:hover, .spot:focus-visible, .spot[aria-expanded="true"] {
+  background: rgba(255, 255, 255, .18);
+  border-color: rgba(255, 255, 255, .85);
+}
+.spot-label {
+  position: absolute; left: 50%; bottom: 8px;
+  transform: translateX(-50%) translateY(6px);
+  background: rgba(20, 23, 15, .86); color: #fff;
+  font-size: 13px; font-weight: 700; white-space: nowrap;
+  padding: 4px 10px; border-radius: 999px;
+  opacity: 0; transition: opacity .16s ease, transform .16s ease;
+}
+.spot:hover .spot-label,
+.spot:focus-visible .spot-label,
+.spot[aria-expanded="true"] .spot-label {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+}
+.spot-count {
+  font-weight: 500; opacity: .75; margin-left: 4px;
+}
+
+/* "나" 캐릭터 — 마을에서 유일하게 손 흔드는 존재 */
+.me-spot {
+  position: absolute;
+  pointer-events: auto;
+  transform: translate(-50%, -100%);
+  background: none; border: 0; padding: 0; cursor: pointer;
+  line-height: 0;
+  animation: bob 2.4s ease-in-out infinite;
+}
+.me-spot img { width: 100%; height: auto; display: block; filter: drop-shadow(0 3px 4px rgba(0,0,0,.3)); }
+.me-spot:hover, .me-spot:focus-visible { animation-duration: 1.1s; }
+.me-spot .spot-label { bottom: auto; top: -10px; transform: translate(-50%, -6px); }
+.me-spot:hover .spot-label,
+.me-spot:focus-visible .spot-label,
+.me-spot[aria-expanded="true"] .spot-label { transform: translate(-50%, 0); opacity: 1; }
+
+@keyframes bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -14%; }
+}
+
+/* 움직이는 것들 */
+.car, .bird, .cloud, .folk { position: absolute; }
+.car img, .bird img, .cloud img, .folk img { display: block; width: 100%; height: auto; }
+
+.car { animation: drive linear infinite; }
+@keyframes drive { from { left: -12%; } to { left: 108%; } }
+.car.leftward { animation-name: drive-rev; }
+.car.leftward img { transform: scaleX(-1); }
+@keyframes drive-rev { from { left: 108%; } to { left: -12%; } }
+
+.cloud { opacity: .82; animation: drift linear infinite; }
+@keyframes drift { from { left: -18%; } to { left: 112%; } }
+
+.bird { animation: fly linear infinite; }
+.bird img { animation: flap .32s steps(2, end) infinite alternate; }
+@keyframes flap { from { scale: 1 1; } to { scale: 1 .86; } }
+
+.folk { transform: translate(-50%, -100%); animation: bob 3.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .me-spot, .car, .cloud, .bird, .bird img, .folk { animation: none !important; }
+  .car { left: 30%; }
+  .car.leftward { left: 62%; }
+  .cloud { left: 12%; }
+  .bird { display: none; }
+}
+
+.hint {
+  text-align: center; font-size: 13.5px; color: var(--faint);
+  margin: 12px 0 0;
+}
+.hint.gone { visibility: hidden; }
+
+/* ── 구역 패널 ───────────────────────────── */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-top: 14px;
+}
+
+/* 데스크톱: 지도 위에 떠서 마을을 계속 보면서 읽을 수 있게.
+   누른 구역 반대편에 붙여 클릭한 곳을 가리지 않는다. */
+@media (min-width: 700px) {
+  .panel-wrap { position: absolute; inset: 0; pointer-events: none; }
+  .panel {
+    position: absolute; top: 18px; margin-top: 0;
+    width: min(400px, 42%);
+    max-height: calc(100% - 36px);
+    overflow-y: auto; overscroll-behavior: contain;
+    pointer-events: auto;
+    animation: panel-in .16s ease-out;
+  }
+  .panel[data-side="left"] { left: 18px; }
+  .panel[data-side="right"] { right: 18px; }
+}
+
+@keyframes panel-in { from { opacity: 0; translate: 0 -6px; } to { opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .panel { animation: none; } }
+
+.panel-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px;
+}
+.panel-title { font-size: 17px; font-weight: 800; margin: 0; }
+.panel-label { font-size: 11.5px; font-weight: 700; color: var(--faint); letter-spacing: .08em; }
+.panel-close { margin-left: auto; }
+
+.icon-btn {
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 9px; width: 32px; height: 32px; cursor: pointer;
+  display: grid; place-items: center; font-size: 14px;
+}
+.icon-btn:hover { background: var(--line); }
+
+.group-title {
+  font-size: 12.5px; font-weight: 700; color: var(--sub);
+  margin: 12px 0 6px;
+}
+.group-title:first-child { margin-top: 0; }
+
+/* 컨테이너 폭에 맞춰 열 수가 정해지도록 — 좁은 팝오버에서도 안 깨진다 */
+.cards { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+
+.card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 12px;
+  text-decoration: none; color: inherit;
+}
+.card:hover { border-color: var(--line); background: var(--surface); }
+
+.card-ico {
+  width: 40px; height: 40px; flex: none;
+  background: var(--accent-tint); border-radius: 11px;
+  display: grid; place-items: center; font-size: 19px;
+}
+.card-body { min-width: 0; flex: 1; }
+.card-name {
+  font-size: 14.5px; font-weight: 700;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.card-desc { font-size: 12.5px; color: var(--sub); margin-top: 2px; }
+.card-go { color: var(--faint); font-size: 15px; flex: none; }
+
+.badge {
+  font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px;
+  background: var(--accent-tint); color: var(--accent);
+}
+.badge.beta, .badge.demo { background: #F6EBD8; color: #96702A; }
+@media (prefers-color-scheme: dark) {
+  .badge.beta, .badge.demo { background: #3A2F18; color: #E0B45F; }
+}
+
+.empty {
+  text-align: center; color: var(--sub); font-size: 14px;
+  padding: 18px 12px;
+}
+.empty strong { display: block; font-size: 15px; color: var(--ink); margin-bottom: 4px; }
+
+/* 프로필 (나 구역) */
+.profile { display: flex; align-items: center; gap: 14px; padding: 4px 2px 8px; }
+.profile-img { width: 56px; height: 74px; flex: none; }
+.profile-img img { width: 100%; height: auto; display: block; }
+.profile-name { font-size: 18px; font-weight: 800; }
+.profile-tag { font-size: 14px; color: var(--sub); margin-top: 1px; }
+.profile-mail { font-size: 13.5px; margin-top: 5px; display: inline-block; color: var(--accent); }
+
+/* ── 전체 목록 페이지 (SEO·접근성 폴백) ──── */
+
+.list-page {
+  max-width: 1440px; margin: 48px auto 0; padding: 0 20px;
+}
+.list-page h2 { font-size: 18px; margin: 0 0 4px; }
+.list-note { font-size: 13px; color: var(--faint); margin: 0 0 16px; }
+
+.list-district { margin-bottom: 22px; }
+.list-district h3 { font-size: 14.5px; margin: 0 0 8px; }
+
+/* ── 목록 모달 ───────────────────────────── */
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(20, 23, 15, .5);
+  display: grid; place-items: end center;
+  padding: 0;
+}
+@media (min-width: 700px) {
+  .modal-backdrop { place-items: center; padding: 24px; }
+}
+
+.modal {
+  background: var(--surface);
+  width: 100%; max-width: 880px;
+  max-height: 92dvh;
+  border-radius: 18px 18px 0 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+@media (min-width: 700px) { .modal { border-radius: 18px; max-height: 84dvh; } }
+
+.modal-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 16px 10px;
+}
+.modal-head h2 { font-size: 16.5px; margin: 0; font-weight: 800; }
+.modal-head .icon-btn { margin-left: auto; }
+
+.modal-tools { padding: 0 16px 12px; display: grid; gap: 10px; }
+
+#search {
+  width: 100%; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; font-size: 14px;
+}
+
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface-2);
+  color: var(--sub); border-radius: 999px;
+  padding: 5px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.chip[aria-pressed="true"] {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+}
+
+.modal-body {
+  overflow-y: auto; padding: 0 16px 20px;
+  overscroll-behavior: contain;
+}
+.modal-body .group-title { position: sticky; top: 0; background: var(--surface); padding-top: 8px; }
+
+.no-result { text-align: center; color: var(--sub); padding: 28px 0; font-size: 14px; }
+
+/* ── 푸터 ────────────────────────────────── */
+
+.site-footer {
+  max-width: 1440px; margin: 40px auto 0; padding: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px; color: var(--sub);
+}
+.foot-name { margin: 0 0 2px; font-weight: 700; color: var(--ink); }
+.foot-contact { margin: 0; }
+.foot-contact a { color: var(--accent); }
+
+/* ── 모바일: 지도 위, 목록 아래 ──────────── */
+
+@media (max-width: 699px) {
+  .topbar { padding: 14px 14px 10px; }
+  .wordmark { font-size: 19px; }
+  .tagline { font-size: 13px; width: 100%; }
+  .stage, .panel-wrap, .list-page, .site-footer { padding-inline: 14px; }
+  .list-btn {
+    position: fixed; right: 14px; bottom: 14px; z-index: 40;
+    background: var(--accent); color: var(--accent-ink); border-color: transparent;
+  }
+  .list-btn:hover { background: var(--accent); }
+  .site-footer { margin-bottom: 72px; }
+  .panel { padding: 14px; }
+  .spot-label { font-size: 12px; padding: 3px 8px; }
+}
+
+/* ── 좌표 조정 모드 (?tune) ──────────────── */
+
+.tuning .spot { background: rgba(255, 90, 90, .18); border-color: rgba(255, 90, 90, .9); }
+.tuning .spot-label { opacity: 1; transform: translateX(-50%); }
+.tune-readout {
+  position: fixed; left: 12px; bottom: 12px; z-index: 90;
+  background: #14170F; color: #EFEFE7; font-size: 12px;
+  font-family: ui-monospace, Menlo, monospace;
+  padding: 8px 12px; border-radius: 8px; white-space: pre;
+}

@@ -1,15 +1,121 @@
 {
-  "$comment": "DADA TOWN 수록 항목 단일 소스. description은 실제 서비스 확인 전 추정본이므로 교체 필요(needsReview: true).",
+  "$comment": "DADA TOWN 수록 항목 단일 소스. description은 실제 서비스 확인 전 추정본이므로 교체 필요(needsReview: true). rect는 지도 위 구역 위치(%): [left, top, width, height].",
+  "site": {
+    "name": "DADA TOWN",
+    "tagline": "만든 것들이 사는 마을"
+  },
+  "profile": {
+    "name": "이다원",
+    "tagline": "다원하는 다원",
+    "email": "iwanteverythin@gmail.com"
+  },
   "districts": [
-    { "id": "school",       "name": "학교",     "icon": "🏫", "label": "SCHOOL" },
-    { "id": "museum",       "name": "미술관",   "icon": "🖼", "label": "MUSEUM" },
-    { "id": "company",      "name": "회사",     "icon": "🏢", "label": "COMPANY" },
-    { "id": "seonggyungwan","name": "성균관",   "icon": "🏛", "label": "HANOK" },
-    { "id": "bank",         "name": "은행",     "icon": "🏦", "label": "BANK" },
-    { "id": "park",         "name": "사람들",   "icon": "🌳", "label": "PARK" },
-    { "id": "cafe",         "name": "카페",     "icon": "☕", "label": "CAFE" },
-    { "id": "house",        "name": "세모집",   "icon": "🔺", "label": "HOUSE" },
-    { "id": "me",           "name": "나",       "icon": "🙋", "label": "ME" }
+    {
+      "id": "museum",
+      "name": "미술관",
+      "icon": "🖼",
+      "label": "MUSEUM",
+      "rect": [
+        5,
+        2,
+        25,
+        32
+      ]
+    },
+    {
+      "id": "school",
+      "name": "학교",
+      "icon": "🏫",
+      "label": "SCHOOL",
+      "rect": [
+        33,
+        0,
+        35,
+        36
+      ]
+    },
+    {
+      "id": "seonggyungwan",
+      "name": "성균관",
+      "icon": "🏛",
+      "label": "HANOK",
+      "rect": [
+        72,
+        8,
+        25,
+        27
+      ]
+    },
+    {
+      "id": "park",
+      "name": "사람들",
+      "icon": "🌳",
+      "label": "PARK",
+      "rect": [
+        3,
+        38,
+        27,
+        31
+      ]
+    },
+    {
+      "id": "company",
+      "name": "회사",
+      "icon": "🏢",
+      "label": "COMPANY",
+      "rect": [
+        33,
+        37,
+        18,
+        34
+      ]
+    },
+    {
+      "id": "cafe",
+      "name": "카페",
+      "icon": "☕",
+      "label": "CAFE",
+      "rect": [
+        51,
+        38,
+        18,
+        33
+      ]
+    },
+    {
+      "id": "bank",
+      "name": "은행",
+      "icon": "🏦",
+      "label": "BANK",
+      "rect": [
+        72,
+        38,
+        25,
+        29
+      ]
+    },
+    {
+      "id": "house",
+      "name": "세모집",
+      "icon": "🔺",
+      "label": "HOUSE",
+      "rect": [
+        74,
+        72,
+        24,
+        26
+      ]
+    },
+    {
+      "id": "me",
+      "name": "나",
+      "icon": "🙋",
+      "label": "ME",
+      "character": [
+        76.5,
+        90
+      ]
+    }
   ],
   "items": [
     {
