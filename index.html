@@ -21,9 +21,6 @@
     <h1 class="wordmark">DADA TOWN</h1>
     <p class="tagline">만든 것들이 사는 마을</p>
   </div>
-  <button type="button" class="list-btn" id="openList" aria-haspopup="dialog">
-    <span aria-hidden="true">☰</span> 웹서비스 한눈에 보기
-  </button>
 </header>
 
 <main class="stage" id="stage">
@@ -41,19 +38,27 @@
       <section class="panel" id="panel" tabindex="-1" aria-live="polite"></section>
     </div>
 
-    <button type="button" class="picks-btn" id="picksBtn" aria-expanded="false">
-      <span aria-hidden="true">⭐</span> 추천 픽
-    </button>
-    <section class="picks-panel" id="picksPanel" hidden aria-label="추천 서비스">
-      <div class="picks-head">
-        <strong>⭐ 이것부터 보세요</strong>
-        <button type="button" class="icon-btn" id="closePicks" aria-label="닫기">✕</button>
-      </div>
-      <div id="picksBody"></div>
-    </section>
   </div>
 
   <p class="hint" id="hint">건물을 눌러 그 안의 작업물을 볼 수 있어요.</p>
+
+  <div class="actions">
+    <div class="picks-wrap">
+      <button type="button" class="picks-btn" id="picksBtn" aria-expanded="false">
+        <span aria-hidden="true">⭐</span> 추천 픽
+      </button>
+      <section class="picks-panel" id="picksPanel" hidden aria-label="추천 서비스">
+        <div class="picks-head">
+          <strong>⭐ 이것부터 보세요</strong>
+          <button type="button" class="icon-btn" id="closePicks" aria-label="닫기">✕</button>
+        </div>
+        <div id="picksBody"></div>
+      </section>
+    </div>
+    <button type="button" class="list-btn" id="openList" aria-haspopup="dialog">
+      <span aria-hidden="true">☰</span> 웹서비스 한눈에 보기
+    </button>
+  </div>
 </main>
 
 <footer class="site-footer">

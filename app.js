@@ -28,13 +28,13 @@
   ];
   // 공원에 모여 있는 사람들. 8종 중 6명만 — 다 넣으면 붐빈다.
   // w는 지도 폭 기준 %. 높이가 아니라 폭으로 잡아야 지도와 같이 축소된다.
+  // 분수 왼쪽 잔디에 5명을 바짝 모아 한 무리로 보이게. 다 같은 박자로 움직인다.
   const FOLKS = [
-    { src: 'person-1.png', x: 9.2,  y: 55.5, w: 2.05 },  // 분수 왼쪽 잔디
-    { src: 'person-2.png', x: 11.5, y: 58.8, w: 2.18 },  // 아래쪽 벤치 앞
-    { src: 'person-6.png', x: 10.5, y: 61.8, w: 2.73 },  // 나무 앞 잔디
-    { src: 'person-4.png', x: 20.3, y: 55.5, w: 1.82 },  // 분수 오른쪽 잔디
-    { src: 'person-7.png', x: 16.2, y: 65.5, w: 2.00 },  // 가운데 산책로
-    { src: 'person-8.png', x: 22.3, y: 53.5, w: 1.77 },  // 오른쪽 벤치 앞
+    { src: 'person-6.png', x: 8.0,  y: 55.2, w: 2.73 },
+    { src: 'person-1.png', x: 10.2, y: 56.4, w: 2.05 },
+    { src: 'person-2.png', x: 12.0, y: 57.4, w: 2.18 },
+    { src: 'person-4.png', x: 9.0,  y: 58.6, w: 1.82 },
+    { src: 'person-7.png', x: 11.0, y: 59.8, w: 2.00 },
   ];
   // 잔디에 내려앉은 새 — 정적으로 얹어 마을을 채운다.
   const PERCHED = [
@@ -104,9 +104,8 @@
 
     startCars(road);
 
-    FOLKS.forEach((f, i) => folks.appendChild(sprite('folk person', f.src, {
+    FOLKS.forEach((f) => folks.appendChild(sprite('folk person', f.src, {
       left: pct(f.x), top: pct(f.y), width: pct(f.w),
-      animationDelay: '-' + (i * 0.7) + 's',
     })));
 
     PERCHED.forEach((p) => folks.appendChild(sprite('folk', p.src, {
