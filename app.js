@@ -30,11 +30,11 @@
   // w는 지도 폭 기준 %. 높이가 아니라 폭으로 잡아야 지도와 같이 축소된다.
   // 분수 왼쪽 잔디에 5명을 바짝 모아 한 무리로 보이게. 다 같은 박자로 움직인다.
   const FOLKS = [
-    { src: 'person-1.png', x: 11.5, y: 57.0, w: 2.05 },  // 분수 왼쪽
-    { src: 'person-2.png', x: 13.5, y: 60.0, w: 2.18 },  // 분수 아래 왼쪽
-    { src: 'person-6.png', x: 16.0, y: 61.5, w: 2.73 },  // 산책로 위
-    { src: 'person-4.png', x: 18.5, y: 59.4, w: 1.82 },  // 분수 아래 오른쪽
-    { src: 'person-7.png', x: 20.0, y: 57.5, w: 2.00 },  // 분수 오른쪽
+    { src: 'person-1.png', x: 13.0, y: 57.0, w: 2.05 },  // 분수 왼쪽
+    { src: 'person-2.png', x: 15.0, y: 60.0, w: 2.18 },  // 분수 아래 왼쪽
+    { src: 'person-6.png', x: 17.5, y: 61.5, w: 2.73 },  // 산책로 위 (가운데)
+    { src: 'person-4.png', x: 20.0, y: 59.4, w: 1.82 },  // 분수 아래 오른쪽
+    { src: 'person-7.png', x: 21.5, y: 57.5, w: 2.00 },  // 분수 오른쪽
   ];
   // 잔디에 내려앉은 새 — 정적으로 얹어 마을을 채운다.
   const PERCHED = [
@@ -171,7 +171,6 @@
 
   function makeSpots() {
     const wrap = $('hotspots');
-    let popIndex = 0;
 
     data.districts.forEach((d) => {
       const count = (byDistrict[d.id] || []).length;
@@ -199,7 +198,6 @@
           // 블록이 아니라 건물만 뾰잉 — 지도의 건물 영역을 그대로 복제한다.
           // 위치·크기는 syncPops()가 지도 픽셀로 맞춘다 (%로는 미세하게 어긋난다)
           const pop = el('span', 'pop');
-          pop.style.animationDelay = (popIndex++ * 0.34) + 's';
           const pimg = new Image();
           pimg.src = 'assets/map/town-web.jpg';
           pimg.alt = '';
@@ -227,6 +225,16 @@
       btn.addEventListener('click', () => toggle(d.id, btn));
       wrap.appendChild(btn);
     });
+  }
+
+  /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
+   *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
+  function syncIdle() {
+    const anims = document.getAnimations().filter((a) =>
+      a.animationName === 'bldg-idle' || a.animationName === 'folk-idle');
+    if (!anims.length) return;
+    const t = anims[0].startTime;
+    anims.forEach((a) => { try { a.startTime = t; } catch (_) {} });
   }
 
   /** 건물 복제본을 지도 픽셀에 정확히 맞춘다. %로 계산하면 반올림이 누적돼
@@ -663,6 +671,7 @@
     paintScenery();
     makeSpots();
     syncPops();
+    syncIdle();
     if (!$('mapImg').complete) $('mapImg').addEventListener('load', syncPops, { once: true });
     makeChips();
     renderModalList();

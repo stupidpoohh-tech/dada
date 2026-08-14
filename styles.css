@@ -136,16 +136,19 @@ button, input { font: inherit; color: inherit; }
      원본과 미세하게 어긋난다. 크기·위치는 syncPops()가 지도 픽셀로 맞춘다 */
   transform-origin: 50% 100%;
   pointer-events: none;
-  /* 상시로 건물이 살짝 눌렸다 늘어난다 — 여기가 눌러볼 수 있는 곳이라는 신호 */
-  animation: bldg-idle 2.6s ease-in-out infinite;
+  /* 상시로 살짝 부풀었다 가라앉는다 — 여기가 눌러볼 수 있는 곳이라는 신호.
+     사람들(folk-idle)과 같은 2.4초 박자·같은 위상으로 함께 움직인다 */
+  animation: bldg-idle 2.4s ease-in-out infinite;
   transition: filter .18s ease;
 }
-/* 발밑을 축으로 세로로만 눌렸다 늘어난다 (건물이 기울면 이상하다) */
+/* 중요: 1보다 작게 줄이면 안 된다. 복제본이 자기 영역을 못 덮어 뒤의 원본이
+   드러나고, 학교 깃발처럼 경계에 걸친 것이 두 개로 보인다.
+   그래서 발밑을 축으로 '늘어나기만' 한다. */
 @keyframes bldg-idle {
   0%, 100% { transform: scale(1, 1); }
-  30%      { transform: scale(1.012, .972); }
-  62%      { transform: scale(.992, 1.028); }
-  84%      { transform: scale(1.006, .994); }
+  25%      { transform: scale(1.002, 1.022); }
+  50%      { transform: scale(1.012, 1.002); }
+  75%      { transform: scale(1.002, 1.022); }
 }
 .pop > img { position: absolute; display: block; max-width: none; }
 
