@@ -55,6 +55,7 @@
   const pct = (v) => v + '%';
 
   let data, byDistrict, openId = null, lastSpot = null;
+  const pops = [];
 
   /* ── 지도 위 장식 ───────────────────────── */
 
@@ -170,7 +171,7 @@
 
   function makeSpots() {
     const wrap = $('hotspots');
-    let pingIndex = 0;
+    let popIndex = 0;
 
     data.districts.forEach((d) => {
       const count = (byDistrict[d.id] || []).length;
@@ -190,41 +191,21 @@
         img.src = S + 'me.png';
         img.alt = '';
         btn.appendChild(img);
-        const ping = el('span', 'ping');
-        ping.style.animationDelay = '2.1s';
-        btn.appendChild(ping);
       } else {
         const [x, y, w, h] = d.rect;
         Object.assign(btn.style, { left: pct(x), top: pct(y), width: pct(w), height: pct(h) });
 
         if (d.building) {
-          // 블록이 아니라 건물만 뾰옹 — 건물 상자를 버튼 기준 %로 환산하고,
-          // 배경은 지도에서 그 영역만 잘라 보이게 맞춘다
-          const [bx, by, bw, bh] = d.building;
+          // 블록이 아니라 건물만 뾰잉 — 지도의 건물 영역을 그대로 복제한다.
+          // 위치·크기는 syncPops()가 지도 픽셀로 맞춘다 (%로는 미세하게 어긋난다)
           const pop = el('span', 'pop');
-          Object.assign(pop.style, {
-            left: pct((bx - x) / w * 100), top: pct((by - y) / h * 100),
-            width: pct(bw / w * 100), height: pct(bh / h * 100),
-          });
-          pop.style.setProperty('--bs', (10000 / bw) + '%');
-          pop.style.setProperty('--bpx', (bx / (100 - bw) * 100) + '%');
-          pop.style.setProperty('--bpy', (by / (100 - bh) * 100) + '%');
+          pop.style.animationDelay = (popIndex++ * 0.34) + 's';
+          const pimg = new Image();
+          pimg.src = 'assets/map/town-web.jpg';
+          pimg.alt = '';
+          pop.appendChild(pimg);
           btn.appendChild(pop);
-
-        }
-
-        // 클릭 가능 안내 물결. 건물이 있으면 건물 발밑, 없으면 pingBox(공원=사람들 발밑)
-        const pb = d.building || d.pingBox;
-        if (pb) {
-          const [bx2, by2, bw2, bh2] = pb;
-          const ping = el('span', 'ping');
-          Object.assign(ping.style, {
-            left: pct((bx2 - x) / w * 100),
-            width: pct(bw2 / w * 100),
-            top: pct((by2 + bh2 - y) / h * 100),
-            animationDelay: (pingIndex++ * 0.42) + 's',
-          });
-          btn.appendChild(ping);
+          pops.push({ pop, pimg, rect: d.rect, building: d.building });
         }
 
         // 사람들 구역은 공원 땅이 아니라 사람들이 반응한다
@@ -245,6 +226,28 @@
 
       btn.addEventListener('click', () => toggle(d.id, btn));
       wrap.appendChild(btn);
+    });
+  }
+
+  /** 건물 복제본을 지도 픽셀에 정확히 맞춘다. %로 계산하면 반올림이 누적돼
+   *  원본과 미세하게 어긋나 이중으로 보인다. 창 크기가 바뀌면 다시 부른다. */
+  function syncPops() {
+    // clientWidth/Height는 정수로 반올림돼 1px쯤 어긋난다 → 소수점을 살린 값을 쓴다
+    const r = $('map').getBoundingClientRect();
+    const MW = r.width, MH = r.height;
+    if (!MW) return;
+    pops.forEach(({ pop, pimg, rect, building }) => {
+      const [x, y] = rect;
+      const [bx, by, bw, bh] = building;
+      pop.style.left = (bx - x) / 100 * MW + 'px';
+      pop.style.top = (by - y) / 100 * MH + 'px';
+      pop.style.width = bw / 100 * MW + 'px';
+      pop.style.height = bh / 100 * MH + 'px';
+      // 지도와 똑같은 크기로 깔고 건물 위치만큼 밀어 잘라낸다
+      pimg.style.width = MW + 'px';
+      pimg.style.height = MH + 'px';
+      pimg.style.left = -(bx / 100 * MW) + 'px';
+      pimg.style.top = -(by / 100 * MH) + 'px';
     });
   }
 
@@ -659,6 +662,8 @@
 
     paintScenery();
     makeSpots();
+    syncPops();
+    if (!$('mapImg').complete) $('mapImg').addEventListener('load', syncPops, { once: true });
     makeChips();
     renderModalList();
     initPicks();
@@ -698,9 +703,11 @@
     // 창 크기가 바뀌면 열려 있는 패널을 다시 붙인다
     let t;
     window.addEventListener('resize', () => {
-      if (!openId) return;
       clearTimeout(t);
-      t = setTimeout(() => placePanel(data.districts.find((x) => x.id === openId)), 80);
+      t = setTimeout(() => {
+        syncPops();
+        if (openId) placePanel(data.districts.find((x) => x.id === openId));
+      }, 80);
     });
 
     const artHash = () => /^#art(-\d+)?$/.test(location.hash);
