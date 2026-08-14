@@ -185,28 +185,55 @@ button, input { font: inherit; color: inherit; }
 }
 
 /* "나" 캐릭터 — 공원 사람들·건물과 똑같은 folk-idle 박자로 움직인다.
-   혼자 다른 리듬으로 움직이면 마을 전체가 어수선해 보인다 */
+   혼자 다른 리듬으로 움직이면 마을 전체가 어수선해 보인다.
+
+   중요: 움직이는 것은 안쪽 .me-figure고 버튼은 가만히 있는다.
+   버튼이 흔들리면 누를 자리도 같이 흔들려 조준이 안 된다 — 캐릭터는
+   지도 폭의 5.4%뿐이라 폰에서 20px 남짓이고, 그게 위아래로 뛰기까지 하면
+   맞히기 어렵다. */
 .me-spot {
   position: absolute;
   pointer-events: auto;
   transform: translate(-50%, -100%);
-  transform-origin: 50% 100%;
   background: none; border: 0; padding: 0; cursor: pointer;
   line-height: 0;
-  animation: folk-idle 2.4s ease-in-out infinite;
+  z-index: 5;                      /* 넓힌 판정이 옆 구역 상자에 먹히지 않게 */
+}
+/* 손가락이 빗나가도 눌리도록 그림보다 넉넉하게. 버튼의 가상요소라
+   여기를 눌러도 버튼이 눌린다. 최소 64px은 터치 기준(44px)을 넘긴다. */
+.me-spot::after {
+  content: "";
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(230%, 64px);
+  height: max(210%, 64px);
+}
+.me-figure {
+  display: block;
+  transform-origin: 50% 100%;
+  animation: me-idle 2.4s ease-in-out infinite;
 }
 .me-spot img {
   width: 100%; height: auto; display: block;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .28));
 }
-.me-spot:hover, .me-spot:focus-visible { animation: hop .55s ease-in-out infinite; }
+.me-spot:hover .me-figure,
+.me-spot:focus-visible .me-figure { animation: hop .55s ease-in-out infinite; }
+
+/* folk-idle과 같은 박자·같은 폭이되 자리 이동(translate)은 버튼이 맡는다 */
+@keyframes me-idle {
+  0%, 100% { transform: translateY(0)    scale(1, 1)      rotate(0deg); }
+  25%      { transform: translateY(-18%) scale(.96, 1.07) rotate(-5deg); }
+  50%      { transform: translateY(0)    scale(1.07, .92) rotate(0deg); }
+  75%      { transform: translateY(-18%) scale(.96, 1.07) rotate(5deg); }
+}
 
 /* 호버하면 반갑게 폴짝 — 굽혔다가 튀어오르고 착지 */
 @keyframes hop {
-  0%, 100% { transform: translate(-50%, -100%) scale(1, 1); }
-  28%      { transform: translate(-50%, -100%) scale(1.06, .9); }
-  62%      { transform: translate(-50%, -114%) scale(.96, 1.05); }
-  86%      { transform: translate(-50%, -100%) scale(1.03, .96); }
+  0%, 100% { transform: translateY(0)    scale(1, 1); }
+  28%      { transform: translateY(0)    scale(1.06, .9); }
+  62%      { transform: translateY(-14%) scale(.96, 1.05); }
+  86%      { transform: translateY(0)    scale(1.03, .96); }
 }
 
 /* 움직이는 것들 */

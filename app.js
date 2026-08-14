@@ -201,10 +201,13 @@
         btn.style.left = pct(d.character[0]);
         btn.style.top = pct(d.character[1]);
         btn.style.width = '5.4%';
+        // 흔들리는 것은 안쪽 그림뿐 — 버튼은 가만히 있어야 누를 자리가 고정된다
+        const fig = el('span', 'me-figure');
         const img = new Image();
         img.src = S + 'me.png';
         img.alt = '';
-        btn.appendChild(img);
+        fig.appendChild(img);
+        btn.appendChild(fig);
       } else {
         const [x, y, w, h] = d.rect;
         Object.assign(btn.style, { left: pct(x), top: pct(y), width: pct(w), height: pct(h) });
@@ -236,16 +239,22 @@
           const layer = $('folks');
           const hot = (on) => layer.classList.toggle('folks-hot', on);
           btn.addEventListener('mouseenter', () => hot(true));
-          btn.addEventListener('mouseleave', () => hot(false));
+          btn.addEventListener('mouseleave', () => { hot(false); resyncIdle(); });
           btn.addEventListener('focus', () => hot(true));
-          btn.addEventListener('blur', () => hot(false));
+          btn.addEventListener('blur', () => { hot(false); resyncIdle(); });
           btn.addEventListener('click', () => {
             layer.classList.remove('folks-pop');
             void layer.offsetWidth;          // 리플로우로 애니메이션 재시작
             layer.classList.add('folks-pop');
+            // 뾰옹이 끝나면 사람들도 마을 박자로 되돌린다
+            setTimeout(resyncIdle, 600);
           });
         }
       }
+
+      // 호버·포커스가 풀리면 그 요소만 idle이 0부터 다시 시작한다 → 박자를 되맞춘다
+      btn.addEventListener('mouseleave', resyncIdle);
+      btn.addEventListener('blur', resyncIdle);
 
       btn.addEventListener('click', () => toggle(d.id, btn));
       wrap.appendChild(btn);
@@ -254,15 +263,26 @@
 
   /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
    *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
+  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle'];
+
   function syncIdle() {
     const anims = document.getAnimations().filter((a) =>
-      a.animationName === 'bldg-idle' || a.animationName === 'folk-idle');
+      IDLE_ANIMS.includes(a.animationName));
     if (!anims.length) return;
     // 기준은 문서 타임라인의 현재 시각. 다른 애니메이션의 startTime을 베끼면
     // 아직 시작 전이라 null일 수 있고, null을 넣으면 전부 멈춰버린다.
     const t = document.timeline.currentTime;
     if (t == null) return;
     anims.forEach((a) => { try { a.startTime = t; } catch (_) {} });
+  }
+
+  /** 호버·뾰옹처럼 잠깐 다른 애니메이션이 얹혔다 물러나면 idle이 0부터 다시 시작해
+   *  그 요소만 마을과 박자가 어긋난다. 되살아난 직후 다시 맞춘다.
+   *  스타일을 강제로 계산해야 그 애니메이션이 생겨 getAnimations()에 잡힌다. */
+  function resyncIdle() {
+    void document.body.offsetHeight;
+    syncIdle();
+    requestAnimationFrame(syncIdle);   // 늦게 생기는 브라우저를 위해 한 번 더
   }
 
   /** 건물 복제본을 지도 픽셀에 정확히 맞춘다. %로 계산하면 반올림이 누적돼
@@ -416,6 +436,7 @@
     $('panelWrap').hidden = true;
     document.querySelectorAll('[aria-expanded="true"]')
       .forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    resyncIdle();      // 뾰옹에서 idle로 돌아오며 그 건물만 박자가 어긋난다
   }
 
   function openPanel(id, btn) {
