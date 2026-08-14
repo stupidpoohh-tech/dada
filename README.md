@@ -1,6 +1,6 @@
 # DADA TOWN
 
-만든 것들이 사는 마을. 앱·문서·영상·공간 작업물을 픽셀 마을 지도로 모아 보여주는 포트폴리오.
+만든 것들이 사는 마을. 앱·문서·공간 작업물을 픽셀 마을 지도로 모아 보여주는 포트폴리오.
 
 기획은 [PLAN.md](PLAN.md), 수록 항목은 [ITEMS.md](ITEMS.md), 에셋 명세는 [ASSETS.md](ASSETS.md).
 
@@ -34,13 +34,13 @@ python3 -m http.server 8000
 
 ```json
 {
-  "id": "planner",
-  "name": "플래너",
-  "district": "me",
+  "id": "balance-calendar",
+  "name": "잔고 캘린더",
+  "district": "bank",
   "type": "app",
   "url": "https://...",
   "description": "무엇을 어떻게 보는지 한 문장으로.",
-  "icon": "🗓",
+  "icon": "📅",
   "status": "live"
 }
 ```
