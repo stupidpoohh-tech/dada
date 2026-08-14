@@ -216,7 +216,15 @@ button, input { font: inherit; color: inherit; }
 .folk {
   transform: translate(-50%, -100%);
   transform-origin: 50% 100%;
-  animation: breathe 3.6s ease-in-out infinite;
+  animation: folk-idle 2.4s ease-in-out infinite;
+}
+/* 각자 다른 박자로 몸을 좌우로 흔들며 통통 — 모여서 웅성거리는 느낌.
+   주인공보다는 잔잔하게 두어 시선이 캐릭터로 가게 한다 */
+@keyframes folk-idle {
+  0%, 100% { transform: translate(-50%, -100%) scale(1, 1) rotate(0deg); }
+  25%      { transform: translate(-50%, -118%) scale(.96, 1.07) rotate(-5deg); }
+  50%      { transform: translate(-50%, -100%) scale(1.07, .92) rotate(0deg); }
+  75%      { transform: translate(-50%, -118%) scale(.96, 1.07) rotate(5deg); }
 }
 .folk.person img { transform-origin: 50% 100%; transition: transform .18s ease, filter .18s ease; }
 .folks-hot .folk.person img {

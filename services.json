@@ -223,8 +223,7 @@
       "description": "팀빌딩 세션을 화면 하나로 진행합니다.",
       "icon": "🧩",
       "status": "live",
-      "needsReview": true,
-      "featured": true
+      "needsReview": true
     },
     {
       "id": "sindorang-demo",

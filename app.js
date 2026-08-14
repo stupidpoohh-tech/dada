@@ -11,10 +11,10 @@
   const TOP_ROAD = [[-10, 41.2], [30, 41.2], [40, 43.4], [70, 43.4], [78, 41.2], [108, 41.2]];
   const CAR_ROUTES = [
     // 위 도로: 두 대가 같은 차선을 반 바퀴 간격으로 순환 — 겹치지 않는다
-    { src: 'car-yellow.png', w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 4.6, dir: -1, start: 0.15 },
-    { src: 'car-blue.png',   w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 4.6, dir: -1, start: 0.65 },
+    { src: 'car-yellow.png', w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 10, dir: -1, start: 0.15 },
+    { src: 'car-blue.png',   w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 10, dir: -1, start: 0.65 },
     // 아래 도로 가운데 구간(회사·카페 아래)만 왕복 — 양끝은 다리와 세모집이라 막혀 있다
-    { src: 'car-red.png',    w: 3.8, path: [[40, 80.6], [64, 80.6]], mode: 'pingpong', speed: 3.2, dir: 1, pause: 1.2, start: 0.4 },
+    { src: 'car-red.png',    w: 3.8, path: [[40, 80.6], [64, 80.6]], mode: 'pingpong', speed: 7, dir: 1, pause: 0.9, start: 0.4 },
   ];
   const CLOUDS = [
     { src: 'cloud-1.png', y: 4,  w: 11, dur: 150, delay: 0 },
