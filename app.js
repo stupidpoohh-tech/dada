@@ -203,6 +203,13 @@
           const pimg = new Image();
           pimg.src = 'assets/map/town-web.jpg';
           pimg.alt = '';
+          // 사각형으로는 건물만 도려낼 수 없는 곳이 있다 — 학교는 지붕 위 양옆에 나무가
+          // 걸리고, 미술관은 몸통이 상자에 잘린다. shape가 있으면 건물 실루엣만 오려낸다.
+          // 이미지가 지도 원본 크기라서 %가 곧 지도 좌표다 (변환 필요 없음).
+          if (d.shape) {
+            pimg.style.clipPath =
+              'polygon(' + d.shape.map(([sx, sy]) => sx + '% ' + sy + '%').join(',') + ')';
+          }
           pop.appendChild(pimg);
           btn.appendChild(pop);
           pops.push({ pop, pimg, rect: d.rect, building: d.building });
@@ -246,8 +253,8 @@
    *  원본과 미세하게 어긋나 이중으로 보인다. 창 크기가 바뀌면 다시 부른다. */
   function syncPops() {
     // clientWidth/Height는 정수로 반올림돼 1px쯤 어긋난다 → 소수점을 살린 값을 쓴다
-    const r = $('map').getBoundingClientRect();
-    const MW = r.width, MH = r.height;
+    const base = $('mapImg').getBoundingClientRect();
+    const MW = base.width, MH = base.height;
     if (!MW) return;
     pops.forEach(({ pop, pimg, rect, building }) => {
       const [x, y] = rect;
@@ -256,12 +263,24 @@
       pop.style.top = (by - y) / 100 * MH + 'px';
       pop.style.width = bw / 100 * MW + 'px';
       pop.style.height = bh / 100 * MH + 'px';
-      // 지도와 똑같은 크기로 깔고 건물 위치만큼 밀어 잘라낸다
+      // 지도와 똑같은 크기로 깔고, 위치는 아래에서 실측으로 맞춘다
       pimg.style.width = MW + 'px';
       pimg.style.height = MH + 'px';
-      pimg.style.left = -(bx / 100 * MW) + 'px';
-      pimg.style.top = -(by / 100 * MH) + 'px';
     });
+    // 브라우저는 배치 좌표를 1/64px 격자로 내림한다. 건물 위치를 %로 계산해
+    // 밀면 그 오차가 남아 복제본과 원본의 리샘플링 위상이 어긋나고, 지도가
+    // 축소돼 그려지는 만큼 경계가 두 겹으로 보인다. 그래서 배치가 끝난 뒤
+    // 실제 좌표를 읽어 그 차이만큼 되돌린다 — 격자 위 값끼리의 차라 오차가 0이다.
+    // 잴 때는 뾰잉 변형을 잠깐 꺼야 한다. getBoundingClientRect는 transform이
+    // 적용된 크기를 주므로, 켜둔 채로 재면 애니메이션 위상만큼 어긋난 값이 나온다.
+    // 애니메이션은 인라인 스타일보다 우선하므로 !important로 눌러야 먹는다.
+    pops.forEach(({ pop }) => pop.style.setProperty('transform', 'none', 'important'));
+    pops.forEach(({ pop, pimg }) => {
+      const pr = pop.getBoundingClientRect();
+      pimg.style.left = (base.left - pr.left) + 'px';
+      pimg.style.top = (base.top - pr.top) + 'px';
+    });
+    pops.forEach(({ pop }) => pop.style.removeProperty('transform'));
   }
 
   /* ── 카드 ────────────────────────────────── */
