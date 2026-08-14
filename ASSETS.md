@@ -1,99 +1,158 @@
 # DADA TOWN 픽셀 시안 발주 명세
 
-이미지 생성 AI로 뽑아올 에셋 목록. **배경 1장 + 스프라이트 7개**가 전부다.
-밤 버전은 지금 뽑지 않는다 — 낮 배경이 확정된 뒤 그 이미지를 img2img(이미지 변형)로 넣어야 같은 구도가 유지되기 때문.
+이미지 생성 AI로 뽑아올 에셋 목록.
+**배경 2장(PC 가로 · 모바일 세로) + 스프라이트 7개.**
+
+> ⚠️ 구역이 9개 + 공항으로 확정되면서 이전 명세(건물 7종)는 폐기되었습니다. 아래 최신본으로 생성해 주세요.
 
 ---
 
-## A. 마을 배경 (낮) — 필수 1장
+## 공통: 마을에 들어갈 건물 10종
 
-### 요구사항
+두 배경 모두 아래 10개가 **전부** 들어가야 합니다. 배치만 다릅니다.
 
-| 항목 | 스펙 |
-|---|---|
-| 구도 | 탑뷰(위에서 내려다본), 기존 참고 시안과 동일한 스타일 |
-| 크기 | 가로 2048px 이상, 가로:세로 ≈ 4:3 (히어로 배치용) |
-| 필수 건물 7종 | 🏦 은행 · 🏫 학교 · ☕ 카페 · 🏢 회사(사무 빌딩) · 🏠 집 2채 · 🌳 공원(분수) · ✈️ 공항(관제탑+활주로, 모서리 배치) |
-| 도로 | 모든 건물을 잇는 격자 도로. **끊기지 않는 순환 루프**여야 함 — 자동차 애니메이션이 이 위를 돈다 |
-| 빈 부지 | "공사 중" 팻말이 있는 공터 2~3곳 — 서비스가 순차 추가될 자리 |
-| 장식 | 나무·꽃·강+다리·횡단보도 자유롭게 |
+| # | 건물 | 형태 | 상징 (간판 대신 쓸 심볼) |
+|---|---|---|---|
+| 1 | 학교 | 빨간 지붕 학교 + 작은 운동장 | 펼친 책 |
+| 2 | 미술관 | 흰 벽의 현대식 미술관, 유리 입구 | 액자 |
+| 3 | 회사 | 유리창 오피스 빌딩 | 서류·모니터 |
+| 4 | 성균관 | **한옥** — 기와지붕, 나무 기둥, 흙마당 | 등불 |
+| 5 | 은행 | 돌기둥 있는 고전 양식 | 달러 기호 |
+| 6 | 우체국 | 빨간 우체통이 앞에 있는 작은 건물 | 편지봉투 |
+| 7 | 카페 | 줄무늬 차양 + 야외 테이블 | 커피잔 |
+| 8 | 세모집 | **삼각지붕이 뚜렷한 집** — 마을에서 가장 특징적으로 | 삼각형 |
+| 9 | 작업실 | **언덕 위** 작은 스튜디오, 창문 큰 오두막 | 연필 |
+| 10 | 공항 | 관제탑 + 활주로, 모서리 배치 | 비행기 |
 
-### 반드시 지킬 것 (수락 기준)
+**성균관(한옥)과 세모집, 언덕 위 작업실이 이 마을의 개성입니다.** 특히 한옥은 다른 서양식 건물들 사이에서 눈에 띄어야 하고, 작업실은 언덕 위에 있어 마을이 내려다보이는 위치여야 합니다.
 
-1. **배경에 움직일 것들이 박혀 있으면 안 됨** — 도로 위 자동차 ❌, 새 ❌, 구름 ❌, 사람 ❌ (전부 스프라이트로 따로 얹어 움직인다. 주차장에 서 있는 차 정도는 OK)
-2. **간판에 글자 금지** — 텍스트 대신 심볼(달러, 책, 커피잔)로. AI 글자 깨짐 방지 + 라벨은 웹에서 HTML로 또렷하게 오버레이(호버 강조·다국어도 쉬움)
-3. 건물끼리 붙지 않게 — 핫스팟과 팝오버가 들어갈 여백 필요
-4. 건물이 화면 가장자리에 잘리지 않게
-5. 도로가 실제로 루프를 이루는지 눈으로 따라가 볼 것
+## 반드시 지킬 것 (수락 기준)
 
-### 프롬프트 (복붙용)
+받으신 뒤 아래 5가지로 검수해 주세요. 하나라도 어긋나면 구현 단계에서 문제가 됩니다.
+
+1. **움직일 것들이 배경에 박혀 있으면 안 됨** — 도로 위 자동차 ❌, 새 ❌, 구름 ❌, 사람 ❌. 전부 스프라이트로 따로 얹어 움직입니다. (주차장에 세워둔 차는 괜찮음)
+2. **글자 금지** — 간판에 텍스트 대신 심볼만. AI가 만든 글자는 거의 깨지고, 구역 이름은 웹에서 HTML로 또렷하게 올립니다(호버 강조·다국어도 그쪽이 쉬움).
+3. **도로가 끊기지 않는 순환 루프** — 자동차가 이 위를 계속 돕니다. 눈으로 한 바퀴 따라가 보세요.
+4. **건물끼리 붙지 않게** — 핫스팟과 팝오버가 들어갈 여백이 필요합니다.
+5. **10개 건물이 모두 잘리지 않고 보일 것**
+
+---
+
+## A. PC용 배경 (가로) — 1장
+
+- 크기: 가로 2400px 이상, **4:3 가로 구도**
+- 10개 건물을 격자 도로로 연결, 강과 다리는 한쪽 가장자리
+- 빈 공터 2~3곳에 "공사 중" 나무 팻말 — 항목이 순차 추가될 자리
 
 ```
 Top-down pixel art town map, 2D game style, clean 16-bit pixel art,
-bright cheerful colors. The town contains: a bank with stone columns,
-a school with a red roof and small playground, a cozy cafe with striped
-awning, a modern glass office building, two small houses with gardens,
-a park with a fountain and benches, and an airport with a control tower
-and runway in one corner. A river with a stone bridge runs along one edge.
-Gray roads with white dashed lines connect all buildings and form closed
-loops, with crosswalks at intersections. Include 2-3 empty lots with
-wooden construction signs. Lots of trees, flowers and greenery between
-blocks. IMPORTANT: no cars on the roads, no birds, no clouds, no people,
-no text or letters anywhere — building signs use symbols only (dollar
-sign, open book, coffee cup). 4:3 landscape composition, every building
-fully visible with clear spacing between buildings.
+bright cheerful colors, 4:3 landscape composition.
+
+The town contains exactly these buildings, all clearly separated:
+a school with a red roof and small playground, a modern white art
+museum with a glass entrance, a glass office building, a traditional
+Korean hanok with a curved tiled roof and wooden pillars and a dirt
+courtyard, a classical bank with stone columns, a small post office
+with a red mailbox in front, a cozy cafe with a striped awning and
+outdoor tables, a distinctive house with a steep triangular roof,
+a small artist studio cabin with large windows standing on a green
+hill overlooking the town, and an airport with a control tower and
+runway in one corner.
+
+A river with a stone bridge runs along one edge. Gray roads with white
+dashed lines connect all buildings and form closed loops, with
+crosswalks at intersections. Include 2-3 empty lots with wooden
+construction signs. Trees, flowers and greenery between blocks.
+
+IMPORTANT: no cars on the roads, no birds, no clouds, no people, and
+absolutely no text or letters anywhere. Building signs use simple
+symbols only (open book, picture frame, dollar sign, envelope, coffee
+cup, lantern, pencil, airplane). Every building fully visible with
+clear spacing between them.
 ```
 
-## B. 스프라이트 — 각각 1장씩, 총 7개
+## B. 모바일용 배경 (세로) — 1장
 
-전부 **배경과 같은 픽셀 스타일**로, 단색(흰색) 배경에 요청. 투명 처리는 코드 작업 때 해결 가능.
-자동차·비행기는 **오른쪽을 향한 탑뷰 1방향만** — 격자 도로라 회전은 90도 단위 CSS로 처리한다.
+- 크기: 세로 2400px 이상, **3:4 세로 구도**
+- **같은 마을, 다른 배치.** 건물 10종은 동일하게 유지하되 세로로 흐르게 재배치
+- 세로 화면에서도 건물이 손가락으로 누를 만한 크기여야 하므로, 가로 버전보다 건물을 **크고 여유 있게**
 
-| # | 에셋 | 스펙 |
+```
+Top-down pixel art town map, 2D game style, clean 16-bit pixel art,
+bright cheerful colors, 3:4 vertical portrait composition, designed
+for a mobile screen.
+
+The same town seen from above, with buildings arranged vertically from
+top to bottom. It contains exactly these buildings, all clearly
+separated and generously sized: an airport with a control tower and
+runway at the top, a school with a red roof and playground, a modern
+white art museum with a glass entrance, a glass office building, a
+traditional Korean hanok with a curved tiled roof and wooden pillars,
+a classical bank with stone columns, a small post office with a red
+mailbox, a cozy cafe with a striped awning, a distinctive house with a
+steep triangular roof, and a small artist studio cabin with large
+windows on a green hill at the bottom.
+
+A river with a stone bridge runs along one side. Gray roads with white
+dashed lines connect all buildings and form closed loops. Include 2
+empty lots with wooden construction signs. Trees and greenery between
+blocks.
+
+IMPORTANT: no cars on the roads, no birds, no clouds, no people, and
+absolutely no text or letters anywhere. Building signs use simple
+symbols only. Buildings should be large and well spaced, easy to tap
+on a phone screen.
+```
+
+---
+
+## C. 스프라이트 7개
+
+전부 **흰 배경**으로 받으면 됩니다 — 투명 처리는 구현할 때 합니다.
+자동차·비행기는 **오른쪽을 향한 1방향만** 필요합니다. 격자 도로라 회전은 코드에서 90도 단위로 처리합니다.
+
+| # | 에셋 | 비고 |
 |---|---|---|
-| 1~3 | 자동차 3대 (노랑·파랑·빨강) | 탑뷰, 오른쪽 향함, 정사각 캔버스, 차 크기 약 64px |
-| 4 | 새 (날개 올림 프레임) | 작게, 옆모습 또는 탑뷰 실루엣 |
-| 5 | 새 (날개 내림 프레임) | 4와 동일 구도 — 2프레임 번갈아 날갯짓 |
-| 6 | 비행기 | 탑뷰, 오른쪽 향함 — 활주로 이륙용, 배경 공항과 같은 톤 |
-| 7 | 구름 1~2개 | 배경과 같은 스타일, 흘러가는 용 |
+| 1~3 | 자동차 3대 (노랑·파랑·빨강) | 탑뷰, 오른쪽 향함 |
+| 4 | 새 — 날개 올린 프레임 | 5번과 같은 구도로 |
+| 5 | 새 — 날개 내린 프레임 | 4·5를 번갈아 날갯짓 |
+| 6 | 비행기 | 탑뷰, 오른쪽 향함 |
+| 7 | 구름 | 1~2개 |
 
-### 프롬프트 예시 (자동차 — 색만 바꿔 3회)
-
+**자동차** (색만 바꿔 3회)
 ```
 Single pixel art sprite of a small yellow car, top-down view, facing
 right, 16-bit game style, centered on a plain white background,
 no shadow, no other objects.
 ```
 
-### 프롬프트 예시 (새 — "wings up" / "wings down" 두 번)
-
+**새** (wings up / wings down 두 번)
 ```
 Single pixel art sprite of a tiny white bird flying, wings up,
 side view facing right, 16-bit game style, plain white background,
 no other objects.
 ```
 
-### 프롬프트 예시 (비행기)
-
+**비행기**
 ```
 Single pixel art sprite of a small white passenger airplane with blue
 accents, top-down view, facing right, 16-bit game style, plain white
 background, no shadow, no other objects.
 ```
 
-### 프롬프트 예시 (구름)
-
+**구름**
 ```
 Single pixel art sprite of a fluffy white cloud, 16-bit game style,
 plain white background, no other objects.
 ```
 
-## C. 나중에 뽑을 것 (지금 금지)
+---
 
-- **밤 버전 배경** (v3 밤 마을 다크모드) — 낮 배경 확정 후, 그 이미지를 img2img로 넣고 "same layout, night time, lit windows, street lamps on" 요청. 새로 생성하면 구도가 달라져서 핫스팟 좌표가 전부 어긋난다.
-- OG 이미지·파비콘 — 별도 시안 불필요. 배경에서 크롭해서 쓴다.
+## D. 나중에 뽑을 것 (지금 생성 금지)
+
+- **밤 버전 배경 2장** (🌙 밤 마을 다크모드) — 낮 배경을 확정한 뒤 **그 이미지를 img2img에 넣고** `same layout, night time, lit windows, street lamps on`으로 변형해야 합니다. 새로 생성하면 구도가 달라져서 건물 핫스팟 좌표가 전부 어긋납니다.
+- OG 이미지·파비콘 — 별도 시안 불필요. 가로 배경에서 크롭해 씁니다.
 
 ## 스타일 일관성 팁
 
-- 배경을 먼저 확정하고, 스프라이트는 같은 세션/같은 스타일 문구("16-bit game style")로 뽑으면 톤이 붙는다.
-- 스프라이트 색이 배경과 안 맞으면 코드에서 보정 가능하니 구도(방향·여백)가 우선이다.
+가로 배경을 먼저 확정하고, 세로 배경과 스프라이트는 **같은 세션에서 같은 스타일 문구**(`16-bit game style`)로 이어서 뽑으면 톤이 붙습니다. 색이 조금 안 맞는 건 구현할 때 보정할 수 있으니, 구도(방향·여백·건물 크기)를 우선으로 봐주세요.
