@@ -2,7 +2,8 @@
   "$comment": "DADA TOWN 수록 항목 단일 소스. description은 실제 서비스 확인 전 추정본이므로 교체 필요(needsReview: true). rect는 지도 위 구역 위치(%): [left, top, width, height].",
   "site": {
     "name": "DADA TOWN",
-    "tagline": "만든 것들이 사는 마을"
+    "tagline": "만든 것들이 사는 마을",
+    "url": "https://dada-portfolio.stupidpoohh.workers.dev"
   },
   "profile": {
     "name": "이다원",
@@ -74,6 +75,12 @@
         38,
         27,
         31
+      ],
+      "pingBox": [
+        11,
+        55,
+        10,
+        7
       ]
     },
     {
@@ -154,8 +161,8 @@
       "icon": "🙋",
       "label": "ME",
       "character": [
-        82.5,
-        93.5
+        53.5,
+        96.5
       ]
     }
   ],

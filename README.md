@@ -106,5 +106,17 @@ for i, p in enumerate(d):
 
 ## 배포
 
-Cloudflare Pages에 이 저장소를 연결하고, 빌드 명령 없이 루트를 그대로 게시하면 된다.
+Cloudflare에 이 저장소를 연결하고, 빌드 명령 없이 루트를 그대로 게시하면 된다.
 빌드 과정이 없으므로 설정할 것은 출력 디렉터리(`/`)뿐.
+
+### 링크 미리보기(OG) 주의
+
+`og:image`·`og:url`은 **반드시 절대 URL**이어야 한다. 상대 경로로 두면 링크드인·카카오톡 같은
+크롤러가 이미지를 못 찾아 미리보기가 생기지 않는다. 도메인을 바꾸면 아래 두 곳을 함께 고쳐야 한다.
+
+- `index.html` — `og:url`, `og:image`
+- `docs/art-portfolio.html` — `og:url`, `og:image`
+- `services.json`의 `site.url` (기준값 기록용)
+
+`*.workers.dev` 도메인은 링크 검사기에서 걸러지는 경우가 있다. 공유용으로는 커스텀 도메인을 붙이는 편이
+안전하다 (Cloudflare 대시보드 → 프로젝트 → Settings → Domains & Routes → Add custom domain).

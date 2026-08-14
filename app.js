@@ -170,6 +170,7 @@
 
   function makeSpots() {
     const wrap = $('hotspots');
+    let pingIndex = 0;
 
     data.districts.forEach((d) => {
       const count = (byDistrict[d.id] || []).length;
@@ -189,6 +190,9 @@
         img.src = S + 'me.png';
         img.alt = '';
         btn.appendChild(img);
+        const ping = el('span', 'ping');
+        ping.style.animationDelay = '2.1s';
+        btn.appendChild(ping);
       } else {
         const [x, y, w, h] = d.rect;
         Object.assign(btn.style, { left: pct(x), top: pct(y), width: pct(w), height: pct(h) });
@@ -206,6 +210,21 @@
           pop.style.setProperty('--bpx', (bx / (100 - bw) * 100) + '%');
           pop.style.setProperty('--bpy', (by / (100 - bh) * 100) + '%');
           btn.appendChild(pop);
+
+        }
+
+        // 클릭 가능 안내 물결. 건물이 있으면 건물 발밑, 없으면 pingBox(공원=사람들 발밑)
+        const pb = d.building || d.pingBox;
+        if (pb) {
+          const [bx2, by2, bw2, bh2] = pb;
+          const ping = el('span', 'ping');
+          Object.assign(ping.style, {
+            left: pct((bx2 - x) / w * 100),
+            width: pct(bw2 / w * 100),
+            top: pct((by2 + bh2 - y) / h * 100),
+            animationDelay: (pingIndex++ * 0.42) + 's',
+          });
+          btn.appendChild(ping);
         }
 
         // 사람들 구역은 공원 땅이 아니라 사람들이 반응한다
@@ -521,7 +540,7 @@
     renderModalList();
     initPicks();
 
-    $('footName').textContent = `${data.profile.name} · ${data.profile.tagline}`;
+    $('footName').textContent = data.profile.tagline;
     const fc = $('footContact');
     const a = el('a', null, data.profile.email);
     a.href = 'mailto:' + data.profile.email;
