@@ -148,11 +148,15 @@ button, input { font: inherit; color: inherit; }
 /* 중요: 1보다 작게 줄이면 안 된다. 복제본이 자기 영역을 못 덮어 뒤의 원본이
    드러나고, 학교 깃발처럼 경계에 걸친 것이 두 개로 보인다.
    그래서 발밑을 축으로 '늘어나기만' 한다. */
+/* 한 바퀴에 두 번 뾰잉 — 위로 쭉 늘었다가 옆으로 퍼지며 눌린다.
+   양 끝에 잠깐 멈춤(6%·94%)을 둬야 흐물거리지 않고 튀는 느낌이 난다.
+   솟는 시점(25%·75%)은 사람들(folk-idle)과 같다 — 마을이 한 박자로 움직인다 */
 @keyframes bldg-idle {
-  0%, 100% { transform: scale(1, 1); }
-  25%      { transform: scale(1.002, 1.022); }
-  50%      { transform: scale(1.012, 1.002); }
-  75%      { transform: scale(1.002, 1.022); }
+  0%, 6%    { transform: scale(1, 1); }
+  25%       { transform: scale(1.005, 1.08); }
+  44%, 56%  { transform: scale(1.055, 1.002); }
+  75%       { transform: scale(1.005, 1.08); }
+  94%, 100% { transform: scale(1, 1); }
 }
 .pop > img { position: absolute; display: block; max-width: none; }
 
@@ -342,8 +346,9 @@ button, input { font: inherit; color: inherit; }
 .empty strong { display: block; font-size: 14.5px; color: var(--ink); margin-bottom: 3px; }
 
 /* 경력·학력 */
-.cv { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 8px; }
-.cv li { background: var(--surface-2); border-radius: 10px; padding: 9px 12px; }
+/* 박스 없이 글자만 — 카드가 겹치면 목록이 무거워 보인다 */
+.cv { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 7px; }
+.cv li { padding: 0; }
 .cv-role { font-size: 13.5px; font-weight: 700; }
 .cv-meta { font-size: 12.5px; color: var(--sub); margin-top: 1px; }
 
