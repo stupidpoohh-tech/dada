@@ -690,6 +690,7 @@
     bkPaint();
     const ov = $('bookOverlay');
     const show = () => {
+      ov.classList.remove('closing');
       ov.hidden = false;
       ov.style.pointerEvents = '';      // 닫는 중이었다면 되살린다
       ov.focus({ preventScroll: true });
@@ -713,7 +714,12 @@
   function closeBook() {
     const ov = $('bookOverlay');
     const a = flyBook(-1);
-    const hide = () => { ov.hidden = true; ov.style.pointerEvents = ''; };
+    ov.classList.add('closing');       // 어두운 바탕도 같이 걷힌다
+    const hide = () => {
+      ov.hidden = true;
+      ov.style.pointerEvents = '';
+      ov.classList.remove('closing');
+    };
     if (a) {
       ov.style.pointerEvents = 'none';   // 되돌아가는 동안 다시 눌리지 않게
       a.finished.then(hide).catch(() => {});   // 도중에 다시 열리면(cancel) 숨기지 않는다
