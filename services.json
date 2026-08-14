@@ -25,7 +25,7 @@
       {
         "org": "HWR Berlin",
         "detail": "교환학생",
-        "period": "2017.03 – 2018.08"
+        "period": "2017.03 – 2017.08"
       },
       {
         "org": "Ruhr-Universität Bochum",
@@ -300,18 +300,6 @@
       "status": "live",
       "needsReview": false,
       "featured": true
-    },
-    {
-      "id": "loan-early",
-      "no": 15,
-      "name": "조기상환 시뮬레이션",
-      "district": "bank",
-      "type": "app",
-      "url": "https://loan-early.vercel.app/",
-      "description": "지금 갚으면 이자가 얼마나 줄어드는지 계산합니다.",
-      "icon": "💸",
-      "status": "live",
-      "needsReview": true
     },
     {
       "id": "olrw",
