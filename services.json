@@ -183,7 +183,8 @@
         78,
         12,
         14
-      ]
+      ],
+      "direct": "house-catalog"
     },
     {
       "id": "me",
@@ -209,7 +210,7 @@
       "needsReview": false,
       "featured": true,
       "open": "book",
-      "book": { "dir": "assets/portfolio/art/", "pages": 11, "hash": "art" }
+      "book": { "dir": "assets/portfolio/art/", "pages": 11, "hash": "art", "ratio": "16 / 9" }
     },
     {
       "id": "grammar",
@@ -349,6 +350,19 @@
       "status": "live",
       "needsReview": true,
       "featured": true
+    },
+    {
+      "id": "house-catalog",
+      "no": 23,
+      "name": "세모집 카탈로그",
+      "district": "house",
+      "type": "doc",
+      "description": "세모집에서 할 수 있는 것들을 한 장씩 넘겨봅니다.",
+      "icon": "🔺",
+      "status": "live",
+      "needsReview": false,
+      "open": "book",
+      "book": { "dir": "assets/portfolio/house/", "pages": 6, "hash": "house", "ratio": "449 / 635", "flat": true }
     }
   ]
 }

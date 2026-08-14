@@ -13,6 +13,7 @@ app.js
 services.json       수록 항목 단일 소스 — 여기만 고치면 지도와 모달이 함께 바뀐다
 assets/
   portfolio/art/    아트북 페이지 이미지 p01~p11 + 썸네일 t01~t11
+  portfolio/house/  세모집 카탈로그 p01~p06 + 썸네일 t01~t06
   map/town.jpg      원본 배경 (편집용, 배포에는 안 씀)
   map/town-web.jpg  실제로 쓰는 배경
   sprites/*.png     원본 스프라이트 시트 (편집용)
@@ -129,11 +130,22 @@ python3 tools/cut_sprites.py
 
 ```json
 "open": "book",
-"book": { "dir": "assets/portfolio/art/", "pages": 11, "hash": "art" }
+"book": { "dir": "assets/portfolio/house/", "pages": 6, "hash": "house",
+          "ratio": "449 / 635", "flat": true }
 ```
 
 이미지는 `dir` 아래 `p01.jpg`(본문)와 `t01.jpg`(썸네일) 규칙으로 찾는다.
 해시는 `#art` · `#art-5`처럼 쪽번호가 뒤에 붙고, 등록되지 않은 해시는 무시한다.
+
+**`ratio`는 페이지 비율이고 책과 썸네일이 함께 쓴다.** JS가 `#bookOverlay`에 `--ratio`로 얹는다 —
+책(`#bk`)과 썸네일 줄(`#bkStrip`)이 형제라 둘의 공통 조상에 넣어야 같이 받는다.
+
+**세로로 긴 책은 넓은 화면에서도 화면 전체를 쓴다.** 지도가 가로형이라 세로 페이지를 그 안에
+가두면 높이가 모자라 글씨가 작아진다. `ratio`의 세로가 가로보다 크면 JS가 `.full`을 붙인다.
+
+**`"flat": true`면 책이 아니라 브로슈어로 그린다** — 종이 두께와 책등 그늘이 빠진다.
+세로 페이지는 가로 컨테이너 안에서 가운데 놓이므로, 컨테이너 가장자리에 붙는 두께 장식이
+페이지에서 멀리 떨어져 허공에 뜬 선으로 보인다. 아트북(가로)은 두께를 그대로 쓴다.
 
 **책은 그리기 전에 등록해야 한다.** 목록 카드가 책 해시를 `href`로 쓰기 때문에,
 `init()`에서 `renderModalList()`·`initPicks()`보다 먼저 `books`를 채운다.
@@ -147,23 +159,27 @@ python3 tools/cut_sprites.py
 방향키·좌우 클릭·스와이프·하단 썸네일로 이동하고, `#art` / `#art-5` 해시로 특정 쪽을 공유할 수 있다.
 원본 PDF는 배포하지 않는다.
 
-페이지를 다시 뽑으려면:
+페이지를 다시 뽑으려면 — **긴 변을 2000px에 맞춘다.** 가로 페이지든 세로 페이지든
+화면에서 차지하는 크기가 비슷해지고, 세로 페이지를 폭 기준으로 뽑으면 쓸데없이 커진다.
 
 ```
 pip install pymupdf pillow
 python3 -c "
 import pymupdf, io
 from PIL import Image
+DIR, LONG = 'assets/portfolio/house/', 2000
 d = pymupdf.open('원본.pdf')
 for i, p in enumerate(d):
-    pix = p.get_pixmap(matrix=pymupdf.Matrix(1600/p.rect.width, 1600/p.rect.width))
+    z = LONG / max(p.rect.width, p.rect.height)
+    pix = p.get_pixmap(matrix=pymupdf.Matrix(z, z))
     im = Image.open(io.BytesIO(pix.tobytes('png'))).convert('RGB')
-    im.save(f'assets/portfolio/art/p{i+1:02d}.jpg', quality=82, optimize=True, progressive=True)
-    im.resize((260, round(260*im.height/im.width))).save(f'assets/portfolio/art/t{i+1:02d}.jpg', quality=75)
+    im.save(f'{DIR}p{i+1:02d}.jpg', quality=82, optimize=True, progressive=True)
+    im.resize((260, round(260*im.height/im.width))).save(f'{DIR}t{i+1:02d}.jpg', quality=75)
 "
 ```
 
-쪽수가 바뀌면 `services.json`의 아트북 항목 `pages` 값을 함께 고친다.
+쪽수나 비율이 바뀌면 `services.json`의 `book.pages`·`book.ratio`를 함께 고친다.
+**한 장만 갈아끼울 때는 그 파일 두 개(`pNN.jpg`·`tNN.jpg`)만 덮어쓰면 된다** — 나머지는 안 건드려도 된다.
 
 ## 배포
 

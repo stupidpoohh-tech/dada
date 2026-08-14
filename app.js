@@ -547,6 +547,12 @@
     $('bkTotal').textContent = book.pages;
     $('bkTitle').textContent = book.label;
     $('bookOverlay').setAttribute('aria-label', book.label);
+    // 책과 썸네일이 같은 비율을 쓰도록 둘의 공통 조상에 얹는다
+    $('bookOverlay').style.setProperty('--ratio', book.ratio || '16 / 9');
+    $('bk').classList.toggle('flat', !!book.flat);
+    // 세로로 긴 책은 지도 크기 안에서 높이가 모자라므로 화면 전체를 쓴다
+    const [rw, rh] = (book.ratio || '16 / 9').split('/').map(Number);
+    $('bookOverlay').classList.toggle('full', rh > rw);
   }
 
   const bkPreload = (i) => { if (i >= 1 && i <= book.pages) new Image().src = bkSrc(i); };
@@ -745,8 +751,8 @@
     // 카드가 책 해시를 href로 쓰므로 무엇이든 그리기 전에 책부터 등록한다
     data.items.forEach((i) => {
       if (i.open !== 'book' || !i.book) return;
-      books.push({ id: i.id, label: i.name, dir: i.book.dir,
-                   pages: i.book.pages || 0, hash: i.book.hash });
+      books.push({ id: i.id, label: i.name, dir: i.book.dir, ratio: i.book.ratio,
+                   flat: !!i.book.flat, pages: i.book.pages || 0, hash: i.book.hash });
     });
 
     paintScenery();
