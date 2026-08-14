@@ -448,12 +448,20 @@
     openPanel(id, btn);
   }
 
+  /** 지도만 보이는 상태에서만 안내를 띄운다. 예전에는 한 번 열면 영영 사라져서,
+   *  닫고 나면 무엇을 눌러야 하는지 알려주는 것이 없었다. */
+  function syncHint() {
+    const busy = openId || bookOpen() || !$('modal').hidden;
+    $('hint').classList.toggle('gone', !!busy);
+  }
+
   function closePanel() {
     openId = null;
     $('panelWrap').hidden = true;
     document.querySelectorAll('[aria-expanded="true"]')
       .forEach((b) => b.setAttribute('aria-expanded', 'false'));
     resyncIdle();      // 뾰옹에서 idle로 돌아오며 그 건물만 박자가 어긋난다
+    syncHint();
   }
 
   function openPanel(id, btn) {
@@ -686,6 +694,7 @@
     buildStrip();
     if (!wasOpen) beforeBookFocus = document.activeElement;
     closePanel();
+    $('hint').classList.add('gone');
     bkPage = Math.min(Math.max(page || 1, 1), book.pages);
     bkPaint();
     const ov = $('bookOverlay');
@@ -694,7 +703,6 @@
       ov.hidden = false;
       ov.style.pointerEvents = '';      // 닫는 중이었다면 되살린다
       ov.focus({ preventScroll: true });
-      $('hint').classList.add('gone');
       // 이미 펼쳐져 있는데 다른 책으로 갈아타는 것뿐이라면 날아올 필요가 없다
       if (!wasOpen) flyBook(1); else if (bkAnim) { bkAnim.cancel(); bkAnim = null; }
     };
@@ -719,6 +727,7 @@
       ov.hidden = true;
       ov.style.pointerEvents = '';
       ov.classList.remove('closing');
+      syncHint();
     };
     if (a) {
       ov.style.pointerEvents = 'none';   // 되돌아가는 동안 다시 눌리지 않게
@@ -815,6 +824,7 @@
   function openModal() {
     lastFocus = document.activeElement;
     $('modal').hidden = false;
+    syncHint();
     document.body.style.overflow = 'hidden';
     // 터치 기기에서 검색창에 자동 포커스를 주면 키보드가 튀어오르며 화면이 확대된다
     if (window.matchMedia('(pointer: fine)').matches) $('search').focus();
@@ -825,6 +835,7 @@
     $('modal').hidden = true;
     document.body.style.overflow = '';
     if (lastFocus) lastFocus.focus();
+    syncHint();
   }
 
   function trapFocus(e) {

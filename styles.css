@@ -290,11 +290,16 @@ button, input { font: inherit; color: inherit; }
 
 /* ── 지도 아래 줄 ────────────────────────── */
 
+/* 지도 바로 아래 안내. 눌러볼 수 있다는 걸 알려주는 유일한 글이라
+   아주 느리게 숨쉬듯 밝기가 오간다 — 눈에는 걸리되 시끄럽지 않게. */
 .hint {
   text-align: center;
   font-size: 13.5px; color: var(--faint);
   margin: 14px 0 0;
+  animation: hint-breathe 3.6s ease-in-out infinite;
 }
+@keyframes hint-breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+/* 자리는 남겨둔 채 숨긴다 — 사라질 때 아래 것들이 들썩이지 않게 */
 .hint.gone { visibility: hidden; }
 
 /* ── 구역 패널 ───────────────────────────── */
