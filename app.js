@@ -277,12 +277,29 @@
   }
 
   /** 호버·뾰옹처럼 잠깐 다른 애니메이션이 얹혔다 물러나면 idle이 0부터 다시 시작해
-   *  그 요소만 마을과 박자가 어긋난다. 되살아난 직후 다시 맞춘다.
-   *  스타일을 강제로 계산해야 그 애니메이션이 생겨 getAnimations()에 잡힌다. */
+   *  그 요소만 마을과 박자가 어긋난다. 뒤늦게 합류한 것을 **마을이 이미 타고 있는
+   *  박자에 끌어다 붙인다.** syncIdle()처럼 전부 0으로 되돌리면 어긋남은 없어져도
+   *  온 마을이 그 순간 한 번 움찔한다 — 눌렀을 때 튀어 보이는 게 그 때문이다.
+   *  스타일을 강제로 계산해야 되살아난 애니메이션이 getAnimations()에 잡힌다. */
   function resyncIdle() {
     void document.body.offsetHeight;
-    syncIdle();
-    requestAnimationFrame(syncIdle);   // 늦게 생기는 브라우저를 위해 한 번 더
+    const anims = document.getAnimations().filter((a) => IDLE_ANIMS.includes(a.animationName));
+    if (anims.length < 2) return;
+
+    // 가장 많은 요소가 쓰고 있는 startTime이 곧 마을의 박자다
+    const tally = new Map();
+    anims.forEach((a) => {
+      if (a.startTime == null) return;
+      tally.set(+a.startTime, (tally.get(+a.startTime) || 0) + 1);
+    });
+    let ref = null, best = 0;
+    tally.forEach((n, t) => { if (n > best) { best = n; ref = t; } });
+    if (ref == null) return;
+
+    anims.forEach((a) => {
+      if (a.startTime != null && +a.startTime === ref) return;
+      try { a.startTime = ref; } catch (_) {}
+    });
   }
 
   /** 건물 복제본을 지도 픽셀에 정확히 맞춘다. %로 계산하면 반올림이 누적돼
@@ -635,15 +652,24 @@
     // 건물보다 더 작아지면 종잇조각처럼 보인다 — 줄이는 폭에 바닥을 둔다
     const s = Math.min(Math.max(from.width / to.width, 0.14), 0.5);
 
-    const shrunk = { transform: `translate(${dx}px, ${dy}px) scale(${s}) rotate(-7deg)`, opacity: 0 };
-    const full = { transform: 'none', opacity: 1 };
+    const away = `translate(${dx}px, ${dy}px) scale(${s}) rotate(-9deg)`;
 
-    // 닫을 때가 더 짧다 — 여닫기를 반복하게 되는 물건이라 길면 두 번째부터 거슬린다
-    bkAnim = bk.animate(dir > 0 ? [shrunk, full] : [full, shrunk], {
-      duration: dir > 0 ? 340 : 200,
-      easing: dir > 0 ? 'cubic-bezier(.2, .85, .3, 1)' : 'cubic-bezier(.5, 0, .75, .4)',
-      fill: 'both',
-    });
+    if (dir > 0) {
+      // 날아오는 동안 **보여야** 날아오는 것이다. 처음에 opacity 0으로 두면
+      // 여정의 앞부분이 통째로 안 보여서 그냥 커지는 것처럼만 읽힌다.
+      // 그래서 첫 12%에만 짧게 밝아지고 나머지 구간은 불투명한 채로 이동한다.
+      bkAnim = bk.animate(
+        [{ transform: away }, { transform: 'none' }],
+        { duration: 480, easing: 'cubic-bezier(.33, .62, .3, 1)', fill: 'both' });
+      bk.animate([{ opacity: 0 }, { opacity: 1 }],
+        { duration: 90, easing: 'linear', fill: 'backwards' });
+    } else {
+      // 닫을 때는 짧게. 여닫기를 반복하는 물건이라 대칭으로 두면 답답하다
+      bkAnim = bk.animate(
+        [{ transform: 'none', opacity: 1 }, { opacity: 1, offset: .45 },
+         { transform: away, opacity: 0 }],
+        { duration: 240, easing: 'cubic-bezier(.55, 0, .85, .5)', fill: 'both' });
+    }
     return bkAnim;
   }
 
@@ -663,12 +689,25 @@
     bkPage = Math.min(Math.max(page || 1, 1), book.pages);
     bkPaint();
     const ov = $('bookOverlay');
-    ov.hidden = false;
-    ov.style.pointerEvents = '';        // 닫는 중이었다면 되살린다
-    ov.focus({ preventScroll: true });
-    $('hint').classList.add('gone');
-    // 이미 펼쳐져 있는데 다른 책으로 갈아타는 것뿐이라면 날아올 필요가 없다
-    if (!wasOpen) flyBook(1); else if (bkAnim) { bkAnim.cancel(); bkAnim = null; }
+    const show = () => {
+      ov.hidden = false;
+      ov.style.pointerEvents = '';      // 닫는 중이었다면 되살린다
+      ov.focus({ preventScroll: true });
+      $('hint').classList.add('gone');
+      // 이미 펼쳐져 있는데 다른 책으로 갈아타는 것뿐이라면 날아올 필요가 없다
+      if (!wasOpen) flyBook(1); else if (bkAnim) { bkAnim.cancel(); bkAnim = null; }
+    };
+
+    // 그림이 준비되기 전에 날리면 첫 장을 그리느라 100ms 넘게 프레임이 멈춰
+    // 날아오는 구간이 통째로 먹힌다 — 그냥 커지는 것처럼만 보인다.
+    // 준비될 때까지만 기다렸다 연다 (오래 걸리면 그냥 연다).
+    const im = $('bkImg');
+    if (wasOpen || (im.complete && im.naturalWidth)) { show(); return; }
+    let opened = false;
+    const once = () => { if (!opened) { opened = true; show(); } };
+    const fallback = () => { if (im.complete) once(); else im.addEventListener('load', once, { once: true }); };
+    if (im.decode) im.decode().then(once, fallback); else fallback();
+    setTimeout(once, 400);
   }
 
   function closeBook() {
@@ -822,6 +861,17 @@
                    district: i.district,   // 책이 날아올 출발점 (그 구역 건물)
                    flat: !!i.book.flat, pages: i.book.pages || 0, hash: i.book.hash });
     });
+
+    // 첫 장을 미리 받아 디코드해 둔다. 안 해두면 처음 펼칠 때 큰 이미지를 그리느라
+    // 프레임이 100ms 넘게 멈춰 날아오는 구간을 통째로 삼킨다 — 그냥 커지는 것처럼만 보인다.
+    // 지도가 먼저 뜨는 게 우선이라 한가할 때 한다.
+    const warmBooks = () => books.forEach((bk) => {
+      const im = new Image();
+      im.src = `${bk.dir}p01.jpg`;
+      if (im.decode) im.decode().catch(() => {});
+    });
+    if ('requestIdleCallback' in window) requestIdleCallback(warmBooks, { timeout: 2500 });
+    else setTimeout(warmBooks, 1200);
 
     paintScenery();
     makeSpots();

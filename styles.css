@@ -165,7 +165,16 @@ button, input { font: inherit; color: inherit; }
 }
 .pop > img { position: absolute; display: block; max-width: none; }
 
-.spot:hover .pop,
+/* 터치 기기에서는 :hover가 탭한 뒤에도 눌린 채 남는다. 그러면 이 규칙의
+   animation:none 때문에 그 건물만 얼어붙었다가, 나중에 hover가 풀릴 때
+   0부터 다시 시작해 마을과 박자가 어긋난다. 마우스가 있는 기기에서만 건다. */
+@media (hover: hover) {
+  .spot:hover .pop {
+    animation: none;
+    transform: scale(1.05);
+    filter: drop-shadow(0 7px 10px rgba(31, 36, 28, .3)) brightness(1.04);
+  }
+}
 .spot:focus-visible .pop {
   animation: none;
   transform: scale(1.05);
@@ -217,7 +226,10 @@ button, input { font: inherit; color: inherit; }
   width: 100%; height: auto; display: block;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .28));
 }
-.me-spot:hover .me-figure,
+/* 같은 이유로 마우스가 있는 기기에서만 — 폰에서는 탭한 뒤 계속 폴짝거리게 된다 */
+@media (hover: hover) {
+  .me-spot:hover .me-figure { animation: hop .55s ease-in-out infinite; }
+}
 .me-spot:focus-visible .me-figure { animation: hop .55s ease-in-out infinite; }
 
 /* folk-idle과 같은 박자·같은 폭이되 자리 이동(translate)은 버튼이 맡는다 */
@@ -551,6 +563,10 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
    두께 장식이 페이지에서 멀리 떨어져 허공에 뜬 선으로 보인다. */
 .book.flat::before, .book.flat::after,
 .book.flat .leaf::before { display: none; }
+/* 브로슈어는 종이 한 장만 난다. 컨테이너의 검은 판까지 같이 기울면
+   날아오는 동안 기운 검은 슬래브가 그대로 보인다. */
+.book.flat .leaf { background: none; box-shadow: none; }
+.book.flat .leaf img { filter: drop-shadow(0 14px 34px rgba(0, 0, 0, .5)); }
 
 .leaf {
   position: absolute; inset: 0;
