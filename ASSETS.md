@@ -1,9 +1,67 @@
 # DADA TOWN 픽셀 시안 발주 명세
 
 이미지 생성 AI로 뽑아올 에셋 목록.
-**배경 2장(PC 가로 · 모바일 세로) + 스프라이트 6개.**
 
-> ⚠️ 구역이 9개로 확정되었습니다. **공항·비행기 없음**, 사람들 구역은 **공원**입니다. 이전 명세는 폐기하고 아래 최신본으로 생성해 주세요.
+> ✅ **PC 가로 배경 1차 시안 수령 완료 (2026-08-14).** 채택하되 아래 §0의 보완만 진행합니다. 재생성 불필요.
+> 남은 발주는 **§0 보완 3건 + 모바일 세로 배경 1장 + 스프라이트 6개**입니다.
+
+---
+
+## 0. 1차 시안 검수 결과와 보완 발주
+
+### 채택 — 그대로 씁니다
+
+미술관 · 학교 · 성균관(한옥) · 공원 · 회사 · 카페 · 은행 · 세모집(우하단 파란 지붕) · 강과 다리가 모두 있고, COMPANY·CAFE 블록을 도는 **닫힌 도로 루프**가 확보되어 자동차 애니메이션에 문제가 없습니다.
+
+**영어 간판(MUSEUM·SCHOOL·COMPANY·CAFE·BANK·PARK)은 유지합니다.** "글자 금지" 규칙은 AI가 글자를 깨뜨리는 것을 막기 위한 예방책이었는데 전부 정확히 렌더링되었으므로 목적이 달성되었습니다. 한글 구역명은 호버 시 HTML 라벨로 띄웁니다.
+
+### 보완 1 — 도로 위 자동차 3대 제거 (필수)
+
+노랑·파랑·빨강 3대가 배경에 박혀 있습니다. 그대로 두면 움직이는 자동차 스프라이트 옆에 붙박이 차가 서 있게 됩니다. **inpaint로 지웁니다.**
+
+```
+Remove the three cars from the road. Keep the empty gray road with
+white dashed center lines, matching the surrounding road texture.
+```
+
+### 보완 2 — 🙋 작업실(나) 구역 추가 (필수)
+
+1차 시안에 **"나" 구역이 없습니다.** 플래너·상태 트래커·불렛저널·**약력도**가 갈 곳이 없고, 약력도는 링크드인 역할의 본체라 빠질 수 없습니다.
+
+배경을 다시 뽑지 말고 **스프라이트로 얹습니다** — 우상단 빈 녹지 블록 위에 배치. 작은 언덕까지 한 덩어리로 그려 받으면 평지 위에 올려도 자연스럽습니다.
+
+```
+Single pixel art sprite of a small artist studio cabin with large
+windows and a warm wooden porch, standing on a small grassy hill mound,
+top-down view, 16-bit game style matching a bright cheerful town map,
+plain white background, no other objects, no text.
+```
+
+### 보완 3 — 공원의 사람들 추가 (권장)
+
+"사람들" 구역인데 공원이 비어 있습니다. 이것도 배경 수정 대신 **스프라이트로 얹으면 미세하게 움직이게 만들 수 있어** 오히려 낫습니다. 마을에서 유일하게 사람이 있는 곳이라 그 움직임이 구역의 정체성이 됩니다.
+
+개별 사람 4~6종을 따로 받으면 배치와 애니메이션이 자유롭습니다.
+
+```
+A set of tiny pixel art people sprites for a top-down town map,
+16-bit game style: a person sitting on a bench, a person standing and
+waving, two people talking facing each other, a child running, a person
+sitting cross-legged on grass. Each figure separated on a plain white
+background, no other objects, no text.
+```
+
+### 낮은 우선순위 (안 해도 됨)
+
+- **세모집** — 우하단 파란 지붕 집이 역할은 하지만 "삼각지붕"이 두드러지지 않습니다. 여유가 생기면 지붕만 더 뾰족한 버전으로 교체.
+- **공사 중 빈 공터** — 별도 팻말 없이도 녹지 블록이 남아 있어 나중에 채울 수 있습니다.
+- **해상도** — 권장 2400px보다 작지만 픽셀아트를 `image-rendering: pixelated`로 렌더링하므로 실사용에 무리 없습니다.
+
+---
+
+## 참고: 아래는 1차 발주에 쓴 전체 명세
+
+모바일 세로 배경(B)과 스프라이트(C)는 아직 필요하므로 그대로 두었습니다. §A(PC 가로)는 이미 수령했으므로 재생성하지 않습니다.
 
 ---
 
