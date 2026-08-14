@@ -84,13 +84,17 @@
         animationDuration: b.dur + 's', animationDelay: '-' + b.delay + 's',
         animationName: 'fly' + i,
       });
+      // 물결(.bird-wave) · 좌우반전(.bird-flip) · 날갯짓(img)이 서로 다른 요소를 써야
+      // transform이 겹쳐 덮어쓰지 않는다
       const wave = el('div', 'bird-wave');
       wave.style.animationDelay = '-' + (i * 1.3) + 's';
+      const flip = el('div', 'bird-flip');
       const img = new Image();
       img.src = S + b.src;
       img.alt = '';
       img.loading = 'lazy';
-      wave.appendChild(img);
+      flip.appendChild(img);
+      wave.appendChild(flip);
       node.appendChild(wave);
       const rule = `@keyframes fly${i}{from{left:${b.from[0]}%;top:${b.from[1]}%}
         to{left:${b.to[0]}%;top:${b.to[1]}%}}`;
