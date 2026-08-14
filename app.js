@@ -257,6 +257,15 @@
       a.target = '_blank';
       a.rel = 'noopener';
     }
+    if (item.open === 'artbook') {
+      a.href = '#art';
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!$('modal').hidden) closeModal();
+        if (!$('picksPanel').hidden) $('picksPanel').hidden = true;
+        openArtbook(1);
+      });
+    }
 
     a.appendChild(el('span', 'card-ico', item.icon || '📦'));
 
@@ -340,6 +349,12 @@
   }
 
   function toggle(id, btn) {
+    const d = data.districts.find((x) => x.id === id);
+    // 항목이 하나뿐인 구역은 팝오버를 거치지 않고 바로 그것을 연다
+    if (d && d.direct) {
+      const it = data.items.find((x) => x.id === d.direct);
+      if (it && it.open === 'artbook') return openArtbook(1);
+    }
     if (openId === id) return closePanel();
     openPanel(id, btn);
   }
@@ -407,6 +422,114 @@
     $('hint').classList.add('gone');
   }
 
+  /* ── 아트북 팝업 ─────────────────────────── */
+
+  const ART = 'assets/portfolio/art/';
+  const artSrc   = (i) => `${ART}p${String(i).padStart(2, '0')}.jpg`;
+  const artThumb = (i) => `${ART}t${String(i).padStart(2, '0')}.jpg`;
+  let artPages = 0, artPage = 1, artBusy = false, artThumbs = [], artBuilt = false;
+  let beforeArtFocus = null;
+
+  function buildArtbook() {
+    if (artBuilt) return;
+    artBuilt = true;
+    const strip = $('bkStrip');
+    for (let i = 1; i <= artPages; i++) {
+      const b = el('button', 'thumb');
+      b.type = 'button';
+      b.setAttribute('aria-label', `${i}쪽`);
+      const im = new Image();
+      im.src = artThumb(i);
+      im.alt = '';
+      im.loading = 'lazy';
+      b.appendChild(im);
+      b.addEventListener('click', () => artGo(i));
+      strip.appendChild(b);
+      artThumbs.push(b);
+    }
+    $('bkTotal').textContent = artPages;
+    $('bkClose').addEventListener('click', closeArtbook);
+    $('bkPrev').addEventListener('click', () => artGo(artPage - 1, -1));
+    $('bkNext').addEventListener('click', () => artGo(artPage + 1, 1));
+    // 책 바깥(어두운 여백)을 누르면 닫힌다
+    $('bookOverlay').addEventListener('click', (e) => {
+      if (e.target === $('bookOverlay')) closeArtbook();
+    });
+    // 모바일 스와이프
+    let x0 = null, y0 = null;
+    const bk = $('bk');
+    bk.addEventListener('touchstart', (e) => {
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    }, { passive: true });
+    bk.addEventListener('touchend', (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      const dy = e.changedTouches[0].clientY - y0;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+        artGo(artPage + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+      }
+      x0 = y0 = null;
+    }, { passive: true });
+  }
+
+  const artPreload = (i) => { if (i >= 1 && i <= artPages) new Image().src = artSrc(i); };
+
+  function artPaint() {
+    $('bkImg').src = artSrc(artPage);
+    $('bkImg').alt = `아트 포트폴리오 ${artPage}쪽`;
+    $('bkCur').textContent = artPage;
+    artThumbs.forEach((t, i) => t.setAttribute('aria-current', String(i + 1 === artPage)));
+    $('bkPrev').disabled = artPage === 1;
+    $('bkNext').disabled = artPage === artPages;
+    artPreload(artPage + 1); artPreload(artPage - 1);
+    // 남은 쪽·읽은 쪽만큼 종이 두께를 바꿔 넘어가는 게 눈에 보이게
+    const bk = $('bk');
+    bk.style.setProperty('--read', ((artPage - 1) * 0.8 + 1).toFixed(1) + 'px');
+    bk.style.setProperty('--left', ((artPages - artPage) * 0.8 + 1).toFixed(1) + 'px');
+    history.replaceState(null, '', artPage === 1 ? '#art' : '#art-' + artPage);
+  }
+
+  /** 넘어가는 장을 한 겹 얹어 돌린 뒤, 아래에 새 쪽을 깔아둔다 */
+  function artGo(to, dir) {
+    to = Math.min(Math.max(to, 1), artPages);
+    if (artBusy || to === artPage) return;
+    dir = dir || (to > artPage ? 1 : -1);
+    artBusy = true;
+
+    const leaf = el('div', 'leaf flipping ' + (dir > 0 ? 'turn-next' : 'turn-prev'));
+    const im = new Image();
+    im.src = artSrc(artPage);      // 넘어가는 건 지금 보고 있던 쪽
+    im.alt = '';
+    leaf.appendChild(im);
+    $('bk').appendChild(leaf);
+
+    artPage = to;
+    artPaint();
+
+    const done = () => { leaf.remove(); artBusy = false; };
+    leaf.addEventListener('animationend', done, { once: true });
+    setTimeout(done, 1100);        // 애니메이션이 끊겨도 잠기지 않게
+  }
+
+  function openArtbook(page) {
+    if (!artPages) return;
+    buildArtbook();
+    beforeArtFocus = document.activeElement;
+    closePanel();
+    artPage = Math.min(Math.max(page || 1, 1), artPages);
+    artPaint();
+    $('bookOverlay').hidden = false;
+    $('bookOverlay').focus({ preventScroll: true });
+    $('hint').classList.add('gone');
+  }
+
+  function closeArtbook() {
+    $('bookOverlay').hidden = true;
+    history.replaceState(null, '', location.pathname);
+    if (beforeArtFocus) beforeArtFocus.focus();
+  }
+
+  const artbookOpen = () => !$('bookOverlay').hidden;
   /* ── 전체 목록 (모달 + 정적 페이지) ──────── */
 
   let filter = 'all', query = '';
@@ -546,6 +669,9 @@
     a.href = 'mailto:' + data.profile.email;
     fc.appendChild(a);
 
+    const art = data.items.find((i) => i.open === 'artbook');
+    artPages = art ? (art.pages || 0) : 0;
+
     $('openList').addEventListener('click', openModal);
     $('closeList').addEventListener('click', closeModal);
     $('modal').addEventListener('click', (e) => {
@@ -554,6 +680,13 @@
     $('search').addEventListener('input', (e) => { query = e.target.value; renderModalList(); });
 
     document.addEventListener('keydown', (e) => {
+      if (artbookOpen()) {
+        if (e.key === 'Escape') { closeArtbook(); return; }
+        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); artGo(artPage + 1, 1); return; }
+        if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); artGo(artPage - 1, -1); return; }
+        if (e.key === 'Home') { artGo(1, -1); return; }
+        if (e.key === 'End') { artGo(artPages, 1); return; }
+      }
       if (e.key === 'Escape') {
         if (!$('modal').hidden) closeModal();
         else if (!$('picksPanel').hidden) { $('picksPanel').hidden = true; $('picksBtn').setAttribute('aria-expanded', 'false'); $('picksBtn').focus(); }
@@ -568,6 +701,14 @@
       if (!openId) return;
       clearTimeout(t);
       t = setTimeout(() => placePanel(data.districts.find((x) => x.id === openId)), 80);
+    });
+
+    const artHash = () => /^#art(-\d+)?$/.test(location.hash);
+    if (artHash()) openArtbook(parseInt(location.hash.slice(5), 10) || 1);
+    // 세션 중 해시가 바뀌어도(공유 링크 클릭·뒤로가기) 반응하게
+    window.addEventListener('hashchange', () => {
+      if (artHash()) openArtbook(parseInt(location.hash.slice(5), 10) || 1);
+      else if (artbookOpen()) closeArtbook();
     });
 
     if (new URLSearchParams(location.search).has('tune')) enableTuning();

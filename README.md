@@ -11,8 +11,6 @@ index.html          마을 페이지
 styles.css
 app.js
 services.json       수록 항목 단일 소스 — 여기만 고치면 지도와 모달이 함께 바뀐다
-docs/
-  art-portfolio.html  아트북 뷰어 (미술관 → 아트 포트폴리오)
 assets/
   portfolio/art/    아트북 페이지 이미지 p01~p11 + 썸네일 t01~t11
   map/town.jpg      원본 배경 (편집용, 배포에는 안 씀)
@@ -82,9 +80,17 @@ python3 tools/cut_sprites.py
 
 ## 아트북 뷰어
 
-`docs/art-portfolio.html`. PDF를 그대로 띄우지 않고 페이지를 이미지로 뽑아 책장 넘기듯 본다.
+별도 페이지가 아니라 **지도와 똑같은 크기의 팝업**으로 지도 위에 얹힌다(`.book-overlay`).
+좁은 화면에서는 지도 크기로는 책이 너무 작아지므로 화면 전체를 쓴다.
+
+미술관 구역은 항목이 하나뿐이라 팝오버를 거치지 않고 바로 책이 열린다 —
+`services.json`의 `districts[].direct`에 항목 id를 적으면 그 구역이 그렇게 동작한다.
+항목 쪽에는 `"open": "artbook"`, `"pages": 11`을 둔다.
+
 넘어가는 장이 책등을 축으로 3D 회전하고(`backface-visibility: hidden`으로 뒷면이 보이면 사라진다),
-방향키·좌우 클릭·스와이프·하단 썸네일로 이동한다. 원본 PDF는 배포하지 않는다.
+좌우에 종이 두께를 쌓아 읽은 만큼 왼쪽이 두꺼워진다.
+방향키·좌우 클릭·스와이프·하단 썸네일로 이동하고, `#art` / `#art-5` 해시로 특정 쪽을 공유할 수 있다.
+원본 PDF는 배포하지 않는다.
 
 페이지를 다시 뽑으려면:
 
@@ -102,7 +108,7 @@ for i, p in enumerate(d):
 "
 ```
 
-쪽수가 바뀌면 `docs/art-portfolio.html`의 `const N` 값을 함께 고친다.
+쪽수가 바뀌면 `services.json`의 아트북 항목 `pages` 값을 함께 고친다.
 
 ## 배포
 
@@ -115,7 +121,6 @@ Cloudflare에 이 저장소를 연결하고, 빌드 명령 없이 루트를 그�
 크롤러가 이미지를 못 찾아 미리보기가 생기지 않는다. 도메인을 바꾸면 아래 두 곳을 함께 고쳐야 한다.
 
 - `index.html` — `og:url`, `og:image`
-- `docs/art-portfolio.html` — `og:url`, `og:image`
 - `services.json`의 `site.url` (기준값 기록용)
 
 `*.workers.dev` 도메인은 링크 검사기에서 걸러지는 경우가 있다. 공유용으로는 커스텀 도메인을 붙이는 편이
