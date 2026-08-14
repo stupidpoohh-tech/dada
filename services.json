@@ -8,7 +8,31 @@
   "profile": {
     "name": "이다원",
     "tagline": "다원하는 다원",
-    "email": "stupidpoohh@gmail.com"
+    "email": "stupidpoohh@gmail.com",
+    "career": [
+      {
+        "role": "Brand & Business Strategist",
+        "org": "Sindoh (신도리코)",
+        "period": "2022.03 – 현재"
+      }
+    ],
+    "education": [
+      {
+        "org": "성균관대학교",
+        "detail": "경제학 학사",
+        "period": "2014.02 – 2022.02"
+      },
+      {
+        "org": "HWR Berlin",
+        "detail": "교환학생",
+        "period": "2017.03 – 2018.08"
+      },
+      {
+        "org": "Ruhr-Universität Bochum",
+        "detail": "교환학생",
+        "period": "2018.03 – 2018.06"
+      }
+    ]
   },
   "districts": [
     {
@@ -157,7 +181,7 @@
       "label": "ME",
       "character": [
         53.5,
-        93.5
+        90
       ]
     }
   ],

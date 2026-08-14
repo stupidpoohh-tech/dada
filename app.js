@@ -233,7 +233,10 @@
     const anims = document.getAnimations().filter((a) =>
       a.animationName === 'bldg-idle' || a.animationName === 'folk-idle');
     if (!anims.length) return;
-    const t = anims[0].startTime;
+    // 기준은 문서 타임라인의 현재 시각. 다른 애니메이션의 startTime을 베끼면
+    // 아직 시작 전이라 null일 수 있고, null을 넣으면 전부 멈춰버린다.
+    const t = document.timeline.currentTime;
+    if (t == null) return;
     anims.forEach((a) => { try { a.startTime = t; } catch (_) {} });
   }
 
@@ -398,21 +401,32 @@
     panel.appendChild(head);
 
     if (id === 'me' && data.profile) {
-      const p = el('div', 'profile');
+      const pr = data.profile;
+      const head = el('div', 'profile');
       const pic = el('div', 'profile-img');
       const img = new Image();
       img.src = S + 'me.png';
       img.alt = '';
       pic.appendChild(img);
-      p.appendChild(pic);
-      const info = el('div');
-      info.appendChild(el('div', 'profile-name', data.profile.name));
-      info.appendChild(el('div', 'profile-tag', data.profile.tagline));
-      const mail = el('a', 'profile-mail', data.profile.email);
-      mail.href = 'mailto:' + data.profile.email;
-      info.appendChild(mail);
-      p.appendChild(info);
-      panel.appendChild(p);
+      head.appendChild(pic);
+      head.appendChild(el('div', 'profile-name', pr.name));
+      panel.appendChild(head);
+
+      const block = (title, rows) => {
+        if (!rows || !rows.length) return;
+        panel.appendChild(el('div', 'group-title', title));
+        const list = el('ul', 'cv');
+        rows.forEach((r) => {
+          const li = el('li');
+          li.appendChild(el('div', 'cv-role', r.role || r.org));
+          const meta = [r.role ? r.org : r.detail, r.period].filter(Boolean).join(' · ');
+          li.appendChild(el('div', 'cv-meta', meta));
+          list.appendChild(li);
+        });
+        panel.appendChild(list);
+      };
+      block('경력', pr.career);
+      block('학력', pr.education);
     }
 
     if (items.length) {
