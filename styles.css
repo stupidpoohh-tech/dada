@@ -630,6 +630,11 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
   }
 }
 
+/* 화면을 꽉 채우는 팝업은 panel-in의 scale(.98)이 가장자리에 바탕색을 비친다.
+   책은 JS가 건물에서 날려 보내므로 바탕은 밝아지기만 하면 된다. */
+.book-overlay.full { animation: fade-in .18s ease-out; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
 /* 좁은 화면에서는 화면 전체를 쓴다 — 지도 크기로는 책이 너무 작아진다 */
 @media (max-width: 699px) {
   .book-overlay {

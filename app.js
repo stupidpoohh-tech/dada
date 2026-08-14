@@ -615,6 +615,38 @@
     setTimeout(done, 1100);        // 애니메이션이 끊겨도 잠기지 않게
   }
 
+  let bkAnim = null;
+
+  /** 누른 건물에서 책이 날아오게 한다. 어디서 왔는지가 보여야 장식이 아니라
+   *  설명이 된다 — 세모집을 눌렀으니 그 집에서 카탈로그를 꺼내온 것처럼 보인다.
+   *  dir > 0이면 날아오고, dir < 0이면 그 자리로 되돌아간다. */
+  function flyBook(dir) {
+    const src = document.querySelector(`[data-district="${book.district}"]`);
+    const bk = $('bk');
+    // 재기 전에 이전 애니메이션을 먼저 걷어낸다. 닫을 때 쓴 변형이 fill로 남아 있으면
+    // getBoundingClientRect()가 그 변형이 적용된 좌표를 줘서 출발점이 엉뚱해진다.
+    if (bkAnim) { bkAnim.cancel(); bkAnim = null; }
+    const to = bk.getBoundingClientRect();
+    if (!src || !to.width) return null;
+
+    const from = src.getBoundingClientRect();
+    const dx = (from.left + from.width / 2) - (to.left + to.width / 2);
+    const dy = (from.top + from.height / 2) - (to.top + to.height / 2);
+    // 건물보다 더 작아지면 종잇조각처럼 보인다 — 줄이는 폭에 바닥을 둔다
+    const s = Math.min(Math.max(from.width / to.width, 0.14), 0.5);
+
+    const shrunk = { transform: `translate(${dx}px, ${dy}px) scale(${s}) rotate(-7deg)`, opacity: 0 };
+    const full = { transform: 'none', opacity: 1 };
+
+    // 닫을 때가 더 짧다 — 여닫기를 반복하게 되는 물건이라 길면 두 번째부터 거슬린다
+    bkAnim = bk.animate(dir > 0 ? [shrunk, full] : [full, shrunk], {
+      duration: dir > 0 ? 340 : 200,
+      easing: dir > 0 ? 'cubic-bezier(.2, .85, .3, 1)' : 'cubic-bezier(.5, 0, .75, .4)',
+      fill: 'both',
+    });
+    return bkAnim;
+  }
+
   function openBook(b, page) {
     if (!b || !b.pages) return;
     wireBook();
@@ -623,19 +655,33 @@
       $('bk').querySelectorAll('.leaf.flipping').forEach((n) => n.remove());
       bkBusy = false;
     }
+    const wasOpen = bookOpen();
     book = b;
     buildStrip();
-    if (!bookOpen()) beforeBookFocus = document.activeElement;
+    if (!wasOpen) beforeBookFocus = document.activeElement;
     closePanel();
     bkPage = Math.min(Math.max(page || 1, 1), book.pages);
     bkPaint();
-    $('bookOverlay').hidden = false;
-    $('bookOverlay').focus({ preventScroll: true });
+    const ov = $('bookOverlay');
+    ov.hidden = false;
+    ov.style.pointerEvents = '';        // 닫는 중이었다면 되살린다
+    ov.focus({ preventScroll: true });
     $('hint').classList.add('gone');
+    // 이미 펼쳐져 있는데 다른 책으로 갈아타는 것뿐이라면 날아올 필요가 없다
+    if (!wasOpen) flyBook(1); else if (bkAnim) { bkAnim.cancel(); bkAnim = null; }
   }
 
   function closeBook() {
-    $('bookOverlay').hidden = true;
+    const ov = $('bookOverlay');
+    const a = flyBook(-1);
+    const hide = () => { ov.hidden = true; ov.style.pointerEvents = ''; };
+    if (a) {
+      ov.style.pointerEvents = 'none';   // 되돌아가는 동안 다시 눌리지 않게
+      a.finished.then(hide).catch(() => {});   // 도중에 다시 열리면(cancel) 숨기지 않는다
+      setTimeout(() => { if (bkAnim === a) hide(); }, 700);   // 탭이 가려져 안 끝나도 닫히게
+    } else {
+      hide();
+    }
     history.replaceState(null, '', location.pathname);
     if (beforeBookFocus) beforeBookFocus.focus();
   }
@@ -773,6 +819,7 @@
     data.items.forEach((i) => {
       if (i.open !== 'book' || !i.book) return;
       books.push({ id: i.id, label: i.name, dir: i.book.dir, ratio: i.book.ratio,
+                   district: i.district,   // 책이 날아올 출발점 (그 구역 건물)
                    flat: !!i.book.flat, pages: i.book.pages || 0, hash: i.book.hash });
     });
 
