@@ -49,7 +49,7 @@ button, input { font: inherit; color: inherit; }
 
 .topbar {
   position: relative;
-  max-width: 1440px;
+  width: 100%; max-width: 1440px;
   margin: 0 auto;
   padding: 34px 20px 20px;
   text-align: center;
@@ -83,7 +83,7 @@ button, input { font: inherit; color: inherit; }
 
 /* ── 지도 ────────────────────────────────── */
 
-.stage { max-width: 1440px; margin: 0 auto; padding: 0 20px; }
+.stage { width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 20px; }
 
 .map-holder { position: relative; }
 
@@ -108,9 +108,9 @@ button, input { font: inherit; color: inherit; }
 
 .layer { position: absolute; inset: 0; pointer-events: none; }
 
-/* 구역 버튼 — 평소엔 완전히 투명. 호버/클릭하면 지도의 해당 건물 영역을
-   그대로 복제한 ::before가 발끝 기준으로 뾰옹 하고 튀어오른다.
-   (--bs, --bpx, --bpy는 JS가 구역 좌표로 계산해 넣는다) */
+/* 구역 버튼 — 클릭 영역은 블록 전체지만, 뾰옹 하는 건 그 안의 건물뿐.
+   .pop이 지도의 건물 영역만 복제해 밑변 기준으로 튀어오른다.
+   (위치·크기·배경 좌표는 JS가 building 상자로 계산해 넣는다) */
 .spot {
   position: absolute;
   pointer-events: auto;
@@ -119,51 +119,35 @@ button, input { font: inherit; color: inherit; }
   cursor: pointer;
   padding: 0;
 }
-.spot::before {
-  content: "";
-  position: absolute; inset: 0;
-  border-radius: 14px;
+.pop {
+  position: absolute;
   background-image: url("assets/map/town-web.jpg");
   background-size: var(--bs) auto;
   background-position: var(--bpx) var(--bpy);
   opacity: 0;
-  transform-origin: 50% 92%;
-  transition: opacity .12s ease, scale .18s ease, filter .18s ease;
+  transform-origin: 50% 100%;
+  transition: opacity .1s ease, scale .18s ease, filter .18s ease;
   pointer-events: none;
 }
-.spot:hover::before,
-.spot:focus-visible::before {
+.spot:hover .pop,
+.spot:focus-visible .pop {
   opacity: 1;
-  scale: 1.03;
-  filter: drop-shadow(0 8px 14px rgba(31, 36, 28, .25)) brightness(1.04);
+  scale: 1.05;
+  filter: drop-shadow(0 7px 10px rgba(31, 36, 28, .3)) brightness(1.04);
 }
-.spot[aria-expanded="true"]::before {
+.spot[aria-expanded="true"] .pop {
   opacity: 1;
-  scale: 1.04;
-  filter: drop-shadow(0 10px 18px rgba(31, 36, 28, .3)) brightness(1.04);
-  animation: boing .5s cubic-bezier(.34, 1.4, .64, 1);
+  filter: drop-shadow(0 9px 14px rgba(31, 36, 28, .34)) brightness(1.05);
+  animation: boing .55s cubic-bezier(.34, 1.5, .64, 1) forwards;
 }
-/* 뾰옹: 눌렸다가 위로 늘어나며 튀고 착지 */
+/* 뾰옹: 납작하게 눌렸다가 위로 쭉 늘어나며 튀고 착지 */
 @keyframes boing {
   0%   { scale: 1 1; }
-  30%  { scale: 1.08 .92; }
-  60%  { scale: .98 1.1; }
-  100% { scale: 1.04 1.04; }
+  25%  { scale: 1.1 .88; }
+  55%  { scale: .96 1.14; }
+  78%  { scale: 1.05 .99; }
+  100% { scale: 1.06 1.06; }
 }
-.spot-label {
-  position: absolute; left: 50%; bottom: 8px;
-  transform: translateX(-50%) translateY(6px);
-  background: rgba(20, 23, 15, .86); color: #fff;
-  font-size: 13px; font-weight: 700; white-space: nowrap;
-  padding: 4px 10px; border-radius: 999px;
-  opacity: 0; transition: opacity .16s ease, transform .16s ease;
-}
-.spot:hover .spot-label,
-.spot:focus-visible .spot-label,
-.spot[aria-expanded="true"] .spot-label {
-  opacity: 1; transform: translateX(-50%) translateY(0);
-}
-.spot-count { font-weight: 500; opacity: .75; margin-left: 4px; }
 
 /* "나" 캐릭터 — 마을에서 유일하게 손 흔드는 존재.
    둥둥 뜨지 않고 땅에 발을 붙인 채 숨쉬듯 들썩인다 (발끝 기준 squash & stretch) */
@@ -181,10 +165,6 @@ button, input { font: inherit; color: inherit; }
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .28));
 }
 .me-spot:hover, .me-spot:focus-visible { animation: hop .55s ease-in-out infinite; }
-.me-spot .spot-label { bottom: auto; top: -12px; transform: translate(-50%, -6px); }
-.me-spot:hover .spot-label,
-.me-spot:focus-visible .spot-label,
-.me-spot[aria-expanded="true"] .spot-label { transform: translate(-50%, 0); opacity: 1; }
 
 /* 발이 땅에 붙은 채 몸만 살짝 늘었다 줄었다 */
 @keyframes breathe {
@@ -216,12 +196,19 @@ button, input { font: inherit; color: inherit; }
 @keyframes wave { from { translate: 0 -30%; } to { translate: 0 30%; } }
 @keyframes flap { from { scale: 1 1; } to { scale: 1 .86; } }
 
-/* 공원 사람들 — 발 붙이고 미세하게 들썩 */
+/* 공원 사람들 — 발 붙이고 미세하게 들썩.
+   '사람들' 구역은 공원 땅이 아니라 사람들이 반응한다 */
 .folk {
   transform: translate(-50%, -100%);
   transform-origin: 50% 100%;
   animation: breathe 3.6s ease-in-out infinite;
 }
+.folk.person img { transform-origin: 50% 100%; transition: scale .18s ease, filter .18s ease; }
+.folks-hot .folk.person img {
+  scale: 1.12;
+  filter: drop-shadow(0 4px 5px rgba(31, 36, 28, .32));
+}
+.folks-pop .folk.person img { animation: boing .55s cubic-bezier(.34, 1.5, .64, 1); }
 
 /* ── 지도 아래 줄 ────────────────────────── */
 
@@ -313,10 +300,10 @@ button, input { font: inherit; color: inherit; }
 .profile-tag { font-size: 13.5px; color: var(--sub); margin-top: 1px; }
 .profile-mail { font-size: 13px; margin-top: 5px; display: inline-block; color: var(--accent); }
 
-/* ── 추천 픽 (좌측 하단) ─────────────────── */
+/* ── 추천 픽 — 지도 왼쪽 아래 모서리 ─────── */
 
 .picks-btn {
-  position: fixed; left: 16px; bottom: 16px; z-index: 40;
+  position: absolute; left: 14px; bottom: 14px; z-index: 40;
   background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: 999px;
   padding: 9px 16px; font-size: 13.5px; font-weight: 700;
@@ -325,8 +312,8 @@ button, input { font: inherit; color: inherit; }
 .picks-btn:hover { background: var(--surface-2); }
 
 .picks-panel {
-  position: fixed; left: 16px; bottom: 64px; z-index: 45;
-  width: min(340px, calc(100vw - 32px));
+  position: absolute; left: 14px; bottom: 62px; z-index: 45;
+  width: min(340px, calc(100% - 28px));
   background: var(--surface);
   border: 1px solid var(--line); border-radius: 16px;
   box-shadow: var(--shadow);
@@ -367,10 +354,11 @@ button, input { font: inherit; color: inherit; }
 
 .modal-tools { padding: 0 16px 12px; display: grid; gap: 10px; }
 
+/* 16px 미만이면 iOS가 입력창에 자동으로 확대해 들어간다 — 반드시 16px 이상 */
 #search {
   width: 100%; background: var(--surface-2);
   border: 1px solid var(--line); border-radius: 10px;
-  padding: 10px 12px; font-size: 14px;
+  padding: 10px 12px; font-size: 16px;
 }
 
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -390,8 +378,12 @@ button, input { font: inherit; color: inherit; }
 
 /* ── 푸터 ────────────────────────────────── */
 
+/* 내용이 화면보다 짧을 때 푸터가 어중간하게 뜨지 않고 바닥에 붙도록 */
+body { display: flex; flex-direction: column; min-height: 100dvh; }
+
 .site-footer {
-  max-width: 1440px; margin: 34px auto 0; padding: 18px 20px 28px;
+  width: 100%; max-width: 1440px;
+  margin: 34px auto 0; padding: 18px 20px 28px;
   text-align: center;
   font-size: 13px; color: var(--sub);
 }
@@ -402,16 +394,35 @@ button, input { font: inherit; color: inherit; }
 /* ── 모바일 ──────────────────────────────── */
 
 @media (max-width: 699px) {
-  .topbar { padding: 24px 14px 16px; }
+  .topbar { padding: 22px 14px 14px; }
+  .panel { padding: 13px; }
+  .hint { margin-top: 12px; }
+
+  /* 남는 세로 공간을 아래에 몰아두지 말고 위아래로 나눠 지도를 가운데 둔다 */
+  .stage {
+    flex: 1;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 8px 14px 20px;
+  }
+
+  /* 아래 여백이 휑하지 않게: 지도-힌트-푸터를 위로 모으고 푸터는 바닥에 붙인다 */
+  .site-footer {
+    margin-top: auto;
+    padding: 20px 14px 84px;   /* 하단 버튼 두 개를 피할 만큼 */
+    border-top: 1px solid var(--line);
+  }
+
+  /* 하단 버튼 두 개는 화면에 고정 */
   .list-btn {
-    position: fixed; right: 14px; bottom: 14px; top: auto; z-index: 40;
+    position: fixed; right: 14px; bottom: 14px; top: auto; z-index: 46;
     background: var(--accent); color: var(--accent-ink); border-color: transparent;
   }
   .list-btn:hover { background: var(--accent); }
-  .stage, .site-footer { padding-inline: 14px; }
-  .site-footer { margin-bottom: 64px; }
-  .panel { padding: 13px; }
-  .spot-label { font-size: 12px; padding: 3px 8px; }
+  .picks-btn { position: fixed; left: 14px; bottom: 14px; z-index: 46; }
+  .picks-panel {
+    position: fixed; left: 14px; right: 14px; bottom: 62px;
+    width: auto; max-height: 60dvh; overflow-y: auto;
+  }
 }
 
 /* ── 좌표 조정 모드 (?tune) ──────────────── */

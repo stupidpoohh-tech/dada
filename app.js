@@ -100,7 +100,7 @@
 
     startCars(road);
 
-    FOLKS.forEach((f, i) => folks.appendChild(sprite('folk', f.src, {
+    FOLKS.forEach((f, i) => folks.appendChild(sprite('folk person', f.src, {
       left: pct(f.x), top: pct(f.y), width: pct(f.w),
       animationDelay: '-' + (i * 0.7) + 's',
     })));
@@ -189,16 +189,37 @@
       } else {
         const [x, y, w, h] = d.rect;
         Object.assign(btn.style, { left: pct(x), top: pct(y), width: pct(w), height: pct(h) });
-        // ::before가 이 구역의 지도 픽셀을 그대로 복제하도록 배경 좌표 계산
-        btn.style.setProperty('--bs', (10000 / w) + '%');
-        btn.style.setProperty('--bpx', (w >= 100 ? 0 : x / (100 - w) * 100) + '%');
-        btn.style.setProperty('--bpy', (h >= 100 ? 0 : y / (100 - h) * 100) + '%');
-      }
 
-      const label = el('span', 'spot-label');
-      label.append(d.name);
-      if (count) label.appendChild(el('span', 'spot-count', String(count)));
-      btn.appendChild(label);
+        if (d.building) {
+          // 블록이 아니라 건물만 뾰옹 — 건물 상자를 버튼 기준 %로 환산하고,
+          // 배경은 지도에서 그 영역만 잘라 보이게 맞춘다
+          const [bx, by, bw, bh] = d.building;
+          const pop = el('span', 'pop');
+          Object.assign(pop.style, {
+            left: pct((bx - x) / w * 100), top: pct((by - y) / h * 100),
+            width: pct(bw / w * 100), height: pct(bh / h * 100),
+          });
+          pop.style.setProperty('--bs', (10000 / bw) + '%');
+          pop.style.setProperty('--bpx', (bx / (100 - bw) * 100) + '%');
+          pop.style.setProperty('--bpy', (by / (100 - bh) * 100) + '%');
+          btn.appendChild(pop);
+        }
+
+        // 사람들 구역은 공원 땅이 아니라 사람들이 반응한다
+        if (d.id === 'park') {
+          const layer = $('folks');
+          const hot = (on) => layer.classList.toggle('folks-hot', on);
+          btn.addEventListener('mouseenter', () => hot(true));
+          btn.addEventListener('mouseleave', () => hot(false));
+          btn.addEventListener('focus', () => hot(true));
+          btn.addEventListener('blur', () => hot(false));
+          btn.addEventListener('click', () => {
+            layer.classList.remove('folks-pop');
+            void layer.offsetWidth;          // 리플로우로 애니메이션 재시작
+            layer.classList.add('folks-pop');
+          });
+        }
+      }
 
       btn.addEventListener('click', () => toggle(d.id, btn));
       wrap.appendChild(btn);
@@ -447,7 +468,9 @@
     lastFocus = document.activeElement;
     $('modal').hidden = false;
     document.body.style.overflow = 'hidden';
-    $('search').focus();
+    // 터치 기기에서 검색창에 자동 포커스를 주면 키보드가 튀어오르며 화면이 확대된다
+    if (window.matchMedia('(pointer: fine)').matches) $('search').focus();
+    else $('modal').querySelector('.modal').focus();
   }
 
   function closeModal() {
