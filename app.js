@@ -11,10 +11,10 @@
   const TOP_ROAD = [[-10, 41.2], [30, 41.2], [40, 43.4], [70, 43.4], [78, 41.2], [108, 41.2]];
   const CAR_ROUTES = [
     // 위 도로: 두 대가 같은 차선을 반 바퀴 간격으로 순환 — 겹치지 않는다
-    { src: 'car-yellow.png', w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 10, dir: -1, start: 0.15 },
-    { src: 'car-blue.png',   w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 10, dir: -1, start: 0.65 },
+    { src: 'car-yellow.png', w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 15, dir: -1, start: 0.15 },
+    { src: 'car-blue.png',   w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 15, dir: -1, start: 0.65 },
     // 아래 도로 가운데 구간(회사·카페 아래)만 왕복 — 양끝은 다리와 세모집이라 막혀 있다
-    { src: 'car-red.png',    w: 3.8, path: [[40, 80.6], [64, 80.6]], mode: 'pingpong', speed: 7, dir: 1, pause: 0.9, start: 0.4 },
+    { src: 'car-red.png',    w: 3.8, path: [[40, 80.6], [64, 80.6]], mode: 'pingpong', speed: 10, dir: 1, pause: 0.7, start: 0.4 },
   ];
   const CLOUDS = [
     { src: 'cloud-1.png', y: 4,  w: 11, dur: 150, delay: 0 },
@@ -29,12 +29,12 @@
   // 공원에 모여 있는 사람들. 8종 중 6명만 — 다 넣으면 붐빈다.
   // w는 지도 폭 기준 %. 높이가 아니라 폭으로 잡아야 지도와 같이 축소된다.
   const FOLKS = [
-    { src: 'person-1.png', x: 10,   y: 57,   w: 2.05 },
-    { src: 'person-2.png', x: 13.5, y: 60,   w: 2.18 },
-    { src: 'person-6.png', x: 20,   y: 56.5, w: 2.73 },
-    { src: 'person-4.png', x: 23.5, y: 60,   w: 1.82 },
-    { src: 'person-7.png', x: 7.5,  y: 62.5, w: 2.00 },
-    { src: 'person-8.png', x: 17,   y: 63.5, w: 1.77 },
+    { src: 'person-1.png', x: 9.2,  y: 55.5, w: 2.05 },  // 분수 왼쪽 잔디
+    { src: 'person-2.png', x: 11.5, y: 58.8, w: 2.18 },  // 아래쪽 벤치 앞
+    { src: 'person-6.png', x: 10.5, y: 61.8, w: 2.73 },  // 나무 앞 잔디
+    { src: 'person-4.png', x: 20.3, y: 55.5, w: 1.82 },  // 분수 오른쪽 잔디
+    { src: 'person-7.png', x: 16.2, y: 65.5, w: 2.00 },  // 가운데 산책로
+    { src: 'person-8.png', x: 22.3, y: 53.5, w: 1.77 },  // 오른쪽 벤치 앞
   ];
   // 잔디에 내려앉은 새 — 정적으로 얹어 마을을 채운다.
   const PERCHED = [
