@@ -7,9 +7,9 @@
 
 ---
 
-## 0. 수령 현황과 남은 발주
+## 0. 수령 현황
 
-### ✅ 수령 완료 — 전부 채택
+### ✅ 에셋 수령 완료 — 발주 종료
 
 | 에셋 | 상태 |
 |---|---|
@@ -17,8 +17,44 @@
 | 자동차 3대 (노랑·파랑·빨강) | 옆모습. **이 지도 스타일에 맞음** (아래 참고) |
 | 새 6종 (참새·파랑새 각 3포즈) | 앉은 새는 공원·나무에 배치, 나는 새는 하늘에 |
 | 구름 4종 | 검은 배경으로 왔지만 오히려 투명 처리가 쉬움 |
+| **"나" 캐릭터** | 파란 머리·파란 옷, 손 흔드는 포즈 1종 |
+| **공원 사람들 8종** | 2행 4열 시트. 마을 톤과 잘 맞음 |
+
+더 발주할 에셋은 없습니다. 남은 것은 파일을 레포에 넣는 일뿐입니다(§0-1).
 
 **영어 간판(MUSEUM·SCHOOL·COMPANY·CAFE·BANK·PARK)은 유지합니다.** "글자 금지" 규칙은 AI가 글자를 깨뜨리는 것을 막기 위한 예방책이었는데 전부 정확히 렌더링되었으므로 목적이 달성되었습니다. 한글 구역명은 호버 시 HTML 라벨로 띄웁니다.
+
+### 0-1. 레포에 넣을 파일 (다음 작업)
+
+구현을 시작하려면 파일이 레포에 있어야 합니다. 아래 경로로 넣어주세요 — 검은 배경 제거(투명 처리)와 스프라이트 시트 분리는 구현할 때 스크립트로 처리합니다.
+
+```
+assets/
+  map/town.png              ← 마을 배경 (자동차 제거본)
+  sprites/car-yellow.png
+  sprites/car-blue.png
+  sprites/car-red.png
+  sprites/birds.png         ← 6종 시트 그대로
+  sprites/clouds.png        ← 4종 시트 그대로
+  sprites/me.png            ← "나" 캐릭터
+  sprites/people.png        ← 공원 사람들 8종 시트 그대로
+```
+
+시트(새·구름·사람들)는 잘라서 넣지 않아도 됩니다. 통짜로 두고 CSS `background-position`으로 잘라 쓰는 편이 파일 수도 적고 요청도 줄어듭니다.
+
+### "나" 캐릭터 — 스타일과 배치
+
+**스타일이 마을·공원 사람들과 다릅니다.** 픽셀이 더 굵고 둥근 마스코트 톤인데, 이건 문제가 아니라 이점입니다 — 주인공이 배경 인물들과 똑같이 생기면 안 되고, 스타일이 다르면 "저 사람이 이 마을 주인"이라는 게 한눈에 읽힙니다.
+
+다만 완전히 다른 세계에서 온 것처럼 보이지 않게 **공원 사람들보다 1.2배 정도만 크게** 잡습니다.
+
+**포즈가 손 흔드는 것 하나뿐이므로 걷지 않고 세모집 앞에 서 있습니다.** 걸으면서 손 흔드는 것은 어색하고, 상시 손 흔드는 포즈가 오히려 클릭 유도에 강합니다. CSS로 위아래 미세하게 통통 튀게(bob) 만들면 살아 있어 보입니다. 나중에 걷기 프레임이 생기면 이동으로 바꿀 수 있습니다.
+
+### 공원 사람들 — 배치
+
+8종 중 **5~6명만** 공원에 배치합니다(전부 넣으면 붐빕니다). 벤치·분수 주변·미끄럼틀 근처에 나눠 두고, 각자 다른 위상(phase)으로 미세하게 bob 시키면 모여서 웅성거리는 느낌이 납니다. 서 있는 포즈뿐이라 걷게 하지 않습니다.
+
+첫 번째로 받은 후드 소년 단독 이미지는 8종 시트의 1번과 같은 인물이므로 별도로 쓰지 않습니다.
 
 ### ❌ 모바일 세로 배경 — 발주 취소
 
@@ -40,40 +76,9 @@
 
 ---
 
-## 🎯 남은 발주 2건
+## 나중에 여유가 생기면 (안 해도 됨)
 
-### 1. "나" 캐릭터 (필수)
-
-**🙋 나 구역은 건물이 아니라 사람입니다.** 마을을 돌아다니거나 세모집 앞에 서 있는 픽셀 캐릭터가 곧 "나"이고, 클릭하면 플래너·상태 트래커·불렛저널·약력도가 열립니다.
-
-건물보다 훨씬 좋은 선택입니다 — 살아 움직이는 캐릭터는 첫 방문자의 시선을 자연히 끌어서 **"건물을 눌러보세요" 안내 없이도 클릭을 유도**합니다. 호버하면 걸음을 멈추고 손을 흔들게 만들 수 있고요.
-
-```
-A set of pixel art character sprites of the same young person for a
-top-down town map game, 16-bit style, bright cheerful colors matching a
-sunny town: (1) standing facing the viewer, (2) walking to the right
-with the left foot forward, (3) walking to the right with the right
-foot forward, (4) standing and waving one hand happily. Simple casual
-clothes, small figure. Each pose separated on a plain white background,
-no other objects, no text.
-```
-
-필요한 4포즈: 서 있기 · 걷기 2프레임 · 손 흔들기. 왼쪽 방향은 CSS로 뒤집어 씁니다.
-
-### 2. 공원의 사람들 (권장)
-
-"사람들" 구역인데 공원이 비어 있습니다. 배경을 고치지 말고 **스프라이트로 얹으면 미세하게 움직이게 만들 수 있어** 오히려 낫습니다. 마을에서 사람이 모여 있는 유일한 곳이라 그 움직임이 구역의 정체성이 됩니다.
-
-```
-A set of tiny pixel art people sprites for a top-down town map,
-16-bit game style: a person sitting on a bench, a person standing and
-waving, two people talking facing each other, a child running, a person
-sitting cross-legged on grass. Each figure separated on a plain white
-background, no other objects, no text.
-```
-
-### 낮은 우선순위 (안 해도 됨)
-
+- **"나" 걷기 프레임 2종** — 생기면 세모집 앞 정지 대신 마을을 걸어다니게 바꿀 수 있습니다. 지금은 손 흔들며 서 있는 것으로 충분합니다.
 - **세모집** — 우하단 파란 지붕 집이 역할은 하지만 "삼각지붕"이 두드러지지 않습니다. 여유가 생기면 지붕만 더 뾰족한 버전으로 교체.
 - **공사 중 빈 공터** — 별도 팻말 없이도 녹지 블록이 남아 있어 나중에 채울 수 있습니다.
 - **해상도** — 권장 2400px보다 작지만 `image-rendering: pixelated`로 렌더링하므로 실사용에 무리 없습니다.
