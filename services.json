@@ -287,18 +287,6 @@
       "needsReview": true
     },
     {
-      "id": "runlearn",
-      "no": 19,
-      "name": "RunLearn",
-      "district": "park",
-      "type": "app",
-      "url": "https://runlearn.netlify.app/",
-      "description": "함께 배운 것을 기록하고 서로의 진도를 봅니다.",
-      "icon": "🏃",
-      "status": "live",
-      "needsReview": true
-    },
-    {
       "id": "everyday-ai",
       "no": 20,
       "name": "매일 AI",
