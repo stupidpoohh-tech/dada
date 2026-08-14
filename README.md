@@ -11,7 +11,10 @@ index.html          마을 페이지
 styles.css
 app.js
 services.json       수록 항목 단일 소스 — 여기만 고치면 지도와 모달이 함께 바뀐다
+docs/
+  art-portfolio.html  아트북 뷰어 (미술관 → 아트 포트폴리오)
 assets/
+  portfolio/art/    아트북 페이지 이미지 p01~p11 + 썸네일 t01~t11
   map/town.jpg      원본 배경 (편집용, 배포에는 안 씀)
   map/town-web.jpg  실제로 쓰는 배경
   sprites/*.png     원본 스프라이트 시트 (편집용)
@@ -76,6 +79,30 @@ python3 tools/cut_sprites.py
 ```
 
 배경 제거는 가장자리에서 시작하는 flood fill이라 캐릭터의 검은 머리카락은 남는다.
+
+## 아트북 뷰어
+
+`docs/art-portfolio.html`. PDF를 그대로 띄우지 않고 페이지를 이미지로 뽑아 책장 넘기듯 본다.
+넘어가는 장이 책등을 축으로 3D 회전하고(`backface-visibility: hidden`으로 뒷면이 보이면 사라진다),
+방향키·좌우 클릭·스와이프·하단 썸네일로 이동한다. 원본 PDF는 배포하지 않는다.
+
+페이지를 다시 뽑으려면:
+
+```
+pip install pymupdf pillow
+python3 -c "
+import pymupdf, io
+from PIL import Image
+d = pymupdf.open('원본.pdf')
+for i, p in enumerate(d):
+    pix = p.get_pixmap(matrix=pymupdf.Matrix(1600/p.rect.width, 1600/p.rect.width))
+    im = Image.open(io.BytesIO(pix.tobytes('png'))).convert('RGB')
+    im.save(f'assets/portfolio/art/p{i+1:02d}.jpg', quality=82, optimize=True, progressive=True)
+    im.resize((260, round(260*im.height/im.width))).save(f'assets/portfolio/art/t{i+1:02d}.jpg', quality=75)
+"
+```
+
+쪽수가 바뀌면 `docs/art-portfolio.html`의 `const N` 값을 함께 고친다.
 
 ## 배포
 

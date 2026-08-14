@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>아트 포트폴리오 — DADA TOWN</title>
+<meta name="description" content="이다원의 아트 포트폴리오. 회화·수묵·조각부터 캐릭터·패키지 디자인까지, 책장을 넘기며 봅니다.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="아트 포트폴리오 — LEE DAWON">
+<meta property="og:description" content="회화·수묵·조각부터 캐릭터·패키지 디자인까지. 책장을 넘기며 봅니다.">
+<meta property="og:image" content="../assets/portfolio/art/p01.jpg">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖼️</text></svg>">
+<link rel="preload" as="image" href="../assets/portfolio/art/p01.jpg">
+<style>
+/* 전시장처럼 어둡게 — 작품이 유일한 빛이 되도록 */
+:root {
+  color-scheme: dark;
+  --bg: #0B0C0B;
+  --ink: #EFEFEA;
+  --sub: #9A9E95;
+  --faint: #6A6E66;
+  --line: #24261F;
+  --accent: #8FD6A2;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+               "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  line-height: 1.6;
+  word-break: keep-all;
+  -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: inherit; }
+:where(a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+/* ── 상단 ── */
+.bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  flex: none;
+  position: relative; z-index: 10;
+  background: var(--bg);
+}
+.back {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13.5px; font-weight: 600; color: var(--sub);
+  text-decoration: none;
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 14px;
+}
+.back:hover { color: var(--ink); border-color: var(--faint); }
+.titles { margin-left: 2px; min-width: 0; }
+.t-main { font-size: 14.5px; font-weight: 700; letter-spacing: .01em; }
+.t-sub { font-size: 12px; color: var(--faint); margin-top: 1px; }
+.counter {
+  margin-left: auto; font-size: 13px; color: var(--sub);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.counter b { color: var(--ink); font-weight: 700; }
+
+/* ── 책 ── */
+.book-wrap {
+  flex: 1; min-height: 0;
+  display: grid; place-items: center;
+  padding: 0 18px;
+  position: relative;
+}
+.book {
+  position: relative;
+  width: min(100%, calc((100dvh - 210px) * 1.7778));
+  aspect-ratio: 16 / 9;
+  perspective: 2200px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.leaf {
+  position: absolute; inset: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.leaf img { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+/* 넘어가는 장. 책등을 축으로 돌아 뒷면이 보이면 사라진다 */
+.leaf.flipping {
+  z-index: 3;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.leaf.turn-next { transform-origin: left center;  animation: turn-next .62s cubic-bezier(.4, .0, .3, 1) forwards; }
+.leaf.turn-prev { transform-origin: right center; animation: turn-prev .62s cubic-bezier(.4, .0, .3, 1) forwards; }
+@keyframes turn-next {
+  from { transform: rotateY(0deg);    filter: brightness(1); }
+  to   { transform: rotateY(-172deg); filter: brightness(.45); }
+}
+@keyframes turn-prev {
+  from { transform: rotateY(0deg);    filter: brightness(1); }
+  to   { transform: rotateY(172deg);  filter: brightness(.45); }
+}
+/* 넘길 때 종이 안쪽에 지는 그늘 */
+.leaf.flipping::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,0) 45%);
+  opacity: 0; animation: shade .62s ease-out forwards;
+}
+@keyframes shade { 0% { opacity: 0; } 45% { opacity: 1; } 100% { opacity: .2; } }
+
+/* 좌우 넘김 영역 */
+.zone {
+  position: absolute; top: 0; bottom: 0; width: 26%;
+  z-index: 5;
+  display: grid; place-items: center;
+  opacity: 0; transition: opacity .18s ease;
+}
+.zone.prev { left: 0; }
+.zone.next { right: 0; }
+.book:hover .zone:not(:disabled) { opacity: .55; }
+.zone:hover:not(:disabled) { opacity: 1 !important; }
+.zone:disabled { cursor: default; }
+.zone span {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(12, 13, 12, .72);
+  border: 1px solid rgba(255, 255, 255, .16);
+  display: grid; place-items: center; font-size: 17px;
+}
+
+/* ── 하단 페이지 띠 ── */
+.strip {
+  flex: none;
+  position: relative; z-index: 10;
+  background: var(--bg);
+  display: flex; gap: 8px; justify-content: center;
+  padding: 14px 18px 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.strip::-webkit-scrollbar { display: none; }
+.thumb {
+  flex: none; width: 78px; aspect-ratio: 16/9;
+  border-radius: 3px; overflow: hidden;
+  opacity: .38; transition: opacity .18s ease, outline-color .18s ease;
+  outline: 2px solid transparent; outline-offset: 2px;
+  padding: 0;
+}
+.thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.thumb:hover { opacity: .75; }
+.thumb[aria-current="true"] { opacity: 1; outline-color: var(--accent); }
+
+.hint-key {
+  text-align: center; font-size: 12px; color: var(--faint);
+  padding-bottom: 10px;
+}
+
+@media (max-width: 720px) {
+  .bar { padding: 10px 12px; gap: 10px; }
+  .t-sub { display: none; }
+  .book { width: 100%; }
+  .book-wrap { padding: 0 12px; }
+  .zone { opacity: .35; }
+  .thumb { width: 58px; }
+  .strip { justify-content: flex-start; padding: 12px; }
+  .hint-key { display: none; }
+}
+
+/* 세로로 든 폰에서만 가로 보기를 권한다 */
+.rotate-note { display: none; }
+@media (max-width: 720px) and (orientation: portrait) {
+  .rotate-note {
+    display: block;
+    text-align: center; font-size: 12px; color: var(--faint);
+    padding: 4px 12px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaf.turn-next, .leaf.turn-prev, .leaf.flipping::after { animation-duration: .01s; }
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <a class="back" href="../index.html"><span aria-hidden="true">←</span> 마을로</a>
+  <div class="titles">
+    <div class="t-main">아트 포트폴리오</div>
+    <div class="t-sub">LEE DAWON — Not an Artist, a Strategist</div>
+  </div>
+  <div class="counter"><b id="cur">1</b> / <span id="total">11</span></div>
+</header>
+
+<p class="rotate-note">폰을 가로로 돌리면 더 크게 볼 수 있어요</p>
+
+<main class="book-wrap">
+  <div class="book" id="book">
+    <div class="leaf" id="leafBase"><img id="imgBase" alt="아트 포트폴리오 1쪽"></div>
+    <button type="button" class="zone prev" id="prevBtn" aria-label="이전 쪽"><span aria-hidden="true">‹</span></button>
+    <button type="button" class="zone next" id="nextBtn" aria-label="다음 쪽"><span aria-hidden="true">›</span></button>
+  </div>
+</main>
+
+<nav class="strip" id="strip" aria-label="쪽 이동"></nav>
+<p class="hint-key">← → 방향키나 좌우를 눌러 넘겨보세요</p>
+
+<script>
+(() => {
+  'use strict';
+  const N = 11;
+  const src = (i) => `../assets/portfolio/art/p${String(i).padStart(2, '0')}.jpg`;
+  const thumb = (i) => `../assets/portfolio/art/t${String(i).padStart(2, '0')}.jpg`;
+
+  const book = document.getElementById('book');
+  const base = document.getElementById('leafBase');
+  const imgBase = document.getElementById('imgBase');
+  const strip = document.getElementById('strip');
+  const cur = document.getElementById('cur');
+  let page = 1, busy = false;
+
+  document.getElementById('total').textContent = N;
+
+  // 미리 받아두면 넘길 때 흰 칸이 보이지 않는다
+  const preload = (i) => { if (i >= 1 && i <= N) new Image().src = src(i); };
+
+  const thumbs = [];
+  for (let i = 1; i <= N; i++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'thumb';
+    b.setAttribute('aria-label', `${i}쪽`);
+    const im = new Image();
+    im.src = thumb(i);
+    im.alt = '';
+    im.loading = 'lazy';
+    b.appendChild(im);
+    b.addEventListener('click', () => go(i));
+    strip.appendChild(b);
+    thumbs.push(b);
+  }
+
+  function paint() {
+    imgBase.src = src(page);
+    imgBase.alt = `아트 포트폴리오 ${page}쪽`;
+    cur.textContent = page;
+    thumbs.forEach((t, i) => t.setAttribute('aria-current', String(i + 1 === page)));
+    document.getElementById('prevBtn').disabled = page === 1;
+    document.getElementById('nextBtn').disabled = page === N;
+    preload(page + 1); preload(page - 1);
+    history.replaceState(null, '', page === 1 ? location.pathname : '#' + page);
+  }
+
+  /** 넘어가는 장을 한 겹 얹어 돌린 뒤, 아래에 새 쪽을 깔아둔다 */
+  function go(to, dir) {
+    to = Math.min(Math.max(to, 1), N);
+    if (busy || to === page) return;
+    dir = dir || (to > page ? 1 : -1);
+    busy = true;
+
+    const leaf = document.createElement('div');
+    leaf.className = 'leaf flipping ' + (dir > 0 ? 'turn-next' : 'turn-prev');
+    const im = new Image();
+    im.src = src(page);      // 넘어가는 건 지금 보고 있던 쪽
+    im.alt = '';
+    leaf.appendChild(im);
+    book.appendChild(leaf);
+
+    page = to;
+    paint();                 // 아래 장은 곧바로 새 쪽으로
+
+    const done = () => { leaf.remove(); busy = false; };
+    leaf.addEventListener('animationend', done, { once: true });
+    setTimeout(done, 900);   // 애니메이션이 끊겨도 잠기지 않게
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => go(page - 1, -1));
+  document.getElementById('nextBtn').addEventListener('click', () => go(page + 1, 1));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(page + 1, 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(page - 1, -1); }
+    else if (e.key === 'Home') go(1, -1);
+    else if (e.key === 'End') go(N, 1);
+    else if (e.key === 'Escape') location.href = '../index.html';
+  });
+
+  // 모바일 스와이프
+  let x0 = null, y0 = null;
+  book.addEventListener('touchstart', (e) => {
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  book.addEventListener('touchend', (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    const dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) go(page + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+    x0 = y0 = null;
+  }, { passive: true });
+
+  const start = parseInt(location.hash.slice(1), 10);
+  if (start >= 1 && start <= N) page = start;
+  paint();
+})();
+</script>
+</body>
+</html>

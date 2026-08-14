@@ -161,6 +161,19 @@
   ],
   "items": [
     {
+      "id": "art-portfolio",
+      "no": 7,
+      "name": "아트 포트폴리오",
+      "district": "museum",
+      "type": "doc",
+      "route": "docs/art-portfolio.html",
+      "description": "회화부터 캐릭터 디자인까지, 책장을 넘기며 봅니다.",
+      "icon": "🖼",
+      "status": "live",
+      "needsReview": false,
+      "featured": true
+    },
+    {
       "id": "grammar",
       "no": 1,
       "name": "고교 문법",
