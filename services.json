@@ -181,7 +181,8 @@
       "description": "팀빌딩 세션을 화면 하나로 진행합니다.",
       "icon": "🧩",
       "status": "live",
-      "needsReview": true
+      "needsReview": true,
+      "featured": true
     },
     {
       "id": "sindorang-demo",
@@ -217,7 +218,8 @@
       "description": "다음 급여까지 쓸 수 있는 돈과 버틸 날짜를 달력으로 봅니다.",
       "icon": "📅",
       "status": "live",
-      "needsReview": false
+      "needsReview": false,
+      "featured": true
     },
     {
       "id": "loan-early",
@@ -265,7 +267,8 @@
       "description": "매일 조금씩 AI를 배우고 오늘 것만 봅니다.",
       "icon": "🤖",
       "status": "beta",
-      "needsReview": true
+      "needsReview": true,
+      "featured": true
     },
     {
       "id": "anih",
@@ -277,7 +280,8 @@
       "description": "가고 싶은 곳들을 하루 동선으로 묶어줍니다.",
       "icon": "🗺",
       "status": "live",
-      "needsReview": true
+      "needsReview": true,
+      "featured": true
     },
     {
       "id": "ukulele",

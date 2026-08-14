@@ -45,6 +45,17 @@
   <p class="hint" id="hint">건물을 눌러 그 안의 작업물을 볼 수 있어요.</p>
 </main>
 
+<button type="button" class="picks-btn" id="picksBtn" aria-expanded="false">
+  <span aria-hidden="true">⭐</span> 추천 픽
+</button>
+<section class="picks-panel" id="picksPanel" hidden aria-label="추천 서비스">
+  <div class="picks-head">
+    <strong>⭐ 이것부터 보세요</strong>
+    <button type="button" class="icon-btn" id="closePicks" aria-label="닫기">✕</button>
+  </div>
+  <div id="picksBody"></div>
+</section>
+
 <footer class="site-footer">
   <p class="foot-name" id="footName"></p>
   <p class="foot-contact" id="footContact"></p>

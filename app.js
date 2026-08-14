@@ -5,15 +5,16 @@
   const S = 'assets/sprites/cut/';
 
   // 지도 위를 움직이는 것들. 좌표는 지도 기준 %.
-  // 자동차: 실제 도로 구간만 달린다. 스프라이트가 왼쪽을 보므로 우향일 때 뒤집는다.
-  //  - wrap: 화면 밖으로 나가 반대편에서 다시 들어옴 (가로를 관통하는 도로)
-  //  - pingpong: 구간 끝에서 잠깐 멈췄다가 방향을 바꿈 (막힌 도로)
+  // 자동차 경로는 지도 픽셀을 스캔해 얻은 실측값이다 (도로 중심선 폴리라인).
+  // 위 도로는 구간별로 높이가 다르다: 미술관·한옥 앞 y≈41.2, 학교 앞 y≈43.4.
+  // path의 y는 차체 세로 중심. 스프라이트가 왼쪽을 보므로 우향일 때만 뒤집는다.
+  const TOP_ROAD = [[-10, 41.2], [30, 41.2], [40, 43.4], [70, 43.4], [78, 41.2], [108, 41.2]];
   const CAR_ROUTES = [
-    // 위 가로 도로 (미술관~한옥 아래) — 전 폭 관통. 우측통행: 우향은 아랫차선
-    { src: 'car-yellow.png', w: 4.6, y: 37.4, x0: -8, x1: 106, mode: 'wrap', speed: 4.4, dir: 1 },
-    { src: 'car-blue.png',   w: 4.6, y: 35.2, x0: -8, x1: 106, mode: 'wrap', speed: 5.0, dir: -1 },
-    // 아래 가로 도로 — 왼쪽은 다리, 오른쪽은 세모집 마당이라 그 사이만 왕복
-    { src: 'car-red.png',    w: 4.6, y: 74.8, x0: 21, x1: 61, mode: 'pingpong', speed: 3.6, dir: 1, pause: 1.1 },
+    // 위 도로: 두 대가 같은 차선을 반 바퀴 간격으로 순환 — 겹치지 않는다
+    { src: 'car-yellow.png', w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 4.6, dir: -1, start: 0.15 },
+    { src: 'car-blue.png',   w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 4.6, dir: -1, start: 0.65 },
+    // 아래 도로 가운데 구간(회사·카페 아래)만 왕복 — 양끝은 다리와 세모집이라 막혀 있다
+    { src: 'car-red.png',    w: 3.8, path: [[40, 80.6], [64, 80.6]], mode: 'pingpong', speed: 3.2, dir: 1, pause: 1.2, start: 0.4 },
   ];
   const CLOUDS = [
     { src: 'cloud-1.png', y: 4,  w: 11, dur: 150, delay: 0 },
@@ -22,8 +23,8 @@
   ];
   // 새: 사선으로 활강 + 위아래 물결. 우향이면 flip (스프라이트가 왼쪽을 봄)
   const BIRDS = [
-    { src: 'bluebird-fly.png', from: [110, 8],  to: [-8, 33], w: 2.4, dur: 34, delay: 6 },
-    { src: 'sparrow-fly.png',  from: [-8, 31],  to: [108, 5], w: 2.2, dur: 42, delay: 22 },
+    { src: 'bluebird-fly.png', from: [110, 8],  to: [-8, 33], w: 2.4, dur: 14, delay: 3 },
+    { src: 'sparrow-fly.png',  from: [-8, 31],  to: [108, 5], w: 2.2, dur: 17, delay: 10 },
   ];
   // 공원에 모여 있는 사람들. 8종 중 6명만 — 다 넣으면 붐빈다.
   // w는 지도 폭 기준 %. 높이가 아니라 폭으로 잡아야 지도와 같이 축소된다.
@@ -109,23 +110,35 @@
     })));
   }
 
-  /** 자동차를 도로 구간을 따라 움직인다. rAF는 탭이 안 보이면 멈추므로 배터리도 아낀다. */
+  /** 자동차를 도로 폴리라인을 따라 움직인다. rAF는 탭이 안 보이면 멈추므로 배터리도 아낀다. */
   function startCars(road) {
+    // path에서 x에 해당하는 도로 중심 y를 선형 보간
+    const yAt = (path, x) => {
+      if (x <= path[0][0]) return path[0][1];
+      for (let i = 1; i < path.length; i++) {
+        if (x <= path[i][0]) {
+          const [x0, y0] = path[i - 1], [x1, y1] = path[i];
+          return y0 + (y1 - y0) * ((x - x0) / (x1 - x0));
+        }
+      }
+      return path[path.length - 1][1];
+    };
+
     const cars = CAR_ROUTES.map((r) => {
       const node = el('div', 'car');
-      Object.assign(node.style, { top: pct(r.y), width: pct(r.w), left: pct(r.x0) });
+      node.style.width = pct(r.w);
       const img = new Image();
       img.src = S + r.src;
       img.alt = '';
       node.appendChild(img);
       road.appendChild(node);
-      // 스프라이트가 왼쪽을 보므로 오른쪽으로 갈 때 뒤집는다
       const face = (dir) => { img.style.transform = dir > 0 ? 'scaleX(-1)' : ''; };
-      const x = r.mode === 'wrap'
-        ? (r.dir > 0 ? r.x0 : r.x1)
-        : r.x0 + Math.random() * (r.x1 - r.x0);
+      const x0 = r.path[0][0], x1 = r.path[r.path.length - 1][0];
+      // 차체 높이(지도 % 기준): 폭 × 이미지비율 × 지도 가로세로비
+      const hPct = r.w * (92 / 140) * (1792 / 1434);
       face(r.dir);
-      return { ...r, node, face, x, wait: 0 };
+      return { ...r, node, face, x0, x1, hPct,
+               x: x0 + (r.start ?? Math.random()) * (x1 - x0), wait: 0 };
     });
 
     let prev = performance.now();
@@ -143,6 +156,7 @@
           if (c.x < c.x0) { c.x = c.x0; c.dir = 1; c.wait = c.pause || 1; c.face(1); }
         }
         c.node.style.left = c.x.toFixed(3) + '%';
+        c.node.style.top = (yAt(c.path, c.x) - c.hPct / 2).toFixed(3) + '%';
       });
       requestAnimationFrame(tick);
     }
@@ -175,6 +189,10 @@
       } else {
         const [x, y, w, h] = d.rect;
         Object.assign(btn.style, { left: pct(x), top: pct(y), width: pct(w), height: pct(h) });
+        // ::before가 이 구역의 지도 픽셀을 그대로 복제하도록 배경 좌표 계산
+        btn.style.setProperty('--bs', (10000 / w) + '%');
+        btn.style.setProperty('--bpx', (w >= 100 ? 0 : x / (100 - w) * 100) + '%');
+        btn.style.setProperty('--bpy', (h >= 100 ? 0 : y / (100 - h) * 100) + '%');
       }
 
       const label = el('span', 'spot-label');
@@ -396,6 +414,31 @@
     });
   }
 
+  /* ── 추천 픽 ─────────────────────────────── */
+
+  function initPicks() {
+    const featured = data.items.filter((i) => i.featured);
+    if (!featured.length) { $('picksBtn').hidden = true; return; }
+
+    const body = $('picksBody');
+    const grid = el('div', 'cards');
+    featured.forEach((i) => grid.appendChild(card(i)));
+    body.appendChild(grid);
+
+    const set = (open) => {
+      $('picksPanel').hidden = !open;
+      $('picksBtn').setAttribute('aria-expanded', String(open));
+    };
+    $('picksBtn').addEventListener('click', () =>
+      set($('picksPanel').hidden));
+    $('closePicks').addEventListener('click', () => { set(false); $('picksBtn').focus(); });
+    document.addEventListener('click', (e) => {
+      if (!$('picksPanel').hidden
+          && !$('picksPanel').contains(e.target)
+          && !$('picksBtn').contains(e.target)) set(false);
+    });
+  }
+
   /* ── 모달 열고 닫기 ──────────────────────── */
 
   let lastFocus = null;
@@ -450,6 +493,7 @@
     makeSpots();
     makeChips();
     renderModalList();
+    initPicks();
 
     $('footName').textContent = `${data.profile.name} · ${data.profile.tagline}`;
     const fc = $('footContact');
@@ -467,6 +511,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         if (!$('modal').hidden) closeModal();
+        else if (!$('picksPanel').hidden) { $('picksPanel').hidden = true; $('picksBtn').setAttribute('aria-expanded', 'false'); $('picksBtn').focus(); }
         else if (openId) { const b = lastSpot; closePanel(); b?.focus(); }
       }
       trapFocus(e);
