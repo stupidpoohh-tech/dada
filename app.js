@@ -308,13 +308,14 @@
       a.target = '_blank';
       a.rel = 'noopener';
     }
-    if (item.open === 'artbook') {
-      a.href = '#art';
+    if (item.open === 'book') {
+      const b = bookOf(item);
+      a.href = '#' + (b ? b.hash : '');
       a.addEventListener('click', (e) => {
         e.preventDefault();
         if (!$('modal').hidden) closeModal();
         if (!$('picksPanel').hidden) $('picksPanel').hidden = true;
-        openArtbook(1);
+        openBook(b, 1);
       });
     }
 
@@ -404,7 +405,7 @@
     // 항목이 하나뿐인 구역은 팝오버를 거치지 않고 바로 그것을 연다
     if (d && d.direct) {
       const it = data.items.find((x) => x.id === d.direct);
-      if (it && it.open === 'artbook') return openArtbook(1);
+      if (it && it.open === 'book') return openBook(bookOf(it), 1);
     }
     if (openId === id) return closePanel();
     openPanel(id, btn);
@@ -484,38 +485,27 @@
     $('hint').classList.add('gone');
   }
 
-  /* ── 아트북 팝업 ─────────────────────────── */
+  /* ── 넘겨보는 책 팝업 (아트북·세모집 카탈로그) ── */
 
-  const ART = 'assets/portfolio/art/';
-  const artSrc   = (i) => `${ART}p${String(i).padStart(2, '0')}.jpg`;
-  const artThumb = (i) => `${ART}t${String(i).padStart(2, '0')}.jpg`;
-  let artPages = 0, artPage = 1, artBusy = false, artThumbs = [], artBuilt = false;
-  let beforeArtFocus = null;
+  /* 한 벌의 뷰어를 여러 권이 나눠 쓴다. 책마다 다른 것은 폴더·쪽수·해시뿐이고,
+     이름은 항목 이름을 그대로 쓴다. 항목에 `open: "book"`과 `book` 덩어리를 두면 등록된다. */
+  const books = [];              // 등록된 책들
+  let book = null;               // 지금 펼친 책
+  let bkPage = 1, bkBusy = false, bkThumbs = [], bkStripFor = null, bkWired = false;
+  let beforeBookFocus = null;
 
-  function buildArtbook() {
-    if (artBuilt) return;
-    artBuilt = true;
-    const strip = $('bkStrip');
-    for (let i = 1; i <= artPages; i++) {
-      const b = el('button', 'thumb');
-      b.type = 'button';
-      b.setAttribute('aria-label', `${i}쪽`);
-      const im = new Image();
-      im.src = artThumb(i);
-      im.alt = '';
-      im.loading = 'lazy';
-      b.appendChild(im);
-      b.addEventListener('click', () => artGo(i));
-      strip.appendChild(b);
-      artThumbs.push(b);
-    }
-    $('bkTotal').textContent = artPages;
-    $('bkClose').addEventListener('click', closeArtbook);
-    $('bkPrev').addEventListener('click', () => artGo(artPage - 1, -1));
-    $('bkNext').addEventListener('click', () => artGo(artPage + 1, 1));
+  const bkSrc   = (i) => `${book.dir}p${String(i).padStart(2, '0')}.jpg`;
+  const bkThumbSrc = (b, i) => `${b.dir}t${String(i).padStart(2, '0')}.jpg`;
+
+  function wireBook() {
+    if (bkWired) return;
+    bkWired = true;
+    $('bkClose').addEventListener('click', closeBook);
+    $('bkPrev').addEventListener('click', () => bkGo(bkPage - 1, -1));
+    $('bkNext').addEventListener('click', () => bkGo(bkPage + 1, 1));
     // 책 바깥(어두운 여백)을 누르면 닫힌다
     $('bookOverlay').addEventListener('click', (e) => {
-      if (e.target === $('bookOverlay')) closeArtbook();
+      if (e.target === $('bookOverlay')) closeBook();
     });
     // 모바일 스와이프
     let x0 = null, y0 = null;
@@ -528,70 +518,103 @@
       const dx = e.changedTouches[0].clientX - x0;
       const dy = e.changedTouches[0].clientY - y0;
       if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
-        artGo(artPage + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+        bkGo(bkPage + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
       }
       x0 = y0 = null;
     }, { passive: true });
   }
 
-  const artPreload = (i) => { if (i >= 1 && i <= artPages) new Image().src = artSrc(i); };
+  /** 썸네일 줄은 책이 바뀔 때만 다시 짓는다 */
+  function buildStrip() {
+    if (bkStripFor === book) return;
+    bkStripFor = book;
+    const strip = $('bkStrip');
+    strip.textContent = '';
+    bkThumbs = [];
+    for (let i = 1; i <= book.pages; i++) {
+      const b = el('button', 'thumb');
+      b.type = 'button';
+      b.setAttribute('aria-label', `${i}쪽`);
+      const im = new Image();
+      im.src = bkThumbSrc(book, i);
+      im.alt = '';
+      im.loading = 'lazy';
+      b.appendChild(im);
+      b.addEventListener('click', () => bkGo(i));
+      strip.appendChild(b);
+      bkThumbs.push(b);
+    }
+    $('bkTotal').textContent = book.pages;
+    $('bkTitle').textContent = book.label;
+    $('bookOverlay').setAttribute('aria-label', book.label);
+  }
 
-  function artPaint() {
-    $('bkImg').src = artSrc(artPage);
-    $('bkImg').alt = `아트 포트폴리오 ${artPage}쪽`;
-    $('bkCur').textContent = artPage;
-    artThumbs.forEach((t, i) => t.setAttribute('aria-current', String(i + 1 === artPage)));
-    $('bkPrev').disabled = artPage === 1;
-    $('bkNext').disabled = artPage === artPages;
-    artPreload(artPage + 1); artPreload(artPage - 1);
+  const bkPreload = (i) => { if (i >= 1 && i <= book.pages) new Image().src = bkSrc(i); };
+
+  function bkPaint() {
+    $('bkImg').src = bkSrc(bkPage);
+    $('bkImg').alt = `${book.label} ${bkPage}쪽`;
+    $('bkCur').textContent = bkPage;
+    bkThumbs.forEach((t, i) => t.setAttribute('aria-current', String(i + 1 === bkPage)));
+    $('bkPrev').disabled = bkPage === 1;
+    $('bkNext').disabled = bkPage === book.pages;
+    bkPreload(bkPage + 1); bkPreload(bkPage - 1);
     // 남은 쪽·읽은 쪽만큼 종이 두께를 바꿔 넘어가는 게 눈에 보이게
     const bk = $('bk');
-    bk.style.setProperty('--read', ((artPage - 1) * 0.8 + 1).toFixed(1) + 'px');
-    bk.style.setProperty('--left', ((artPages - artPage) * 0.8 + 1).toFixed(1) + 'px');
-    history.replaceState(null, '', artPage === 1 ? '#art' : '#art-' + artPage);
+    bk.style.setProperty('--read', ((bkPage - 1) * 0.8 + 1).toFixed(1) + 'px');
+    bk.style.setProperty('--left', ((book.pages - bkPage) * 0.8 + 1).toFixed(1) + 'px');
+    history.replaceState(null, '', '#' + book.hash + (bkPage === 1 ? '' : '-' + bkPage));
   }
 
   /** 넘어가는 장을 한 겹 얹어 돌린 뒤, 아래에 새 쪽을 깔아둔다 */
-  function artGo(to, dir) {
-    to = Math.min(Math.max(to, 1), artPages);
-    if (artBusy || to === artPage) return;
-    dir = dir || (to > artPage ? 1 : -1);
-    artBusy = true;
+  function bkGo(to, dir) {
+    to = Math.min(Math.max(to, 1), book.pages);
+    if (bkBusy || to === bkPage) return;
+    dir = dir || (to > bkPage ? 1 : -1);
+    bkBusy = true;
 
     const leaf = el('div', 'leaf flipping ' + (dir > 0 ? 'turn-next' : 'turn-prev'));
     const im = new Image();
-    im.src = artSrc(artPage);      // 넘어가는 건 지금 보고 있던 쪽
+    im.src = bkSrc(bkPage);        // 넘어가는 건 지금 보고 있던 쪽
     im.alt = '';
     leaf.appendChild(im);
     $('bk').appendChild(leaf);
 
-    artPage = to;
-    artPaint();
+    bkPage = to;
+    bkPaint();
 
-    const done = () => { leaf.remove(); artBusy = false; };
+    const done = () => { leaf.remove(); bkBusy = false; };
     leaf.addEventListener('animationend', done, { once: true });
     setTimeout(done, 1100);        // 애니메이션이 끊겨도 잠기지 않게
   }
 
-  function openArtbook(page) {
-    if (!artPages) return;
-    buildArtbook();
-    beforeArtFocus = document.activeElement;
+  function openBook(b, page) {
+    if (!b || !b.pages) return;
+    wireBook();
+    // 다른 책으로 갈아탈 때 넘어가던 장이 남아 있으면 걷어낸다
+    if (book !== b) {
+      $('bk').querySelectorAll('.leaf.flipping').forEach((n) => n.remove());
+      bkBusy = false;
+    }
+    book = b;
+    buildStrip();
+    if (!bookOpen()) beforeBookFocus = document.activeElement;
     closePanel();
-    artPage = Math.min(Math.max(page || 1, 1), artPages);
-    artPaint();
+    bkPage = Math.min(Math.max(page || 1, 1), book.pages);
+    bkPaint();
     $('bookOverlay').hidden = false;
     $('bookOverlay').focus({ preventScroll: true });
     $('hint').classList.add('gone');
   }
 
-  function closeArtbook() {
+  function closeBook() {
     $('bookOverlay').hidden = true;
     history.replaceState(null, '', location.pathname);
-    if (beforeArtFocus) beforeArtFocus.focus();
+    if (beforeBookFocus) beforeBookFocus.focus();
   }
 
-  const artbookOpen = () => !$('bookOverlay').hidden;
+  const bookOpen = () => !$('bookOverlay').hidden;
+  const bookOf = (item) => books.find((b) => b.id === item.id);
   /* ── 전체 목록 (모달 + 정적 페이지) ──────── */
 
   let filter = 'all', query = '';
@@ -719,6 +742,13 @@
     data.districts.forEach((d) => { byDistrict[d.id] = []; });
     data.items.forEach((i) => { (byDistrict[i.district] ||= []).push(i); });
 
+    // 카드가 책 해시를 href로 쓰므로 무엇이든 그리기 전에 책부터 등록한다
+    data.items.forEach((i) => {
+      if (i.open !== 'book' || !i.book) return;
+      books.push({ id: i.id, label: i.name, dir: i.book.dir,
+                   pages: i.book.pages || 0, hash: i.book.hash });
+    });
+
     paintScenery();
     makeSpots();
     syncPops();
@@ -734,9 +764,6 @@
     a.href = 'mailto:' + data.profile.email;
     fc.appendChild(a);
 
-    const art = data.items.find((i) => i.open === 'artbook');
-    artPages = art ? (art.pages || 0) : 0;
-
     $('openList').addEventListener('click', openModal);
     $('closeList').addEventListener('click', closeModal);
     $('modal').addEventListener('click', (e) => {
@@ -745,12 +772,12 @@
     $('search').addEventListener('input', (e) => { query = e.target.value; renderModalList(); });
 
     document.addEventListener('keydown', (e) => {
-      if (artbookOpen()) {
-        if (e.key === 'Escape') { closeArtbook(); return; }
-        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); artGo(artPage + 1, 1); return; }
-        if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); artGo(artPage - 1, -1); return; }
-        if (e.key === 'Home') { artGo(1, -1); return; }
-        if (e.key === 'End') { artGo(artPages, 1); return; }
+      if (bookOpen()) {
+        if (e.key === 'Escape') { closeBook(); return; }
+        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); bkGo(bkPage + 1, 1); return; }
+        if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); bkGo(bkPage - 1, -1); return; }
+        if (e.key === 'Home') { bkGo(1, -1); return; }
+        if (e.key === 'End') { bkGo(book.pages, 1); return; }
       }
       if (e.key === 'Escape') {
         if (!$('modal').hidden) closeModal();
@@ -770,13 +797,21 @@
       }, 80);
     });
 
-    const artHash = () => /^#art(-\d+)?$/.test(location.hash);
-    if (artHash()) openArtbook(parseInt(location.hash.slice(5), 10) || 1);
+    /* 책 해시 뒤에 쪽번호가 붙는다 — #art · #art-5 · #house-3 */
+    function fromHash() {
+      const m = /^#([a-z0-9-]+?)(?:-(\d+))?$/.exec(location.hash);
+      if (!m) return null;
+      const b = books.find((x) => x.hash === m[1]);
+      return b ? { book: b, page: parseInt(m[2], 10) || 1 } : null;
+    }
     // 세션 중 해시가 바뀌어도(공유 링크 클릭·뒤로가기) 반응하게
-    window.addEventListener('hashchange', () => {
-      if (artHash()) openArtbook(parseInt(location.hash.slice(5), 10) || 1);
-      else if (artbookOpen()) closeArtbook();
-    });
+    const openFromHash = () => {
+      const h = fromHash();
+      if (h) openBook(h.book, h.page);
+      else if (bookOpen()) closeBook();
+    };
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
 
     if (new URLSearchParams(location.search).has('tune')) enableTuning();
   }

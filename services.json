@@ -208,8 +208,8 @@
       "status": "live",
       "needsReview": false,
       "featured": true,
-      "open": "artbook",
-      "pages": 11
+      "open": "book",
+      "book": { "dir": "assets/portfolio/art/", "pages": 11, "hash": "art" }
     },
     {
       "id": "grammar",
