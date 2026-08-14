@@ -244,18 +244,6 @@
       "needsReview": true
     },
     {
-      "id": "dear",
-      "no": 18,
-      "name": "Dear 편지선물",
-      "district": "park",
-      "type": "app",
-      "url": "https://dear-claire.netlify.app/",
-      "description": "편지를 미리 써두고 그날에 꺼내 보게 선물합니다.",
-      "icon": "💌",
-      "status": "live",
-      "needsReview": true
-    },
-    {
       "id": "runlearn",
       "no": 19,
       "name": "RunLearn",

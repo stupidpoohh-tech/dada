@@ -5,20 +5,25 @@
   const S = 'assets/sprites/cut/';
 
   // 지도 위를 움직이는 것들. 좌표는 지도 기준 %.
-  const CARS = [
-    { src: 'car-yellow.png', y: 36.6, w: 4.6, dur: 26, delay: 0, dir: 1 },
-    { src: 'car-blue.png',   y: 74.6, w: 4.8, dur: 21, delay: 4, dir: 1 },
-    { src: 'car-red.png',    y: 76.4, w: 4.8, dur: 24, delay: 11, dir: -1 },
+  // 자동차: 실제 도로 구간만 달린다. 스프라이트가 왼쪽을 보므로 우향일 때 뒤집는다.
+  //  - wrap: 화면 밖으로 나가 반대편에서 다시 들어옴 (가로를 관통하는 도로)
+  //  - pingpong: 구간 끝에서 잠깐 멈췄다가 방향을 바꿈 (막힌 도로)
+  const CAR_ROUTES = [
+    // 위 가로 도로 (미술관~한옥 아래) — 전 폭 관통. 우측통행: 우향은 아랫차선
+    { src: 'car-yellow.png', w: 4.6, y: 37.4, x0: -8, x1: 106, mode: 'wrap', speed: 4.4, dir: 1 },
+    { src: 'car-blue.png',   w: 4.6, y: 35.2, x0: -8, x1: 106, mode: 'wrap', speed: 5.0, dir: -1 },
+    // 아래 가로 도로 — 왼쪽은 다리, 오른쪽은 세모집 마당이라 그 사이만 왕복
+    { src: 'car-red.png',    w: 4.6, y: 74.8, x0: 21, x1: 61, mode: 'pingpong', speed: 3.6, dir: 1, pause: 1.1 },
   ];
   const CLOUDS = [
     { src: 'cloud-1.png', y: 4,  w: 11, dur: 150, delay: 0 },
     { src: 'cloud-3.png', y: 12, w: 8,  dur: 200, delay: 60 },
     { src: 'cloud-4.png', y: 2,  w: 12, dur: 240, delay: 130 },
   ];
+  // 새: 사선으로 활강 + 위아래 물결. 우향이면 flip (스프라이트가 왼쪽을 봄)
   const BIRDS = [
-    { src: 'sparrow-fly.png',  from: [-8, 22], to: [110, 8],  w: 2.4, dur: 26, delay: 3 },
-    { src: 'bluebird-fly.png', from: [112, 9], to: [-8, 26],  w: 2.5, dur: 34, delay: 17 },
-    { src: 'sparrow-fly.png',  from: [-8, 14], to: [110, 30], w: 2.1, dur: 40, delay: 31 },
+    { src: 'bluebird-fly.png', from: [110, 8],  to: [-8, 33], w: 2.4, dur: 34, delay: 6 },
+    { src: 'sparrow-fly.png',  from: [-8, 31],  to: [108, 5], w: 2.2, dur: 42, delay: 22 },
   ];
   // 공원에 모여 있는 사람들. 8종 중 6명만 — 다 넣으면 붐빈다.
   // w는 지도 폭 기준 %. 높이가 아니라 폭으로 잡아야 지도와 같이 축소된다.
@@ -72,24 +77,27 @@
     })));
 
     BIRDS.forEach((b, i) => {
-      const node = sprite('bird', b.src, {
+      const node = el('div', 'bird' + (b.to[0] > b.from[0] ? ' flip' : ''));
+      Object.assign(node.style, {
         top: pct(b.from[1]), left: pct(b.from[0]), width: pct(b.w),
         animationDuration: b.dur + 's', animationDelay: '-' + b.delay + 's',
         animationName: 'fly' + i,
       });
+      const wave = el('div', 'bird-wave');
+      wave.style.animationDelay = '-' + (i * 1.3) + 's';
+      const img = new Image();
+      img.src = S + b.src;
+      img.alt = '';
+      img.loading = 'lazy';
+      wave.appendChild(img);
+      node.appendChild(wave);
       const rule = `@keyframes fly${i}{from{left:${b.from[0]}%;top:${b.from[1]}%}
         to{left:${b.to[0]}%;top:${b.to[1]}%}}`;
       document.styleSheets[0].insertRule(rule, document.styleSheets[0].cssRules.length);
       sky.appendChild(node);
     });
 
-    CARS.forEach((c) => {
-      const node = sprite('car' + (c.dir < 0 ? ' leftward' : ''), c.src, {
-        top: pct(c.y), width: pct(c.w),
-        animationDuration: c.dur + 's', animationDelay: '-' + c.delay + 's',
-      });
-      road.appendChild(node);
-    });
+    startCars(road);
 
     FOLKS.forEach((f, i) => folks.appendChild(sprite('folk', f.src, {
       left: pct(f.x), top: pct(f.y), width: pct(f.w),
@@ -99,6 +107,46 @@
     PERCHED.forEach((p) => folks.appendChild(sprite('folk', p.src, {
       left: pct(p.x), top: pct(p.y), width: pct(p.w), animation: 'none',
     })));
+  }
+
+  /** 자동차를 도로 구간을 따라 움직인다. rAF는 탭이 안 보이면 멈추므로 배터리도 아낀다. */
+  function startCars(road) {
+    const cars = CAR_ROUTES.map((r) => {
+      const node = el('div', 'car');
+      Object.assign(node.style, { top: pct(r.y), width: pct(r.w), left: pct(r.x0) });
+      const img = new Image();
+      img.src = S + r.src;
+      img.alt = '';
+      node.appendChild(img);
+      road.appendChild(node);
+      // 스프라이트가 왼쪽을 보므로 오른쪽으로 갈 때 뒤집는다
+      const face = (dir) => { img.style.transform = dir > 0 ? 'scaleX(-1)' : ''; };
+      const x = r.mode === 'wrap'
+        ? (r.dir > 0 ? r.x0 : r.x1)
+        : r.x0 + Math.random() * (r.x1 - r.x0);
+      face(r.dir);
+      return { ...r, node, face, x, wait: 0 };
+    });
+
+    let prev = performance.now();
+    function tick(now) {
+      const dt = Math.min((now - prev) / 1000, 0.1);
+      prev = now;
+      cars.forEach((c) => {
+        if (c.wait > 0) { c.wait -= dt; return; }
+        c.x += c.dir * c.speed * dt;
+        if (c.mode === 'wrap') {
+          if (c.dir > 0 && c.x > c.x1) c.x = c.x0;
+          if (c.dir < 0 && c.x < c.x0) c.x = c.x1;
+        } else {
+          if (c.x > c.x1) { c.x = c.x1; c.dir = -1; c.wait = c.pause || 1; c.face(-1); }
+          if (c.x < c.x0) { c.x = c.x0; c.dir = 1; c.wait = c.pause || 1; c.face(1); }
+        }
+        c.node.style.left = c.x.toFixed(3) + '%';
+      });
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
   }
 
   /* ── 구역 핫스팟 ─────────────────────────── */
@@ -119,7 +167,7 @@
       if (isMe) {
         btn.style.left = pct(d.character[0]);
         btn.style.top = pct(d.character[1]);
-        btn.style.width = '3.6%';
+        btn.style.width = '5.4%';
         const img = new Image();
         img.src = S + 'me.png';
         img.alt = '';
@@ -210,8 +258,8 @@
 
     // 구역 영역(px). 캐릭터는 발끝 기준이라 위로 키를 잡아준다.
     const box = d.character
-      ? { x: d.character[0] / 100 * MW - MW * 0.018, y: d.character[1] / 100 * MH - MH * 0.075,
-          w: MW * 0.036, h: MH * 0.075 }
+      ? { x: d.character[0] / 100 * MW - MW * 0.027, y: d.character[1] / 100 * MH - MH * 0.11,
+          w: MW * 0.054, h: MH * 0.11 }
       : { x: d.rect[0] / 100 * MW, y: d.rect[1] / 100 * MH,
           w: d.rect[2] / 100 * MW, h: d.rect[3] / 100 * MH };
 
@@ -348,30 +396,6 @@
     });
   }
 
-  /* ── 움직임 토글 ─────────────────────────── */
-
-  const KEY = 'dada-motion';
-
-  function applyMotion(on) {
-    document.documentElement.dataset.motion = on ? 'on' : 'off';
-    const b = $('motionBtn');
-    b.setAttribute('aria-pressed', String(on));
-    b.textContent = on ? '⏸ 움직임 끄기' : '▶ 움직임 켜기';
-  }
-
-  function initMotion() {
-    const saved = localStorage.getItem(KEY);
-    const prefersLess = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // 저장된 선택이 우선, 없으면 OS 설정을 따른다
-    applyMotion(saved ? saved === 'on' : !prefersLess);
-
-    $('motionBtn').addEventListener('click', () => {
-      const on = document.documentElement.dataset.motion !== 'on';
-      localStorage.setItem(KEY, on ? 'on' : 'off');
-      applyMotion(on);
-    });
-  }
-
   /* ── 모달 열고 닫기 ──────────────────────── */
 
   let lastFocus = null;
@@ -426,7 +450,6 @@
     makeSpots();
     makeChips();
     renderModalList();
-    initMotion();
 
     $('footName').textContent = `${data.profile.name} · ${data.profile.tagline}`;
     const fc = $('footContact');
