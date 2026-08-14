@@ -6,10 +6,12 @@
 
   // 지도 위를 움직이는 것들. 좌표는 지도 기준 %.
   // 자동차 경로는 지도 픽셀을 스캔해 얻은 실측값이다 (도로 중심선 폴리라인).
-  // 위 도로는 구간별로 높이가 다르다: 미술관·한옥 앞이 학교 앞보다 높다.
-  // 차선 중앙보다 조금 위를 달리게 잡았다 — 아래로 내려오면 길가 나무를 밟는다.
+  // 위 도로는 구간별로 높이가 다르다. 지도 픽셀에서 아스팔트 띠를 훑어 얻은 중앙선:
+  // 미술관·한옥 앞 38.9~43.5(중앙 41.2), 학교·회사 사이 41.1~43.2(중앙 42.1),
+  // 카페 위 41.0~45.9(중앙 43.4). 나무에 걸리는 구간은 동선을 피하지 않고
+  // 나무를 앞으로 덮는다 (services.json의 canopy).
   // path의 y는 차체 세로 중심. 스프라이트가 왼쪽을 보므로 우향일 때만 뒤집는다.
-  const TOP_ROAD = [[-10, 39.2], [10, 39.2], [24, 40.0], [34, 40.0], [44, 42.2], [70, 42.2], [80, 40.0], [108, 40.0]];
+  const TOP_ROAD = [[-10, 41.2], [30, 41.2], [38, 42.1], [48, 42.3], [54, 43.4], [70, 43.4], [76, 41.2], [108, 41.2]];
   const CAR_ROUTES = [
     // 위 도로: 두 대가 같은 차선을 반 바퀴 간격으로 순환 — 겹치지 않는다
     { src: 'car-yellow.png', w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 15, dir: -1, start: 0.15 },
@@ -74,6 +76,17 @@
 
   function paintScenery() {
     const sky = $('sky'), road = $('road'), folks = $('folks');
+
+    // 도로에 가지를 드리운 나무 — 지도를 한 장 더 깔고 그 나무만 오려 차 위에 덮는다.
+    // 레이어가 지도와 같은 크기라 %가 곧 지도 좌표다.
+    (data.canopy || []).forEach((poly) => {
+      const img = new Image();
+      img.src = 'assets/map/town-web.jpg';
+      img.alt = '';
+      img.style.clipPath =
+        'polygon(' + poly.map(([x, y]) => x + '% ' + y + '%').join(',') + ')';
+      $('canopy').appendChild(img);
+    });
 
     CLOUDS.forEach((c) => sky.appendChild(sprite('cloud', c.src, {
       top: pct(c.y), width: pct(c.w),
@@ -204,11 +217,14 @@
           pimg.src = 'assets/map/town-web.jpg';
           pimg.alt = '';
           // 사각형으로는 건물만 도려낼 수 없는 곳이 있다 — 학교는 지붕 위 양옆에 나무가
-          // 걸리고, 미술관은 몸통이 상자에 잘린다. shape가 있으면 건물 실루엣만 오려낸다.
-          // 이미지가 지도 원본 크기라서 %가 곧 지도 좌표다 (변환 필요 없음).
-          if (d.shape) {
-            pimg.style.clipPath =
-              'polygon(' + d.shape.map(([sx, sy]) => sx + '% ' + sy + '%').join(',') + ')';
+          // 걸리고, 미술관은 몸통이 상자 밖으로 나간다. mask가 있으면 실루엣만 움직인다.
+          // 마스크는 지도 원본 크기라 100% 100%로 깔면 그대로 맞는다
+          // (tools/cut_buildings.py로 뽑는다).
+          if (d.mask) {
+            const url = 'url(' + d.mask + ')';
+            pimg.style.webkitMaskImage = pimg.style.maskImage = url;
+            pimg.style.webkitMaskSize = pimg.style.maskSize = '100% 100%';
+            pimg.style.webkitMaskRepeat = pimg.style.maskRepeat = 'no-repeat';
           }
           pop.appendChild(pimg);
           btn.appendChild(pop);
