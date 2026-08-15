@@ -51,7 +51,7 @@ def item_html(item):
     if item.get('date'):
         badges.append(f'<time class="doc-date" datetime="{e(item["date"])}">'
                       f'{e(short_date(item["date"]))}</time>')
-    # 설명에 줄바꿈이 든 항목이 있다 (잔고캘린더의 `+` 줄)
+    # 설명에 줄바꿈을 넣으면 그대로 줄이 나뉜다 (지금 쓰는 항목은 없다)
     desc = '<br>'.join(e(line) for line in item['description'].split('\n'))
     return f'''      <article class="doc-item">
         <h3><a href="{e(href(item))}"{attrs}>{e(item['icon'])} {e(item['name'])}</a>

@@ -22,7 +22,7 @@ assets/
   sprites/cut/      잘라낸 스프라이트 22개 — 실제로 쓰는 것
 tools/cut_sprites.py  시트에서 스프라이트를 잘라내고 배경을 투명 처리
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
-tests/smoke.mjs       회귀 테스트 51개 (npm test)
+tests/smoke.mjs       회귀 테스트 57개 (npm test)
 ```
 
 편집용 원본(원본 지도·스프라이트 시트)은 저장소에 두지 않는다 — 아래 「편집용 원본」 참고.
@@ -43,7 +43,7 @@ npm run serve &      # 8000번 포트로 띄운 뒤
 npm test
 ```
 
-`tests/smoke.mjs`의 51개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
+`tests/smoke.mjs`의 57개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
 만든 게 아니라 "또 이럴까 봐" 남긴 목록이니, 새 버그를 잡으면 여기에 한 줄 더한다.
 지금 지키고 있는 것 — 두 책이 서로의 설정을 물고 오지 않기, 목록 카드가 빈 해시를 물지 않기,
 캐릭터 판정이 흔들리지 않고 64px을 넘기, 여닫고 호버한 뒤에도 마을이 한 박자이기,
@@ -55,7 +55,7 @@ npm test
 **마을은 JS로 그려지므로 크롤러와 스크린리더에게는 빈 페이지다.** 실제로 재보면 JS를 끈
 `index.html`의 본문은 74자이고 항목 이름이 하나도 없다 — 검색으로 이 사이트에 닿을 길이 없다는 뜻이다.
 링크드인 대체를 노리는 사이트에서 이건 치명적이라, 같은 데이터를 **HTML에 그대로 박은**
-정적 페이지를 하나 둔다 (같은 조건에서 1,500자, 항목 이름·설명·약력·연락처가 전부 읽힌다).
+정적 페이지를 하나 둔다 (같은 조건에서 1,200자, 항목 이름·설명·약력·연락처가 전부 읽힌다).
 
 **마을은 경험, `/list`는 정보.** 예쁠 필요 없고 읽히면 된다.
 
@@ -84,7 +84,7 @@ git show 86bfa0a:assets/map/town.jpg > assets/map/town.jpg
 ## 항목 추가하기
 
 `services.json`의 `items`에 한 덩어리를 넣고 **`python3 tools/build_list.py`를 돌린다.**
-설명에 줄바꿈(`\n`)을 넣으면 카드에서도 `/list`에서도 줄이 나뉜다 (잔고캘린더의 `+` 줄).
+설명에 줄바꿈(`\n`)을 넣으면 카드에서도 `/list`에서도 줄이 나뉜다.
 지도 팝오버와 목록 모달은 JSON을 직접 읽으므로 자동으로 바뀌지만, `list.html`은 생성물이라
 다시 만들어야 한다. 잊어도 `npm test`가 어느 항목이 빠졌는지 짚어준다.
 
@@ -95,7 +95,7 @@ git show 86bfa0a:assets/map/town.jpg > assets/map/town.jpg
   "district": "school",
   "type": "app",
   "url": "https://dada-grammar.pages.dev/",
-  "description": "고등 영문법 전 범위를 개념과 퀴즈로 정리했습니다.",
+  "description": "고등 영문법을 개념정리와 퀴즈로",
   "date": "2026-05",
   "icon": "📘",
   "status": "live"

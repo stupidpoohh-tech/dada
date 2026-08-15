@@ -330,7 +330,7 @@ head('/list 정적 페이지');
 
   // JS 없이도 읽혀야 의미가 있다 — 소스 HTML 자체를 본다
   const src = await res.text();
-  // 줄바꿈이 든 설명은 `<br>`로 나뉘어 박히므로 줄 단위로 견준다
+  // 줄바꿈이 든 설명은 `<br>`로 나뉘어 박히므로 줄 단위로 견준다 (지금은 쓰는 항목이 없다)
   const missing = data.items.filter((i) =>
     !src.includes(i.name) || i.description.split('\n').some((line) => !src.includes(line)));
   ok(missing.length === 0, '모든 항목의 이름과 설명이 HTML에 박혀 있다',
