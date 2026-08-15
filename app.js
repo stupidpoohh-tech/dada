@@ -749,9 +749,9 @@
   const bookOf = (item) => books.find((b) => b.id === item.id);
   /* ── 전체 목록 (모달 + 정적 페이지) ──────── */
 
-  let filter = 'all', query = '', view = 'district';
+  let filter = 'all', query = '';
 
-  /** 검색어와 타입 필터를 통과한 항목. 두 보기가 같은 결과를 나눠 쓴다. */
+  /** 검색어와 타입 필터를 통과한 항목 */
   function visibleItems() {
     const q = query.trim().toLowerCase();
     return data.items.filter((i) => {
@@ -760,6 +760,12 @@
     });
   }
 
+  /** 목록은 언제나 만든 순서다 — 오래된 것부터 달 단위로 묶는다.
+   *
+   *  구역별 보기는 두지 않는다. 구역은 지도가 이미 하는 일이고, 목록까지 구역으로
+   *  묶으면 같은 분류를 두 번 보여주면서 정작 목록만 할 수 있는 것(시간)을 놓친다.
+   *  달마다 몇 개가 놓였는지가 그대로 보이므로 뒤로 갈수록 촘촘해지는 것을
+   *  문장으로 주장하지 않고 목록의 모양으로 보여준다. 날짜가 없는 항목은 끝에 모은다. */
   function renderModalList() {
     const body = $('modalBody');
     body.textContent = '';
@@ -770,22 +776,6 @@
       return;
     }
 
-    if (view === 'time') return renderByTime(body, items);
-
-    data.districts.forEach((d) => {
-      const list = items.filter((i) => i.district === d.id);
-      if (!list.length) return;
-      body.appendChild(el('div', 'group-title', `${d.icon} ${d.name}`));
-      const grid = el('div', 'cards');
-      list.forEach((i) => grid.appendChild(card(i)));
-      body.appendChild(grid);
-    });
-  }
-
-  /** 지어진 순서 — 오래된 것부터 달 단위로 묶는다.
-   *  달마다 몇 개가 놓였는지가 그대로 보이므로, 뒤로 갈수록 촘촘해지는 것을
-   *  문장으로 주장하지 않고 목록의 모양으로 보여준다. 날짜가 없는 항목은 끝에 모은다. */
-  function renderByTime(body, items) {
     const sorted = items.slice().sort((a, b) =>
       (a.date || '9999').localeCompare(b.date || '9999'));
     let month, grid;
@@ -798,24 +788,6 @@
         body.appendChild(grid);
       }
       grid.appendChild(card(i));
-    });
-  }
-
-  /** 보기 전환 — 구역별(어디에 있나) / 지어진 순서(언제 만들었나) */
-  function makeViews() {
-    const defs = [['district', '구역별'], ['time', '지어진 순서']];
-    const wrap = $('views');
-    defs.forEach(([key, label]) => {
-      const b = el('button', 'view-btn', label);
-      b.type = 'button';
-      b.setAttribute('aria-pressed', String(key === view));
-      b.addEventListener('click', () => {
-        view = key;
-        wrap.querySelectorAll('.view-btn').forEach((c) =>
-          c.setAttribute('aria-pressed', String(c === b)));
-        renderModalList();
-      });
-      wrap.appendChild(b);
     });
   }
 
@@ -944,7 +916,6 @@
     syncPops();
     syncIdle();
     if (!$('mapImg').complete) $('mapImg').addEventListener('load', syncPops, { once: true });
-    makeViews();
     makeChips();
     renderModalList();
     initPicks();

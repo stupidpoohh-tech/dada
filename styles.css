@@ -398,9 +398,10 @@ button, input { font: inherit; color: inherit; }
 
 .cards { display: grid; gap: 7px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
 
-/* 「지어진 순서」에서는 카드를 늘리지 않고 폭을 고정한다. 그래야 그 달에 몇 개를
-   만들었는지가 줄 길이로 드러난다 — 한 개인 달은 짧고, 세 개인 달은 길다.
-   1fr로 늘리면 어느 달이나 화면을 꽉 채워 그 차이가 통째로 사라진다. */
+/* 목록에서는 카드를 늘리지 않고 폭을 고정한다. 그래야 그 달에 몇 개를 만들었는지가
+   줄 길이로 드러난다 — 한 개인 달은 짧고, 세 개인 달은 길다.
+   1fr로 늘리면 어느 달이나 화면을 꽉 채워 그 차이가 통째로 사라진다.
+   (추천 픽은 그대로 늘어나야 하므로 `.cards` 기본값은 건드리지 않는다) */
 .cards.by-time { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 230px)); }
 /* 한 줄에 한 장뿐인 폭에서는 길이를 견줄 대상이 없다 — 늘려서 빈자리를 없앤다 */
 @media (max-width: 699px) { .cards.by-time { grid-template-columns: 1fr; } }
@@ -515,20 +516,6 @@ button, input { font: inherit; color: inherit; }
   border: 1px solid var(--line); border-radius: 10px;
   padding: 10px 12px; font-size: 16px;
 }
-
-/* 보기 전환. 아래 타입 칩과 성격이 달라(고르는 게 아니라 갈아타는 것)
-   둥근 칩이 아니라 붙어 있는 분절 버튼으로 둔다. */
-.views {
-  display: inline-flex; align-self: start;
-  background: var(--surface-2);
-  border: 1px solid var(--line); border-radius: 9px; padding: 2px;
-}
-.view-btn {
-  border: 0; background: none; color: var(--sub);
-  border-radius: 7px; padding: 5px 11px;
-  font-size: 12.5px; font-weight: 600; cursor: pointer;
-}
-.view-btn[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(31,36,28,.10); }
 
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip {

@@ -296,20 +296,23 @@ head('데이터 단일 소스');
   }
   ok(true, '구역 라벨이 전부 데이터와 맞다');
 
-  // 「지어진 순서」 — 속도가 이 사이트의 주장 중 하나라 날짜가 빠지면 주장이 무너진다
+  // 만든 순서 — 속도가 이 사이트의 주장 중 하나라 날짜가 빠지면 주장이 무너진다
   const undated = data.items.filter((i) => !/^\d{4}-\d{2}$/.test(i.date || ''));
   ok(undated.length === 0, '모든 항목에 만든 시기(YYYY-MM)가 있다',
     undated.map((i) => i.id).join(', ') + ' 빠짐');
 
-  await p.click('#views .view-btn:nth-child(2)'); await p.waitForTimeout(200);
   const dates = await p.evaluate(() =>
     [...document.querySelectorAll('#modalBody .card-date')].map((n) => n.textContent));
-  ok(dates.length === data.items.length, `지어진 순서에 전부 나온다 (${dates.length} / ${data.items.length})`);
+  ok(dates.length === data.items.length, `날짜가 전부 나온다 (${dates.length} / ${data.items.length})`);
   ok(dates.every((d, n) => n === 0 || dates[n - 1] <= d), '오래된 것부터 차례로 놓인다');
 
   const months = await p.evaluate(() =>
     [...document.querySelectorAll('#modalBody .group-title')].length);
   ok(months === new Set(data.items.map((i) => i.date)).size, `달 묶음 수가 맞다 (${months})`);
+
+  // 보기 전환 토글은 없앴다 — 목록은 언제나 만든 순서다
+  const toggles = await p.evaluate(() => document.querySelectorAll('.view-btn, #views').length);
+  ok(toggles === 0, '보기 전환 토글이 없다');
   await p.close();
 }
 

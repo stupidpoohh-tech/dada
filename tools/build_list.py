@@ -71,7 +71,8 @@ for d in data['districts']:
 {chr(10).join(item_html(i) for i in items)}
     </section>''')
 
-# 지어진 순서 — 모달의 「지어진 순서」 보기와 같은 것을 크롤러·스크린리더에게도 준다.
+# 목록 모달은 언제나 만든 순서로 늘어놓는다. 같은 순서를 크롤러·스크린리더에게도 준다.
+# 구역별 묶음은 이 페이지에만 남는다 — 마을 지도가 구역을 보여주는 곳이라 모달에는 두지 않는다.
 # 설명은 위 구역별 목록에 이미 있으므로 여기서는 이름과 시기만 둔다.
 dated = sorted((i for i in data['items'] if i.get('date')), key=lambda i: i['date'])
 blocks = []
