@@ -177,7 +177,8 @@
 - **지도** — 픽셀 배경(`image-rendering: pixelated`) + 구역 위치에 `<button>` 핫스팟. 고정 종횡비 컨테이너 안에서 % 좌표를 쓰므로 화면 크기가 바뀌어도 좌표가 어긋나지 않는다
 - **애니메이션** — 자동차는 도로 구간(`CAR_ROUTES`)을 wrap/pingpong으로 순환, 새·구름은 느린 수평 이동, 건물·사람은 `folk-idle` 2.4초 한 박자. **사용자 결정으로 OS '동작 줄이기'와 무관하게 상시 재생.** 구현 주의사항은 [README](README.md)에 정리
 - **스택** — 프레임워크 없이 HTML + CSS + vanilla JS. 빌드 과정 없음
-- **배포** — Cloudflare Pages (이 레포 연결, 루트를 그대로 게시)
+- **배포** — Cloudflare Workers 정적 에셋. 저장소 루트를 통째로 올리므로 **올리지 않을 것은
+  `.assetsignore`에 적는다** (개발 파일이 섞여 들어가 배포가 막힌 적이 있다 — [README](README.md) 「배포」)
 - **원본 PDF** — 레포에 두지 않는다
 
 ### services.json 스키마

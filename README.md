@@ -292,12 +292,31 @@ for i, p in enumerate(d):
 
 ## 배포
 
-Cloudflare에 이 저장소를 연결하고, 빌드 명령 없이 루트를 그대로 게시하면 된다.
-빌드 과정이 없으므로 설정할 것은 출력 디렉터리(`/`)뿐.
+Cloudflare Workers 정적 에셋. 빌드 명령 없이 **저장소 루트를 통째로 올린다**
+(`wrangler.jsonc`의 `assets.directory: "."`, 배포 명령은 `npx wrangler deploy`).
 
 **게시되는 것은 저장소의 기본 브랜치다.** 다른 브랜치에 올린 작업은 아무리 커밋해도
 사이트에 나타나지 않는다 — "고쳤는데 왜 그대로지?" 싶으면 여기부터 확인한다.
 `git remote show origin`의 `HEAD branch`가 지금 게시 중인 브랜치다.
+
+### 루트를 통째로 올린다는 것의 함정
+
+에셋 디렉터리가 `.`이라 **저장소에 있는 모든 파일이 업로드 대상**이다. 두 번 데였다.
+
+- **깨진 심볼릭 링크** — 테스트용 `node_modules` 링크가 `git add -A`에 딸려 들어갔다.
+  `.gitignore`에 `node_modules/`라고 슬래시를 붙여둔 게 화근이었다. 슬래시가 붙으면
+  디렉터리만 걸러 심볼릭 링크는 그냥 통과한다. 지금은 슬래시 없이 `node_modules`.
+- **빌드가 만드는 `node_modules`** — `package.json`이 생기자 빌드가 `bun install`을 돌리고
+  `npx wrangler deploy`가 wrangler를 저장소 안에 설치했다. 그 안의 `workerd` 바이너리가
+  **144MB**라 25MB 제한에 걸려 배포가 통째로 실패했다
+  (`Read 2398 files from the assets directory` → `Asset too large`).
+
+그래서 **올리지 않을 것은 `.assetsignore`에 적는다.** 지금은 66개 · 3.1MB만 올라간다.
+`wrangler.jsonc`를 둔 것도 같은 이유다 — 이 파일이 없으면 wrangler가 배포할 때마다
+설정을 스스로 만들며 자기 자신을 저장소에 설치한다.
+
+무엇이 올라갈지는 `Deployments` 탭의 빌드 로그에서 `Read N files from the assets directory`로
+확인한다. 이 숫자가 갑자기 커졌으면 `.assetsignore`가 새는 것이다.
 
 ### 링크 미리보기(OG) 주의
 
