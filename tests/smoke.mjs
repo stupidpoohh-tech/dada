@@ -298,6 +298,66 @@ head('데이터 단일 소스');
   await p.close();
 }
 
+/* ── 8. /list 정적 페이지 ──────────────────────────────────
+   마을은 JS로 그려져 크롤러에게는 빈 페이지다. 이 페이지가 유일하게
+   기계가 읽는 통로이므로, services.json과 어긋나면 바로 잡아야 한다.
+   손으로 고칠 수 있는 파일이 아니라 `python3 tools/build_list.py`의 산출물이다. */
+head('/list 정적 페이지');
+{
+  const p = await desktop();
+  const res = await p.goto(BASE + '/list.html', { waitUntil: 'load' });
+  ok(res && res.ok(), 'list.html이 열린다');
+
+  const data = await p.evaluate(() => fetch('/services.json').then((r) => r.json()));
+
+  // JS 없이도 읽혀야 의미가 있다 — 소스 HTML 자체를 본다
+  const src = await res.text();
+  const missing = data.items.filter((i) =>
+    !src.includes(i.name) || !src.includes(i.description));
+  ok(missing.length === 0, '모든 항목의 이름과 설명이 HTML에 박혀 있다',
+    missing.map((i) => i.id).join(', ') + ' 빠짐 → tools/build_list.py를 다시 돌리세요');
+
+  ok(src.includes(data.profile.name) && src.includes(data.profile.email),
+    '약력과 연락처도 HTML에 있다');
+
+  const heads = await p.evaluate(() =>
+    [...document.querySelectorAll('.doc-item h3')].length);
+  ok(heads === data.items.length + 1, `항목 수가 맞다 (${heads - 1} / ${data.items.length})`);
+
+  // 링크가 전부 살아 있는가
+  const dead = await p.evaluate(() =>
+    [...document.querySelectorAll('.doc-item h3 a')]
+      .map((a) => a.getAttribute('href'))
+      .filter((h) => !h || h === '#' || h === '/'));
+  ok(dead.length === 0, '죽은 링크가 없다', dead.join(', '));
+
+  // 마을에서 이 페이지로 가는 길
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(500);
+  await p.click('#openList'); await p.waitForTimeout(400);
+  ok(await p.locator('.modal-foot a').count() === 1, '목록 모달에서 이 페이지로 가는 링크가 있다');
+  await p.close();
+}
+
+/* ── 9. 크롤러가 보는 것 ───────────────────────────────────
+   JS를 끈 상태가 곧 검색엔진이 보는 화면이다. */
+head('크롤러 시점');
+{
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const p = await ctx.newPage();
+  await p.goto(BASE + '/list.html', { waitUntil: 'load' });
+  const text = (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
+  ok(text.length > 800, `JS 없이도 본문이 충분하다 (${text.length}자)`);
+  ok(/고교 영문법 65/.test(text) && /잔고캘린더/.test(text), 'JS 없이 항목 이름이 보인다');
+
+  const r = await p.goto(BASE + '/robots.txt', { waitUntil: 'load' });
+  ok(r && r.ok() && (await r.text()).includes('Sitemap:'), 'robots.txt가 sitemap을 가리킨다');
+  const s = await p.goto(BASE + '/sitemap.xml', { waitUntil: 'load' });
+  const xml = s ? await s.text() : '';
+  ok(s && s.ok() && xml.includes('/list.html'), 'sitemap에 list.html이 있다');
+  await ctx.close();
+}
+
 /* ── 마무리 ─────────────────────────────────────────────── */
 head('JS 오류');
 ok(errors.length === 0, '콘솔 오류 없음', errors.slice(0, 3).join(' / '));

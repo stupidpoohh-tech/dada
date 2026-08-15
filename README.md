@@ -8,6 +8,9 @@
 
 ```
 index.html          마을 페이지
+list.html           작업물 전체 목록 (생성물 — 직접 고치지 않는다)
+sitemap.xml         (생성물)
+robots.txt          (생성물)
 styles.css
 app.js
 services.json       수록 항목 단일 소스 — 여기만 고치면 지도와 모달이 함께 바뀐다
@@ -18,7 +21,8 @@ assets/
   map/mask-*.png    건물 실루엣 마스크
   sprites/cut/      잘라낸 스프라이트 22개 — 실제로 쓰는 것
 tools/cut_sprites.py  시트에서 스프라이트를 잘라내고 배경을 투명 처리
-tests/smoke.mjs       회귀 테스트 41개 (npm test)
+tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
+tests/smoke.mjs       회귀 테스트 51개 (npm test)
 ```
 
 편집용 원본(원본 지도·스프라이트 시트)은 저장소에 두지 않는다 — 아래 「편집용 원본」 참고.
@@ -39,12 +43,29 @@ npm run serve &      # 8000번 포트로 띄운 뒤
 npm test
 ```
 
-`tests/smoke.mjs`의 41개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
+`tests/smoke.mjs`의 51개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
 만든 게 아니라 "또 이럴까 봐" 남긴 목록이니, 새 버그를 잡으면 여기에 한 줄 더한다.
 지금 지키고 있는 것 — 두 책이 서로의 설정을 물고 오지 않기, 목록 카드가 빈 해시를 물지 않기,
 캐릭터 판정이 흔들리지 않고 64px을 넘기, 여닫고 호버한 뒤에도 마을이 한 박자이기,
 터치에서 건물이 얼어붙지 않기, 안내가 닫은 뒤 돌아오고 대비가 AA를 넘기,
-책이 건물에서 출발해 끊김 없이 날아오기, 화면이 `services.json`과 어긋나지 않기.
+책이 건물에서 출발해 끊김 없이 날아오기, 화면과 `list.html`이 `services.json`과 어긋나지 않기.
+
+## 작업물 전체 목록 (`/list.html`)
+
+**마을은 JS로 그려지므로 크롤러와 스크린리더에게는 빈 페이지다.** 실제로 재보면 JS를 끈
+`index.html`의 본문은 74자이고 항목 이름이 하나도 없다 — 검색으로 이 사이트에 닿을 길이 없다는 뜻이다.
+링크드인 대체를 노리는 사이트에서 이건 치명적이라, 같은 데이터를 **HTML에 그대로 박은**
+정적 페이지를 하나 둔다 (같은 조건에서 1,500자, 항목 이름·설명·약력·연락처가 전부 읽힌다).
+
+**마을은 경험, `/list`는 정보.** 예쁠 필요 없고 읽히면 된다.
+
+```
+python3 tools/build_list.py
+```
+
+`services.json`을 고칠 때마다 함께 돌린다. 빌드 과정이 없는 사이트라 손으로 돌리는 대신,
+**`npm test`가 어긋남을 잡는다** — 어느 항목이 빠졌는지와 이 명령을 다시 돌리라는 안내까지 나온다.
+`sitemap.xml`·`robots.txt`도 같이 만들어지고, 목록 모달 하단에서 이 페이지로 가는 링크가 붙는다.
 
 ## 편집용 원본
 
@@ -62,26 +83,29 @@ git show 86bfa0a:assets/map/town.jpg > assets/map/town.jpg
 
 ## 항목 추가하기
 
-`services.json`의 `items`에 한 덩어리를 넣으면 끝. 지도 팝오버와 목록 모달에 자동으로 반영된다.
+`services.json`의 `items`에 한 덩어리를 넣고 **`python3 tools/build_list.py`를 돌린다.**
+지도 팝오버와 목록 모달은 JSON을 직접 읽으므로 자동으로 바뀌지만, `list.html`은 생성물이라
+다시 만들어야 한다. 잊어도 `npm test`가 어느 항목이 빠졌는지 짚어준다.
 
 ```json
 {
-  "id": "balance-calendar",
-  "name": "잔고 캘린더",
-  "district": "bank",
+  "id": "grammar",
+  "name": "고교 영문법 65",
+  "district": "school",
   "type": "app",
-  "url": "https://...",
-  "description": "무엇을 어떻게 보는지 한 문장으로.",
-  "icon": "📅",
+  "url": "https://dada-grammar.pages.dev/",
+  "description": "시제부터 준동사까지, 고등 영문법 전 범위를 챕터별 개념과 퀴즈로 정리했습니다.",
+  "icon": "📘",
   "status": "live"
 }
 ```
 
 - `district` — `museum · school · seonggyungwan · park · company · cafe · bank · house · me`
 - `type` — `app`(새 탭) · `doc`(내부 페이지) · `video` · `external`
-- `group` — 항목이 많은 구역에서 소제목으로 묶을 때 (예: 학교의 `교실` / `강당`)
+- `group` — 한 구역 안에서 소제목으로 나눌 때. 나눌 게 없으면 안 쓴다
 - `status` — `live` · `beta` · `demo`
-- 설명은 **가치 중심 한 문장**: `{무엇을} {어떻게} {본다/한다}`
+- **설명은 만든 사람이 직접 쓴다.** 방문자가 그 작업물에 대해 읽는 유일한 문장이라
+  그럴듯하게 지어낸 문장을 두면 신뢰가 깎인다. 두세 문장까지 괜찮다
 
 ## 움직임(애니메이션)
 

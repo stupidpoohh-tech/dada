@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""services.json으로 list.html·sitemap.xml을 만든다.
+
+마을은 JS로 그려지므로 크롤러와 스크린리더에게는 빈 페이지다 (본문 74자, 항목
+이름이 하나도 없다). 검색으로 이 사이트에 닿을 길이 없고, 링크드인 대체를
+노리는 사이트에서 그건 치명적이다. 그래서 같은 데이터를 **HTML에 그대로 박은**
+정적 페이지를 하나 둔다. 마을은 경험, /list는 정보로 역할이 갈린다.
+
+빌드 과정이 없는 사이트라 이 스크립트는 손으로 돌린다.
+`services.json`을 고쳤으면 함께 돌리고, 안 돌리면 `npm test`가 어긋남을 잡는다.
+
+    python3 tools/build_list.py
+"""
+import html
+import json
+import pathlib
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+data = json.loads((ROOT / 'services.json').read_text(encoding='utf-8'))
+
+SITE = data['site']['url'].rstrip('/')
+TYPE_LABEL = {'app': '앱', 'doc': '문서', 'video': '영상', 'external': '외부'}
+STATUS_LABEL = {'beta': '베타', 'demo': 'demo'}
+
+e = html.escape
+
+
+def href(item):
+    """책은 지도 위 팝업으로 열리므로 첫 화면의 해시를 가리킨다."""
+    if item.get('open') == 'book':
+        return '/#' + item['book']['hash']
+    return item.get('url') or item.get('route') or '/'
+
+
+def item_html(item):
+    ext = item['type'] in ('app', 'external')
+    attrs = ' target="_blank" rel="noopener"' if ext else ''
+    badges = [f'<span class="badge">{e(TYPE_LABEL.get(item["type"], item["type"]))}</span>']
+    if item.get('status') in STATUS_LABEL:
+        badges.append(f'<span class="badge {item["status"]}">{e(STATUS_LABEL[item["status"]])}</span>')
+    return f'''      <article class="doc-item">
+        <h3><a href="{e(href(item))}"{attrs}>{e(item['icon'])} {e(item['name'])}</a>
+          {' '.join(badges)}</h3>
+        <p>{e(item['description'])}</p>
+      </article>'''
+
+
+sections = []
+for d in data['districts']:
+    items = [i for i in data['items'] if i['district'] == d['id']]
+    if not items:
+        continue
+    sections.append(
+        f'''    <section class="doc-group" aria-labelledby="g-{d['id']}">
+      <h2 id="g-{d['id']}">{e(d['icon'])} {e(d['name'])} <span class="doc-count">{len(items)}</span></h2>
+{chr(10).join(item_html(i) for i in items)}
+    </section>''')
+
+p = data['profile']
+career = '\n'.join(
+    f'        <li><strong>{e(c["role"])}</strong> — {e(c["org"])} · {e(c["period"])}</li>'
+    for c in p.get('career', []))
+edu = '\n'.join(
+    f'        <li><strong>{e(x["org"])}</strong> — {e(x["detail"])} · {e(x["period"])}</li>'
+    for x in p.get('education', []))
+
+total = len(data['items'])
+desc = (f'{p["name"]}이 만든 작업물 {total}가지를 한 목록으로. '
+        + ' · '.join(i['name'] for i in data['items'][:5]) + ' 등.')
+
+page = f'''<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>작업물 전체 목록 — DADA TOWN</title>
+<meta name="description" content="{e(desc)}">
+<link rel="canonical" href="{SITE}/list.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="작업물 전체 목록 — DADA TOWN">
+<meta property="og:description" content="{e(desc)}">
+<meta property="og:url" content="{SITE}/list.html">
+<meta property="og:image" content="{SITE}/assets/map/town-web.jpg">
+<meta property="og:site_name" content="DADA TOWN">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏘️</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <h1 class="wordmark"><a href="/">DADA TOWN</a></h1>
+    <p class="tagline">{e(data['site']['tagline'])}</p>
+  </div>
+</header>
+
+<main class="doc">
+  <p class="doc-back"><a href="/">← 마을 지도로 돌아가기</a></p>
+
+  <p class="doc-lead">{e(p['name'])}이 만든 것들의 전체 목록입니다. 모두 {total}가지.
+    지도에서 건물을 눌러 둘러볼 수도 있습니다.</p>
+
+{chr(10).join(sections)}
+
+    <section class="doc-group" aria-labelledby="g-me">
+      <h2 id="g-me">🙋 나</h2>
+      <article class="doc-item">
+        <h3>{e(p['name'])}</h3>
+        <p>{e(p['tagline'])}</p>
+      </article>
+      <h3 class="doc-sub">경력</h3>
+      <ul class="doc-list">
+{career}
+      </ul>
+      <h3 class="doc-sub">학력</h3>
+      <ul class="doc-list">
+{edu}
+      </ul>
+      <p class="doc-contact"><a href="mailto:{e(p['email'])}">{e(p['email'])}</a></p>
+    </section>
+</main>
+
+<footer class="site-footer">
+  <p class="foot-name">{e(p['tagline'])}</p>
+  <p class="foot-contact"><a href="mailto:{e(p['email'])}">{e(p['email'])}</a></p>
+</footer>
+
+</body>
+</html>
+'''
+
+(ROOT / 'list.html').write_text(page, encoding='utf-8')
+
+sitemap = f'''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>{SITE}/</loc><priority>1.0</priority></url>
+  <url><loc>{SITE}/list.html</loc><priority>0.8</priority></url>
+</urlset>
+'''
+(ROOT / 'sitemap.xml').write_text(sitemap, encoding='utf-8')
+
+(ROOT / 'robots.txt').write_text(
+    f'User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n', encoding='utf-8')
+
+print(f'list.html · sitemap.xml · robots.txt 생성 — 항목 {total}개')
