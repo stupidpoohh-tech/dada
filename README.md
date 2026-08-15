@@ -84,6 +84,7 @@ git show 86bfa0a:assets/map/town.jpg > assets/map/town.jpg
 ## 항목 추가하기
 
 `services.json`의 `items`에 한 덩어리를 넣고 **`python3 tools/build_list.py`를 돌린다.**
+설명에 줄바꿈(`\n`)을 넣으면 카드에서도 `/list`에서도 줄이 나뉜다 (잔고캘린더의 `+` 줄).
 지도 팝오버와 목록 모달은 JSON을 직접 읽으므로 자동으로 바뀌지만, `list.html`은 생성물이라
 다시 만들어야 한다. 잊어도 `npm test`가 어느 항목이 빠졌는지 짚어준다.
 
@@ -94,7 +95,8 @@ git show 86bfa0a:assets/map/town.jpg > assets/map/town.jpg
   "district": "school",
   "type": "app",
   "url": "https://dada-grammar.pages.dev/",
-  "description": "시제부터 준동사까지, 고등 영문법 전 범위를 챕터별 개념과 퀴즈로 정리했습니다.",
+  "description": "고등 영문법 전 범위를 개념과 퀴즈로 정리했습니다.",
+  "date": "2026-05",
   "icon": "📘",
   "status": "live"
 }
@@ -102,6 +104,9 @@ git show 86bfa0a:assets/map/town.jpg > assets/map/town.jpg
 
 - `district` — `museum · school · seonggyungwan · park · company · cafe · bank · house · me`
 - `type` — `app`(새 탭) · `doc`(내부 페이지) · `video` · `external`
+- `date` — **만든 시기 `YYYY-MM`. 빠뜨리면 `npm test`가 잡는다.**
+  목록 모달의 「지어진 순서」 보기와 카드 위 작은 연월이 이 값으로 그려진다.
+  화면에는 `26.05`로 짧게 나오지만 정렬을 위해 데이터는 네 자리 연도로 둔다
 - `group` — 한 구역 안에서 소제목으로 나눌 때. 나눌 게 없으면 안 쓴다
 - `status` — `live` · `beta` · `demo`
 - **설명은 만든 사람이 직접 쓴다.** 방문자가 그 작업물에 대해 읽는 유일한 문장이라

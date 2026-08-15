@@ -12,6 +12,7 @@
     python3 tools/build_list.py
 """
 import html
+import itertools
 import json
 import pathlib
 
@@ -32,16 +33,30 @@ def href(item):
     return item.get('url') or item.get('route') or '/'
 
 
+def short_date(s):
+    """데이터는 정렬되게 `2026-05`로 두고, 보이는 곳에서만 짧게 쓴다."""
+    return s[2:].replace('-', '.')
+
+
+def month_label(s):
+    return f'{s[:4]}년 {int(s[5:7])}월'
+
+
 def item_html(item):
     ext = item['type'] in ('app', 'external')
     attrs = ' target="_blank" rel="noopener"' if ext else ''
     badges = [f'<span class="badge">{e(TYPE_LABEL.get(item["type"], item["type"]))}</span>']
     if item.get('status') in STATUS_LABEL:
         badges.append(f'<span class="badge {item["status"]}">{e(STATUS_LABEL[item["status"]])}</span>')
+    if item.get('date'):
+        badges.append(f'<time class="doc-date" datetime="{e(item["date"])}">'
+                      f'{e(short_date(item["date"]))}</time>')
+    # 설명에 줄바꿈이 든 항목이 있다 (잔고캘린더의 `+` 줄)
+    desc = '<br>'.join(e(line) for line in item['description'].split('\n'))
     return f'''      <article class="doc-item">
         <h3><a href="{e(href(item))}"{attrs}>{e(item['icon'])} {e(item['name'])}</a>
           {' '.join(badges)}</h3>
-        <p>{e(item['description'])}</p>
+        <p>{desc}</p>
       </article>'''
 
 
@@ -55,6 +70,23 @@ for d in data['districts']:
       <h2 id="g-{d['id']}">{e(d['icon'])} {e(d['name'])} <span class="doc-count">{len(items)}</span></h2>
 {chr(10).join(item_html(i) for i in items)}
     </section>''')
+
+# 지어진 순서 — 모달의 「지어진 순서」 보기와 같은 것을 크롤러·스크린리더에게도 준다.
+# 설명은 위 구역별 목록에 이미 있으므로 여기서는 이름과 시기만 둔다.
+dated = sorted((i for i in data['items'] if i.get('date')), key=lambda i: i['date'])
+blocks = []
+for month, group in itertools.groupby(dated, key=lambda i: i['date']):
+    lis = '\n'.join(
+        '        <li><a href="{}"{}>{} {}</a></li>'.format(
+            e(href(i)),
+            ' target="_blank" rel="noopener"' if i['type'] in ('app', 'external') else '',
+            e(i['icon']), e(i['name']))
+        for i in group)
+    blocks.append(f'      <h3 class="doc-sub">{e(month_label(month))}</h3>\n'
+                  f'      <ul class="doc-list">\n{lis}\n      </ul>')
+timeline = '\n'.join(blocks)
+span = (f'{month_label(dated[0]["date"])}부터 {month_label(dated[-1]["date"])}까지'
+        if dated else '')
 
 p = data['profile']
 career = '\n'.join(
@@ -99,10 +131,15 @@ page = f'''<!doctype html>
 <main class="doc">
   <p class="doc-back"><a href="/">← 마을 지도로 돌아가기</a></p>
 
-  <p class="doc-lead">{e(p['name'])}이 만든 것들의 전체 목록입니다. 모두 {total}가지.
+  <p class="doc-lead">{e(p['name'])}이 만든 것들의 전체 목록입니다. 모두 {total}가지, {e(span)}.
     지도에서 건물을 눌러 둘러볼 수도 있습니다.</p>
 
 {chr(10).join(sections)}
+
+    <section class="doc-group" aria-labelledby="g-time">
+      <h2 id="g-time">🧱 지어진 순서</h2>
+{timeline}
+    </section>
 
     <section class="doc-group" aria-labelledby="g-me">
       <h2 id="g-me">🙋 나</h2>

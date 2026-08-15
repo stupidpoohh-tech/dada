@@ -57,6 +57,9 @@
     return n;
   };
   const pct = (v) => v + '%';
+  /** 만든 시기. 데이터는 정렬되게 `2026-05`로 두고, 보이는 곳에서만 짧게 쓴다. */
+  const shortDate = (s) => s.slice(2).replace('-', '.');
+  const monthLabel = (s) => (s ? `${s.slice(0, 4)}년 ${+s.slice(5, 7)}월` : '시기 미상');
 
   let data, byDistrict, openId = null, lastSpot = null;
   const pops = [];
@@ -359,6 +362,8 @@
     a.appendChild(el('span', 'card-ico', item.icon || '📦'));
 
     const body = el('div', 'card-body');
+    // 시기는 이름 줄에 같이 두면 이름이 길 때 혼자 다음 줄로 떨어진다. 위에 얹는다.
+    if (item.date) body.appendChild(el('div', 'card-date', shortDate(item.date)));
     const name = el('div', 'card-name');
     name.append(item.name);
     if (STATUS_LABEL[item.status]) {
@@ -744,30 +749,74 @@
   const bookOf = (item) => books.find((b) => b.id === item.id);
   /* ── 전체 목록 (모달 + 정적 페이지) ──────── */
 
-  let filter = 'all', query = '';
+  let filter = 'all', query = '', view = 'district';
+
+  /** 검색어와 타입 필터를 통과한 항목. 두 보기가 같은 결과를 나눠 쓴다. */
+  function visibleItems() {
+    const q = query.trim().toLowerCase();
+    return data.items.filter((i) => {
+      if (filter !== 'all' && i.type !== filter) return false;
+      return !q || (i.name + ' ' + (i.description || '')).toLowerCase().includes(q);
+    });
+  }
 
   function renderModalList() {
     const body = $('modalBody');
     body.textContent = '';
-    const q = query.trim().toLowerCase();
-    let shown = 0;
+    const items = visibleItems();
+
+    if (!items.length) {
+      body.appendChild(el('p', 'no-result', '찾는 것이 없어요.'));
+      return;
+    }
+
+    if (view === 'time') return renderByTime(body, items);
 
     data.districts.forEach((d) => {
-      let items = byDistrict[d.id] || [];
-      if (filter !== 'all') items = items.filter((i) => i.type === filter);
-      if (q) {
-        items = items.filter((i) =>
-          (i.name + ' ' + (i.description || '')).toLowerCase().includes(q));
-      }
-      if (!items.length) return;
-      shown += items.length;
+      const list = items.filter((i) => i.district === d.id);
+      if (!list.length) return;
       body.appendChild(el('div', 'group-title', `${d.icon} ${d.name}`));
       const grid = el('div', 'cards');
-      items.forEach((i) => grid.appendChild(card(i)));
+      list.forEach((i) => grid.appendChild(card(i)));
       body.appendChild(grid);
     });
+  }
 
-    if (!shown) body.appendChild(el('p', 'no-result', '찾는 것이 없어요.'));
+  /** 지어진 순서 — 오래된 것부터 달 단위로 묶는다.
+   *  달마다 몇 개가 놓였는지가 그대로 보이므로, 뒤로 갈수록 촘촘해지는 것을
+   *  문장으로 주장하지 않고 목록의 모양으로 보여준다. 날짜가 없는 항목은 끝에 모은다. */
+  function renderByTime(body, items) {
+    const sorted = items.slice().sort((a, b) =>
+      (a.date || '9999').localeCompare(b.date || '9999'));
+    let month, grid;
+    sorted.forEach((i) => {
+      const key = i.date || '';
+      if (key !== month) {
+        month = key;
+        body.appendChild(el('div', 'group-title', monthLabel(key)));
+        grid = el('div', 'cards by-time');
+        body.appendChild(grid);
+      }
+      grid.appendChild(card(i));
+    });
+  }
+
+  /** 보기 전환 — 구역별(어디에 있나) / 지어진 순서(언제 만들었나) */
+  function makeViews() {
+    const defs = [['district', '구역별'], ['time', '지어진 순서']];
+    const wrap = $('views');
+    defs.forEach(([key, label]) => {
+      const b = el('button', 'view-btn', label);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(key === view));
+      b.addEventListener('click', () => {
+        view = key;
+        wrap.querySelectorAll('.view-btn').forEach((c) =>
+          c.setAttribute('aria-pressed', String(c === b)));
+        renderModalList();
+      });
+      wrap.appendChild(b);
+    });
   }
 
   function makeChips() {
@@ -895,6 +944,7 @@
     syncPops();
     syncIdle();
     if (!$('mapImg').complete) $('mapImg').addEventListener('load', syncPops, { once: true });
+    makeViews();
     makeChips();
     renderModalList();
     initPicks();

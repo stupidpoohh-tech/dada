@@ -295,6 +295,21 @@ head('데이터 단일 소스');
     if (label !== want) ok(false, `${d.name} 구역 라벨`, `${label} ≠ ${want}`);
   }
   ok(true, '구역 라벨이 전부 데이터와 맞다');
+
+  // 「지어진 순서」 — 속도가 이 사이트의 주장 중 하나라 날짜가 빠지면 주장이 무너진다
+  const undated = data.items.filter((i) => !/^\d{4}-\d{2}$/.test(i.date || ''));
+  ok(undated.length === 0, '모든 항목에 만든 시기(YYYY-MM)가 있다',
+    undated.map((i) => i.id).join(', ') + ' 빠짐');
+
+  await p.click('#views .view-btn:nth-child(2)'); await p.waitForTimeout(200);
+  const dates = await p.evaluate(() =>
+    [...document.querySelectorAll('#modalBody .card-date')].map((n) => n.textContent));
+  ok(dates.length === data.items.length, `지어진 순서에 전부 나온다 (${dates.length} / ${data.items.length})`);
+  ok(dates.every((d, n) => n === 0 || dates[n - 1] <= d), '오래된 것부터 차례로 놓인다');
+
+  const months = await p.evaluate(() =>
+    [...document.querySelectorAll('#modalBody .group-title')].length);
+  ok(months === new Set(data.items.map((i) => i.date)).size, `달 묶음 수가 맞다 (${months})`);
   await p.close();
 }
 
@@ -312,13 +327,20 @@ head('/list 정적 페이지');
 
   // JS 없이도 읽혀야 의미가 있다 — 소스 HTML 자체를 본다
   const src = await res.text();
+  // 줄바꿈이 든 설명은 `<br>`로 나뉘어 박히므로 줄 단위로 견준다
   const missing = data.items.filter((i) =>
-    !src.includes(i.name) || !src.includes(i.description));
+    !src.includes(i.name) || i.description.split('\n').some((line) => !src.includes(line)));
   ok(missing.length === 0, '모든 항목의 이름과 설명이 HTML에 박혀 있다',
     missing.map((i) => i.id).join(', ') + ' 빠짐 → tools/build_list.py를 다시 돌리세요');
 
   ok(src.includes(data.profile.name) && src.includes(data.profile.email),
     '약력과 연락처도 HTML에 있다');
+
+  // 모달의 「지어진 순서」와 같은 것을 크롤러·스크린리더도 읽을 수 있어야 한다
+  const timeline = src.slice(src.indexOf('id="g-time"'), src.indexOf('id="g-me"'));
+  const noTime = data.items.filter((i) => !timeline.includes(i.name));
+  ok(src.includes('id="g-time"') && noTime.length === 0,
+    '지어진 순서 섹션에 항목이 전부 있다', noTime.map((i) => i.id).join(', ') + ' 빠짐');
 
   const heads = await p.evaluate(() =>
     [...document.querySelectorAll('.doc-item h3')].length);
