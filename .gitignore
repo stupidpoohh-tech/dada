@@ -5,5 +5,7 @@ assets/map/town.jpg
 assets/sprites/*.png
 !assets/sprites/cut/
 
-# 회귀 테스트 의존성
-node_modules/
+# 회귀 테스트 의존성.
+# 슬래시를 붙이면 디렉터리만 잡아 심볼릭 링크를 놓친다 — 실제로 그렇게 들어가
+# 배포가 막혔다 (빌드 머신에 없는 경로를 가리키는 깨진 링크였다).
+node_modules
