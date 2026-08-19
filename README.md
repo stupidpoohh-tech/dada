@@ -9,7 +9,7 @@
 ```
 index.html          마을 페이지
 list.html           작업물 전체 목록 (생성물 — 직접 고치지 않는다)
-game/               게임 안내서 — 원본 슬라이드 46면 + 챕터 네비게이션 (독립 페이지)
+game/               게임 안내서 — 원본 슬라이드 46면. 챕터마다 따로 놓인 카드 뭉치 일곱
 sitemap.xml         (생성물)
 robots.txt          (생성물)
 styles.css
@@ -23,7 +23,7 @@ assets/
   sprites/cut/      잘라낸 스프라이트 22개 — 실제로 쓰는 것
 tools/cut_sprites.py  시트에서 스프라이트를 잘라내고 배경을 투명 처리
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
-tests/smoke.mjs       회귀 테스트 65개 (npm test)
+tests/smoke.mjs       회귀 테스트 72개 (npm test)
 ```
 
 편집용 원본(원본 지도·스프라이트 시트)은 저장소에 두지 않는다 — 아래 「편집용 원본」 참고.
@@ -44,7 +44,7 @@ npm run serve &      # 8000번 포트로 띄운 뒤
 npm test
 ```
 
-`tests/smoke.mjs`의 65개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
+`tests/smoke.mjs`의 72개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
 만든 게 아니라 "또 이럴까 봐" 남긴 목록이니, 새 버그를 잡으면 여기에 한 줄 더한다.
 지금 지키고 있는 것 — 두 책이 서로의 설정을 물고 오지 않기, 목록 카드가 빈 해시를 물지 않기,
 캐릭터 판정이 흔들리지 않고 64px을 넘기, 여닫고 호버한 뒤에도 마을이 한 박자이기,

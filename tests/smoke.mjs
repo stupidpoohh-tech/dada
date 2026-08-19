@@ -421,10 +421,12 @@ head('크롤러 시점');
 }
 
 /* ── 10. 게임 안내서 (/game/) ──────────────────────────────
-   깨진 적 있음: 간지 카드를 position: sticky로 두고 그것을 그대로 스냅 대상으로
+   깨진 적 있음 ①: 간지 카드를 position: sticky로 두고 그것을 그대로 스냅 대상으로
    삼았더니, 붙어 있는 동안 스냅 위치가 스크롤을 따라 움직여 mandatory 스냅이
    엉뚱한 면으로 끌어당겼다. 챕터 1을 눌렀는데 목차로 가는 식이었다.
-   지금은 붙는 것(.chapter-bg)과 걸리는 것(.card--divider)을 갈라 두었다. */
+   깨진 적 있음 ②: 46면을 한 줄로 이어 두고 챕터 이동을 smooth 스크롤로 했더니
+   사이의 스무 장이 전부 지나가느라 화면이 파바박 튀었다. 지금은 챕터마다 따로
+   놓인 카드 뭉치라, 한 번에 한 뭉치만 화면에 올라간다. */
 head('게임 안내서');
 {
   const p = await desktop();
@@ -433,59 +435,25 @@ head('게임 안내서');
 
   const data = await p.evaluate(() => fetch('data.json').then((r) => r.json()));
   const gates = data.chapters.filter((c) => c.gate).length;
-  //   표지·목차(2) + 챕터마다 간지 1 + 게임 n + 문(1·2·3·4 뒤에만) + 부록·엔딩(2)
-  const want = 2 + data.chapters.length
-    + data.chapters.reduce((n, c) => n + c.pages.length, 0) + gates + 2;
-  const seen = await p.evaluate(() => document.querySelectorAll('.card').length);
-  ok(seen === want, `카드 수가 데이터와 맞다 (${seen} / ${want})`);
+
+  // 목차에서 시작한다 — 첫 화면은 37편의 리스트가 아니라 챕터를 고르는 화면이다
+  ok(await p.locator('.toc-hit').count() === 5, '목차 히트 영역이 다섯이다');
 
   // 42는 다섯 번째 챕터가 아니다 — 순번을 다시 매기지 않았는지 본다
   const labels = await p.evaluate(() =>
     [...document.querySelectorAll('.chip')].map((b) => b.firstChild.textContent.trim()));
   ok(labels.join(',') === '1,2,3,4,42', `챕터 번호가 1·2·3·4·42다 (${labels.join(',')})`);
 
-  // 문은 1·2·3·4 뒤에만. 42 뒤에는 붙이지 않는다
-  const gateIn42 = await p.evaluate(() =>
-    document.querySelectorAll('#ch42 .card--gate').length);
-  ok(gateIn42 === 0, '챕터 42 뒤에는 문이 없다');
-  ok(await p.evaluate(() => document.querySelectorAll('.card--gate').length) === gates,
-    `문이 ${gates}개다`);
-
-  // 간지는 스냅 대상이되 스티키가 아니어야 한다
-  const pos = await p.evaluate(() => ({
-    divider: getComputedStyle(document.querySelector('.card--divider')).position,
-    bg: getComputedStyle(document.querySelector('.chapter-bg')).position,
-  }));
-  ok(pos.divider !== 'sticky' && pos.bg === 'sticky',
-    '붙는 것과 걸리는 것이 갈려 있다', JSON.stringify(pos));
-
-  // 챕터를 누르면 그 간지에 정확히 선다 — 위 버그가 나면 여기서 걸린다
-  for (const ch of data.chapters) {
-    await p.click(`.chip[data-chapter="${ch.id}"]`);
-    await p.waitForTimeout(1500);
-    const hit = await p.evaluate((id) => {
-      const d = document.getElementById('deck');
-      return Math.abs(d.scrollTop - document.getElementById(id).offsetTop) < 2;
-    }, ch.id);
-    if (!hit) { ok(false, `챕터 ${ch.label}을 누르면 그 간지로 간다`); break; }
-    const cur = await p.evaluate(() =>
-      document.querySelector('.chip[aria-current="true"]')?.dataset.chapter);
-    if (cur !== ch.id) { ok(false, `챕터 ${ch.label}이 바에 표시된다`, String(cur)); break; }
-  }
-  ok(true, '챕터마다 간지로 정확히 서고 바에 표시된다');
-
   // 4와 42 사이 간격이 다른 간격의 3배를 넘는가 — 이 페이지의 시그니처다
   const gap = await p.evaluate(() => {
     const chips = [...document.querySelectorAll('.chip')].map((b) => b.getBoundingClientRect());
-    const wide = chips[4].left - chips[3].right;
-    const norm = Math.min(chips[1].left - chips[0].right, chips[2].left - chips[1].right);
-    return { wide: Math.round(wide), norm: Math.round(norm) };
+    return { wide: Math.round(chips[4].left - chips[3].right),
+             norm: Math.round(Math.min(chips[1].left - chips[0].right,
+                                       chips[2].left - chips[1].right)) };
   });
   ok(gap.wide >= gap.norm * 3, `4와 42 사이가 넉넉히 벌어져 있다 (${gap.wide}px vs ${gap.norm}px)`);
 
   // 목차 히트 영역이 원본 이미지의 글자 행과 맞는가 (실측 28.5/40.8/53.4/65.6/80.0%)
-  await p.evaluate(() => { document.getElementById('deck').scrollTop = 0; });
-  await p.waitForTimeout(400);
   const rows = await p.evaluate(() => {
     const img = document.querySelector('.toc-frame img').getBoundingClientRect();
     return [...document.querySelectorAll('.toc-hit')].map((h) => {
@@ -496,6 +464,55 @@ head('게임 안내서');
   const wantRows = [28.5, 40.8, 53.4, 65.6, 80.0];
   const worst = Math.max(...rows.map((v, i) => Math.abs(v - wantRows[i])));
   ok(worst < 1.5, `목차 히트 영역이 글자 행에 맞는다 (최대 ${worst.toFixed(1)}%p 어긋남)`);
+
+  // 챕터마다 따로 놓인 뭉치다. 누르면 그 뭉치만 올라오고 간지가 첫 장이다.
+  let total = 2;                                    // 표지·목차
+  for (const ch of data.chapters) {
+    await p.click(`.chip[data-chapter="${ch.id}"]`);
+    await p.waitForTimeout(450);
+    const st = await p.evaluate(() => ({
+      cards: document.querySelectorAll('.card').length,
+      first: document.querySelector('.card').className,
+      top: Math.round(document.getElementById('deck').scrollTop),
+      cur: document.querySelector('.chip[aria-current="true"]')?.dataset.chapter,
+      bgs: document.querySelectorAll('.chapter-bg').length,
+    }));
+    const want = 1 + ch.pages.length + (ch.gate ? 1 : 0);
+    if (st.cards !== want || st.top !== 0 || st.cur !== ch.id
+        || !st.first.includes('card--divider') || st.bgs !== 1) {
+      ok(false, `챕터 ${ch.label} 뭉치가 홀로 올라온다`, JSON.stringify(st) + ` want=${want}`);
+      break;
+    }
+    total += st.cards;
+  }
+  ok(true, '챕터마다 그 뭉치만 올라오고 간지에서 시작한다');
+  ok(total + 2 === 50, `모든 뭉치를 합치면 46면 + 문 4장 = 50장 (${total + 2})`);
+
+  // 문은 1·2·3·4 뒤에만. 42 뒤에는 붙이지 않는다
+  ok(await p.locator('.card--gate').count() === 0, '챕터 42 뒤에는 문이 없다');
+  await p.click('.chip[data-chapter="ch1"]'); await p.waitForTimeout(400);
+  ok(await p.locator('.card--gate').count() === 1, `문이 챕터마다 하나씩 (총 ${gates}개)`);
+
+  // 간지는 스냅 대상이되 스티키가 아니어야 한다
+  const pos = await p.evaluate(() => ({
+    divider: getComputedStyle(document.querySelector('.card--divider')).position,
+    bg: getComputedStyle(document.querySelector('.chapter-bg')).position,
+  }));
+  ok(pos.divider !== 'sticky' && pos.bg === 'sticky',
+    '붙는 것과 걸리는 것이 갈려 있다', JSON.stringify(pos));
+
+  // 문을 누르면 다음 뭉치로 넘어간다
+  await p.evaluate(() => {
+    const d = document.getElementById('deck');
+    d.style.scrollBehavior = 'auto';
+    d.scrollTop = d.scrollHeight;
+  });
+  await p.waitForTimeout(300);
+  await p.click('.card--gate');
+  await p.waitForTimeout(450);
+  ok(await p.evaluate(() =>
+    document.querySelector('.chip[aria-current="true"]')?.dataset.chapter) === 'ch2',
+    '문을 누르면 다음 챕터 뭉치로 넘어간다');
   await p.close();
 }
 

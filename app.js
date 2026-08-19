@@ -323,8 +323,6 @@
 
     const img = new Image();
     img.src = item.cover;
-    img.className = 'mail-fly';
-    img.alt = '';
     const start = anchor.getBoundingClientRect();
     let done = false;
 
@@ -334,19 +332,48 @@
       // 표지(16:9)가 화면에 contain으로 들어갈 크기에서 출발점으로 되민다
       const vw = innerWidth, vh = innerHeight;
       const W = Math.min(vw, vh * 16 / 9), H = W * 9 / 16;
-      Object.assign(img.style, { width: W + 'px', height: H + 'px',
-        left: (vw - W) / 2 + 'px', top: (vh - H) / 2 + 'px' });
-      document.body.appendChild(img);
       const dx = (start.left + start.width / 2) - vw / 2;
       const dy = (start.top + start.height / 2) - vh / 2;
       const sc = Math.max(start.width / W, 0.04);
+      const box = { width: W + 'px', height: H + 'px',
+                    left: (vw - W) / 2 + 'px', top: (vh - H) / 2 + 'px' };
+
+      // 안내서가 큐카드 뭉치라 한 장이 아니라 여러 장이 챠라라라 쏟아진다.
+      // 뒤 넉 장은 빈 카드다 — 이미지를 더 받지 않고도 뭉치로 읽히고,
+      // 도착 화면(표지)과 겹치는 얼굴이 여럿이면 오히려 어수선하다.
+      // 뒤에서부터 던져 표지가 마지막에 맨 위로 내려앉는다.
+      const FAN = [
+        { rot: -13, dx: -46, dy: 24, delay: 0 },
+        { rot: 9, dx: 40, dy: 18, delay: 45 },
+        { rot: -6, dx: -22, dy: 10, delay: 90 },
+        { rot: 4, dx: 18, dy: 6, delay: 130 },
+      ];
+      const nodes = [];
+      FAN.forEach((f) => {
+        const blank = el('div', 'mail-fly mail-blank');
+        Object.assign(blank.style, box);
+        document.body.appendChild(blank);
+        nodes.push(blank);
+        blank.animate(
+          [{ transform: `translate(${dx}px, ${dy}px) scale(${sc}) rotate(-9deg)`, opacity: 0 },
+           { opacity: 1, offset: .18 },
+           { transform: `translate(${f.dx}px, ${f.dy}px) rotate(${f.rot}deg)`, opacity: 1 }],
+          { duration: 430, delay: f.delay, easing: 'cubic-bezier(.3, .7, .3, 1)', fill: 'both' });
+      });
+
+      img.className = 'mail-fly';
+      img.alt = '';
+      Object.assign(img.style, box);
+      document.body.appendChild(img);
+      nodes.push(img);
       img.animate(
         [{ transform: `translate(${dx}px, ${dy}px) scale(${sc}) rotate(-9deg)`, opacity: 0 },
-         { opacity: 1, offset: .12 },
+         { opacity: 1, offset: .18 },
          { transform: 'none', opacity: 1 }],
-        { duration: 480, easing: 'cubic-bezier(.33, .62, .3, 1)', fill: 'forwards' })
+        { duration: 440, delay: 175, easing: 'cubic-bezier(.3, .7, .3, 1)', fill: 'both' })
         .addEventListener('finish', go);
-      setTimeout(go, 900);               // finish가 안 와도 잠기지 않게
+      setTimeout(go, 1100);              // finish가 안 와도 잠기지 않게
+      void nodes;
     };
 
     if (img.complete && img.naturalWidth) fly();

@@ -375,7 +375,7 @@
       "type": "doc",
       "url": "/game/",
       "cover": "game/pages/01.webp",
-      "description": "오늘의 상태를 고르면 그에 맞는 게임이 나오는 다섯 챕터. 1, 2, 3, 4 다음은 42.",
+      "description": "챕터별 게임 큐레이션",
       "date": "2026-07",
       "icon": "🎮",
       "status": "live",

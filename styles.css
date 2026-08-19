@@ -242,7 +242,9 @@ button, input { font: inherit; color: inherit; }
   80%  { transform: scale(1.18, 1.04); }
   100% { transform: scale(1, 1); }
 }
-/* 우편함에서 날아가는 겉장. 도착 페이지가 이 그림(표지)에서 시작하므로 이어져 보인다 */
+/* 우편함에서 날아가는 카드들. 뒤 넉 장은 빈 카드고 맨 위 한 장이 겉장(표지)이다 —
+   도착 페이지가 그 그림에서 시작하므로 이어져 보인다 */
+.mail-blank { border: 1px solid var(--line); }
 .mail-fly {
   position: fixed;
   z-index: 80;
