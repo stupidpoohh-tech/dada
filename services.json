@@ -183,8 +183,7 @@
         78,
         12,
         14
-      ],
-      "direct": "house-catalog"
+      ]
     },
     {
       "id": "me",
@@ -357,6 +356,19 @@
         "ratio": "449 / 635",
         "flat": true
       }
+    },
+    {
+      "id": "game-guide",
+      "no": 24,
+      "name": "게임을 여행하는 히치하이커를 위한 안내서",
+      "district": "house",
+      "type": "doc",
+      "url": "/game/",
+      "description": "오늘의 상태를 고르면 그에 맞는 게임이 나오는 다섯 챕터. 1, 2, 3, 4 다음은 42.",
+      "date": "2026-07",
+      "icon": "🎮",
+      "status": "live",
+      "needsReview": false
     }
   ]
 }

@@ -171,10 +171,18 @@ page = f'''<!doctype html>
 
 (ROOT / 'list.html').write_text(page, encoding='utf-8')
 
+# 사이트 안에 따로 서 있는 페이지(내부 경로를 가진 항목)도 색인에 넣는다.
+# 게임 안내서처럼 그 자체가 읽을거리인 페이지는 검색으로 닿을 값이 있다.
+inner = sorted({i['url'] for i in data['items']
+                if str(i.get('url', '')).startswith('/')})
+extra = '\n'.join(
+    f'  <url><loc>{SITE}{u}</loc><priority>0.7</priority></url>' for u in inner)
+
 sitemap = f'''<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>{SITE}/</loc><priority>1.0</priority></url>
   <url><loc>{SITE}/list.html</loc><priority>0.8</priority></url>
+{extra}
 </urlset>
 '''
 (ROOT / 'sitemap.xml').write_text(sitemap, encoding='utf-8')

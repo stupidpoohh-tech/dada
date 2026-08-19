@@ -1,0 +1,231 @@
+/* 게임을 여행하는 히치하이커를 위한 안내서
+ *
+ * 원본 슬라이드 46면은 한 픽셀도 고치지 않는다. 이미지를 그대로 깔고 그 위에
+ * 챕터 네비게이션만 얹는다. 그래서 이 파일의 규칙은 전부 「크롬」에 대한 것이다.
+ *
+ * 원본이 흑백 선화 + 파스텔 태그 칩이라 크롬은 색을 더하지 않는다 —
+ * 무채색 두 단계와 종이색 하나뿐이고, 그림자·라운드·그라디언트를 쓰지 않는다.
+ * 과감함은 챕터 바의 `4 ⌇ 42` 간격 한 곳에만 쓴다.
+ */
+
+:root {
+  --paper: #FFFFFF;          /* 원본 슬라이드 바탕과 같은 색 */
+  --ink:   #16181A;
+  --mute:  #8A9096;
+  --line:  #E4E6E8;
+  --hair:  #C4C9CD;          /* 구분 기호 — 옅되 보이기는 해야 한다 */
+  --bar-h: 46px;
+  --card-h: calc(100dvh - var(--bar-h));
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; height: 100%;
+  background: var(--paper); color: var(--ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  font-size: 13px;                       /* 크롬은 12–14px 단일 스케일 */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ── 챕터 바 ─────────────────────────────────────────
+   항상 최상단 고정. 보더는 하단 헤어라인 하나뿐이다. */
+.bar {
+  position: fixed; inset: 0 0 auto 0; z-index: 20;
+  height: var(--bar-h);
+  display: flex; align-items: center; gap: 4px;
+  padding: 0 10px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.bar-home {
+  flex: none; width: 30px; height: 30px;
+  display: grid; place-items: center;
+  color: var(--mute); text-decoration: none; font-size: 15px;
+}
+.bar-home:hover { color: var(--ink); }
+
+/* 숫자들은 가운데. 챕터가 다섯이라 남는 폭이 넉넉하다 */
+.bar-chapters {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  gap: 2px;
+}
+
+.chip {
+  border: 0; background: none; color: var(--mute);
+  font: inherit; font-weight: 600; font-variant-numeric: tabular-nums;
+  padding: 6px 9px; cursor: pointer;
+  border-bottom: 2px solid transparent;   /* 활성 표시는 밑줄 하나로만 */
+  line-height: 1.2; white-space: nowrap;
+}
+.chip:hover { color: var(--ink); }
+.chip[aria-current="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.chip-title { display: none; margin-left: 6px; font-weight: 500; }
+
+/* 이 페이지의 시그니처.
+   42는 다섯 번째 챕터가 아니라 다른 층위의 챕터라 — 『은하수를 여행하는
+   히치하이커를 위한 안내서』의 그 42다 — 4와 42 사이를 다른 간격의 여러 배로
+   벌리고 그 사이에 구분 기호를 둔다. 나머지 UI를 조용하게 두는 이유가 이것이다. */
+.gap {
+  flex: none; color: var(--hair); user-select: none;
+  padding: 0 clamp(18px, 6vw, 54px);      /* 다른 간격(2px)의 열 배 이상 */
+  font-size: 14px; line-height: 1;
+}
+
+/* 42 툴팁 — 한 줄만. 이 문장 이상은 쓰지 않는다 */
+.chip-42 { position: relative; }
+.chip-42 .tip {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  padding: 5px 9px; white-space: nowrap;
+  background: var(--ink); color: var(--paper);
+  font-size: 12px; font-weight: 500;
+  opacity: 0; visibility: hidden; transition: opacity .12s;
+  pointer-events: none;
+}
+.chip-42:hover .tip, .chip-42:focus-visible .tip { opacity: 1; visibility: visible; }
+
+/* ── 덱 · 카드 넘김 스크롤 ────────────────────────────
+   scroll-snap-stop: always가 핵심이다. 없으면 관성 스크롤에서 여러 장이
+   한 번에 지나간다. */
+.deck {
+  position: fixed; inset: var(--bar-h) 0 0 0;
+  overflow-y: scroll; overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+  outline: none;
+}
+.chapter { position: relative; }
+
+.card {
+  position: relative; z-index: 1;
+  height: var(--card-h);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: grid; place-items: center;
+  background: var(--paper);              /* 불투명해야 뒤의 간지를 덮는다 */
+  padding: 0; margin: 0;
+}
+
+/* 간지는 챕터의 배경으로 깔린다. 게임 카드가 그 위로 미끄러져 올라가며 덮고,
+   챕터가 끝나는 순간 잠깐 다시 드러난다 — 그 틈이 챕터가 닫히는 신호다.
+   섹션 경계에서 자동으로 풀리므로 JS가 필요 없다.
+
+   「붙는 것」(.chapter-bg)과 「스크롤이 걸리는 것」(.card--divider)을 갈라 둔 이유:
+   스티키 요소를 스냅 대상으로 삼으면 붙어 있는 동안 스냅 위치가 스크롤을 따라
+   움직인다. mandatory 스냅이 그 움직이는 목표를 쫓아가느라 챕터를 눌러도 엉뚱한
+   면으로 끌려갔다. 그래서 배경만 스티키로 두고, 스냅은 투명한 카드가 받는다.
+   음수 마진으로 배경이 흐름에서 자리를 차지하지 않게 해 둘이 정확히 겹친다. */
+.chapter-bg {
+  position: sticky; top: 0; z-index: 0;
+  height: var(--card-h);
+  margin-bottom: calc(-1 * var(--card-h));
+  display: grid; place-items: center;
+  background: var(--paper);
+  pointer-events: none;                  /* 위에 놓인 간지 카드가 클릭을 받는다 */
+}
+.chapter-bg img {
+  display: block; max-width: 100%; max-height: 100%;
+  width: auto; height: auto; object-fit: contain;
+}
+.card--divider { background: transparent; }   /* 뒤의 간지가 그대로 비쳐야 한다 */
+
+.card img {
+  display: block;
+  max-width: 100%; max-height: 100%;
+  width: auto; height: auto;
+  object-fit: contain;                   /* 잘라내지 않는다 */
+}
+
+/* 카드에 들어설 때 아주 짧게 정착하는 정도만. 그 이상은 넣지 않는다 */
+.card--game img, .card--cover img, .card--toc img,
+.card--appendix img, .card--ending img {
+  animation: settle .14s ease-out both;
+}
+@keyframes settle { from { transform: translateY(8px); } to { transform: none; } }
+
+/* 좁은 화면에서는 카드를 눌러 확대한다 */
+.card--zoomable { cursor: zoom-in; }
+
+/* ── 목차 = 진입 화면 ─────────────────────────────────
+   원본 2면을 그대로 쓰고 투명 히트 영역만 얹는다. 챕터 이름을 새로 타이핑하지
+   않는다. 이미지가 object-fit: contain으로 들어가므로 히트 영역도 같은 상자
+   안에서 %로 잡아야 어긋나지 않는다. */
+.toc-frame { position: relative; display: inline-block; max-width: 100%; max-height: 100%; }
+.toc-hit {
+  position: absolute; display: block;
+  border: 0; background: transparent; padding: 0;
+  cursor: pointer;
+}
+.toc-hit:hover { background: rgba(22, 24, 26, .045); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ── 문(門) ──────────────────────────────────────────
+   이미지가 아니라 유일하게 새로 만드는 화면. 이미지 카드들 사이에서 여백으로
+   숨을 트는 자리라 요소를 늘리지 않는다. */
+.card--gate { cursor: pointer; }
+.gate {
+  display: grid; gap: 26px; justify-items: center; text-align: center;
+  padding: 0 28px; max-width: 34rem;
+}
+.gate-line { font-size: 15px; font-weight: 500; line-height: 1.7; color: var(--ink); margin: 0; }
+.gate-next { display: grid; gap: 4px; justify-items: center; color: var(--mute); }
+.gate-num { font-size: 34px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; }
+.gate-title { font-size: 13px; }
+
+/* 진행 표시. 분수(2/5)가 아니라 점으로 찍고 42만 떨어뜨린다 —
+   챕터 바와 같은 규칙을 반복해야 일관된다. */
+.gate-dots { display: flex; align-items: center; gap: 7px; }
+.gate-dots i { width: 5px; height: 5px; background: var(--line); display: block; }
+.gate-dots i.on { background: var(--ink); }
+.gate-dots .sep { width: 26px; height: 1px; background: var(--line); }
+
+.nojs { padding: calc(var(--bar-h) + 20px) 20px 20px; color: var(--mute); }
+
+/* ── 확대 뷰어 ───────────────────────────────────────
+   폭 900px 미만에서 카드를 누르면 열린다. 이 경로가 없으면 폰에서 축 라벨과
+   리뷰 캡처 글씨를 읽을 수 없다. */
+.zoom {
+  position: fixed; inset: 0; z-index: 40;
+  background: var(--paper);
+  display: grid; place-items: center;
+  touch-action: none;                    /* 핀치·팬을 직접 처리한다 */
+  overflow: hidden;
+}
+.zoom[hidden] { display: none; }
+.zoom-stage { width: 100%; height: 100%; display: grid; place-items: center; overflow: hidden; }
+.zoom-img {
+  max-width: 100%; max-height: 100%; width: auto; height: auto;
+  /* 상자가 이미 가운데 놓이므로 기준점도 중앙이어야 한다.
+     0 0으로 두면 확대할 때 오른쪽·아래로만 자라 가둠 계산과 어긋난다. */
+  transform-origin: center center; will-change: transform; user-select: none;
+}
+.zoom-close {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  width: 38px; height: 38px;
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  font-size: 15px; cursor: pointer;
+}
+.zoom-hint {
+  position: absolute; left: 0; right: 0; bottom: 14px; margin: 0;
+  text-align: center; color: var(--mute); font-size: 12px;
+  transition: opacity .3s;
+}
+.zoom-hint.gone { opacity: 0; }
+
+/* ── 폭에 따라 ───────────────────────────────────────
+   768px 미만에서는 챕터 바가 숫자만 달고 높이를 줄인다. */
+@media (max-width: 767px) { :root { --bar-h: 40px; } .chip { padding: 5px 8px; } }
+
+/* 챕터 제목 병기는 900px 이상에서만. 그 아래에서는 숫자만 둔다.
+   42의 제목은 문장 하나라 바에 넣지 않는다 — 대신 툴팁이 그 자리를 맡고,
+   제목이 없는 것 자체가 42가 다른 층위라는 표시가 된다.
+   활성 챕터에 따라 켜고 끄지 않는 이유는, 그러면 폭이 흔들려
+   `4 ⌇ 42` 간격이 같이 움직이기 때문이다. 그 간격은 고정이어야 한다. */
+@media (min-width: 900px) { .chip-title { display: inline; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .deck { scroll-behavior: auto; }       /* 스냅은 유지하고 모션만 뺀다 */
+  .card img { animation: none; }
+}

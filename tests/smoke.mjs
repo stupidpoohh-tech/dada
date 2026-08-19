@@ -52,9 +52,12 @@ head('책 뷰어');
   ok(await p.evaluate(() => { const i = document.getElementById('bkImg');
     return i.complete && i.naturalWidth > 0; }), '페이지 이미지가 실제로 뜬다');
 
-  // 세모집으로 갈아타기 — 이전 책 값이 남으면 여기서 걸린다
+  // 세모집으로 갈아타기 — 이전 책 값이 남으면 여기서 걸린다.
+  // 세모집은 항목이 둘(카탈로그·게임 안내서)이라 바로 열리지 않고 팝오버가 뜬다
   await p.keyboard.press('Escape'); await p.waitForTimeout(700);
   await p.click('.spot[data-district="house"]');
+  await p.waitForSelector('#panel .card', { timeout: 4000 });
+  await p.click('#panel .card[href="#house"]');
   await p.waitForSelector('#bookOverlay:not([hidden])', { timeout: 4000 });
   await p.waitForTimeout(800);
   const sw = await p.evaluate(() => ({
@@ -249,8 +252,10 @@ head('책이 건물에서 날아온다');
     return { src, path };
   };
 
-  await fly('house');                       // 첫 열기로 그림을 데운다
-  const { src, path } = await fly('house');
+  // 세모집은 항목이 둘이 되면서 팝오버가 먼저 뜬다. 이 검사는 「건물에서 바로
+  // 날아오르는가」를 보는 것이므로 아직 direct로 바로 열리는 미술관으로 잰다.
+  await fly('museum');                      // 첫 열기로 그림을 데운다
+  const { src, path } = await fly('museum');
   const start = path[0], end = path[path.length - 1];
   const off = Math.hypot(start.cx - (src.x + src.width / 2), start.cy - (src.y + src.height / 2));
   ok(off < 60, `건물 중심에서 출발한다 (${off.toFixed(0)}px 차이)`);
@@ -381,6 +386,85 @@ head('크롤러 시점');
   const xml = s ? await s.text() : '';
   ok(s && s.ok() && xml.includes('/list.html'), 'sitemap에 list.html이 있다');
   await ctx.close();
+}
+
+/* ── 10. 게임 안내서 (/game/) ──────────────────────────────
+   깨진 적 있음: 간지 카드를 position: sticky로 두고 그것을 그대로 스냅 대상으로
+   삼았더니, 붙어 있는 동안 스냅 위치가 스크롤을 따라 움직여 mandatory 스냅이
+   엉뚱한 면으로 끌어당겼다. 챕터 1을 눌렀는데 목차로 가는 식이었다.
+   지금은 붙는 것(.chapter-bg)과 걸리는 것(.card--divider)을 갈라 두었다. */
+head('게임 안내서');
+{
+  const p = await desktop();
+  await p.goto(BASE + '/game/', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(900);
+
+  const data = await p.evaluate(() => fetch('data.json').then((r) => r.json()));
+  const gates = data.chapters.filter((c) => c.gate).length;
+  //   표지·목차(2) + 챕터마다 간지 1 + 게임 n + 문(1·2·3·4 뒤에만) + 부록·엔딩(2)
+  const want = 2 + data.chapters.length
+    + data.chapters.reduce((n, c) => n + c.pages.length, 0) + gates + 2;
+  const seen = await p.evaluate(() => document.querySelectorAll('.card').length);
+  ok(seen === want, `카드 수가 데이터와 맞다 (${seen} / ${want})`);
+
+  // 42는 다섯 번째 챕터가 아니다 — 순번을 다시 매기지 않았는지 본다
+  const labels = await p.evaluate(() =>
+    [...document.querySelectorAll('.chip')].map((b) => b.firstChild.textContent.trim()));
+  ok(labels.join(',') === '1,2,3,4,42', `챕터 번호가 1·2·3·4·42다 (${labels.join(',')})`);
+
+  // 문은 1·2·3·4 뒤에만. 42 뒤에는 붙이지 않는다
+  const gateIn42 = await p.evaluate(() =>
+    document.querySelectorAll('#ch42 .card--gate').length);
+  ok(gateIn42 === 0, '챕터 42 뒤에는 문이 없다');
+  ok(await p.evaluate(() => document.querySelectorAll('.card--gate').length) === gates,
+    `문이 ${gates}개다`);
+
+  // 간지는 스냅 대상이되 스티키가 아니어야 한다
+  const pos = await p.evaluate(() => ({
+    divider: getComputedStyle(document.querySelector('.card--divider')).position,
+    bg: getComputedStyle(document.querySelector('.chapter-bg')).position,
+  }));
+  ok(pos.divider !== 'sticky' && pos.bg === 'sticky',
+    '붙는 것과 걸리는 것이 갈려 있다', JSON.stringify(pos));
+
+  // 챕터를 누르면 그 간지에 정확히 선다 — 위 버그가 나면 여기서 걸린다
+  for (const ch of data.chapters) {
+    await p.click(`.chip[data-chapter="${ch.id}"]`);
+    await p.waitForTimeout(1500);
+    const hit = await p.evaluate((id) => {
+      const d = document.getElementById('deck');
+      return Math.abs(d.scrollTop - document.getElementById(id).offsetTop) < 2;
+    }, ch.id);
+    if (!hit) { ok(false, `챕터 ${ch.label}을 누르면 그 간지로 간다`); break; }
+    const cur = await p.evaluate(() =>
+      document.querySelector('.chip[aria-current="true"]')?.dataset.chapter);
+    if (cur !== ch.id) { ok(false, `챕터 ${ch.label}이 바에 표시된다`, String(cur)); break; }
+  }
+  ok(true, '챕터마다 간지로 정확히 서고 바에 표시된다');
+
+  // 4와 42 사이 간격이 다른 간격의 3배를 넘는가 — 이 페이지의 시그니처다
+  const gap = await p.evaluate(() => {
+    const chips = [...document.querySelectorAll('.chip')].map((b) => b.getBoundingClientRect());
+    const wide = chips[4].left - chips[3].right;
+    const norm = Math.min(chips[1].left - chips[0].right, chips[2].left - chips[1].right);
+    return { wide: Math.round(wide), norm: Math.round(norm) };
+  });
+  ok(gap.wide >= gap.norm * 3, `4와 42 사이가 넉넉히 벌어져 있다 (${gap.wide}px vs ${gap.norm}px)`);
+
+  // 목차 히트 영역이 원본 이미지의 글자 행과 맞는가 (실측 28.5/40.8/53.4/65.6/80.0%)
+  await p.evaluate(() => { document.getElementById('deck').scrollTop = 0; });
+  await p.waitForTimeout(400);
+  const rows = await p.evaluate(() => {
+    const img = document.querySelector('.toc-frame img').getBoundingClientRect();
+    return [...document.querySelectorAll('.toc-hit')].map((h) => {
+      const r = h.getBoundingClientRect();
+      return (r.top + r.height / 2 - img.top) / img.height * 100;
+    });
+  });
+  const wantRows = [28.5, 40.8, 53.4, 65.6, 80.0];
+  const worst = Math.max(...rows.map((v, i) => Math.abs(v - wantRows[i])));
+  ok(worst < 1.5, `목차 히트 영역이 글자 행에 맞는다 (최대 ${worst.toFixed(1)}%p 어긋남)`);
+  await p.close();
 }
 
 /* ── 마무리 ─────────────────────────────────────────────── */
