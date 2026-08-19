@@ -50,6 +50,7 @@
   const STATUS_LABEL = { beta: '베타', demo: 'demo' };
 
   const $ = (id) => document.getElementById(id);
+  const $$ = (sel) => [...document.querySelectorAll(sel)];
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -123,13 +124,9 @@
 
     startCars(road);
 
-    FOLKS.forEach((f) => {
-      const node = sprite('folk person', f.src, {
-        left: pct(f.x), top: pct(f.y), width: pct(f.w),
-      });
-      rowOf.set(node, bandOf(f.y));
-      folks.appendChild(node);
-    });
+    FOLKS.forEach((f) => folks.appendChild(sprite('folk person', f.src, {
+      left: pct(f.x), top: pct(f.y), width: pct(f.w),
+    })));
 
     PERCHED.forEach((p) => folks.appendChild(sprite('folk', p.src, {
       left: pct(p.x), top: pct(p.y), width: pct(p.w), animation: 'none',
@@ -217,7 +214,6 @@
         img.src = S + 'me.png';
         img.alt = '';
         fig.appendChild(img);
-        rowOf.set(fig, bandOf(d.character[1]));
         btn.appendChild(fig);
       } else {
         const [x, y, w, h] = d.rect;
@@ -242,7 +238,6 @@
           }
           pop.appendChild(pimg);
           btn.appendChild(pop);
-          rowOf.set(pop, bandOf(d.building[1] + d.building[3] / 2));
           pops.push({ pop, pimg, rect: d.rect, building: d.building });
         }
 
@@ -253,26 +248,113 @@
           const layer = $('folks');
           const hot = (on) => layer.classList.toggle('folks-hot', on);
           btn.addEventListener('mouseenter', () => hot(true));
-          btn.addEventListener('mouseleave', () => { hot(false); syncBeat(); });
+          btn.addEventListener('mouseleave', () => { hot(false); resyncIdle(); });
           btn.addEventListener('focus', () => hot(true));
-          btn.addEventListener('blur', () => { hot(false); syncBeat(); });
+          btn.addEventListener('blur', () => { hot(false); resyncIdle(); });
           btn.addEventListener('click', () => {
             layer.classList.remove('folks-pop');
             void layer.offsetWidth;          // 리플로우로 애니메이션 재시작
             layer.classList.add('folks-pop');
             // 뾰옹이 끝나면 사람들도 마을 박자로 되돌린다
-            setTimeout(syncBeat, 600);
+            setTimeout(resyncIdle, 600);
           });
         }
       }
 
       // 호버·포커스가 풀리면 그 요소만 idle이 0부터 다시 시작한다 → 박자를 되맞춘다
-      btn.addEventListener('mouseleave', syncBeat);
-      btn.addEventListener('blur', syncBeat);
+      btn.addEventListener('mouseleave', resyncIdle);
+      btn.addEventListener('blur', resyncIdle);
 
       btn.addEventListener('click', () => toggle(d.id, btn));
       wrap.appendChild(btn);
     });
+  }
+
+  /** 눌러볼 곳마다 작은 화살표를 하나씩 띄운다.
+   *  폰에서 건물 뾰잉은 5px, 우편함은 0.2px뿐인데 자동차·새·구름·사람이 전부
+   *  움직여 그 5px이 배경 소음에 묻힌다 — 무엇이 눌리는지가 드러나지 않는다.
+   *  그래서 「여기」를 직접 가리킨다. 크기는 우편함만 하게 잡아 그림을 가리지 않는다.
+   *
+   *  가리키는 곳은 **구역 블록이 아니라 반응하는 것**이다 — 성균관은 블록 위쪽이
+   *  비어 있고, 공원은 땅이 아니라 사람들이 반응한다. 블록 한가운데를 가리키면
+   *  아무것도 없는 잔디를 가리키게 된다. */
+  const TAG_H = 3.2, TAG_GAP = 0.9;         // 지도 높이 % — styles.css의 .tag와 같은 값
+  const tagFits = [];                       // 그림을 재야 자리가 나오는 화살표들
+
+  function makeTags() {
+    const wrap = $('tags');
+
+    const put = (x, top) => {
+      const t = el('span', 'tag');
+      // 화살표 끝이 대상 바로 위에 오도록. 학교·미술관처럼 지붕이 지도 위쪽에
+      // 붙은 곳은 위로 뺄 자리가 없어 지붕에 살짝 걸친다 — 잘리는 것보다 낫다
+      if (x != null) {
+        t.style.left = pct(x);
+        t.style.top = pct(Math.max(0.4, top - TAG_H - TAG_GAP));
+      }
+      t.appendChild(el('i'));
+      wrap.appendChild(t);
+      return t;
+    };
+
+    data.districts.forEach((d) => {
+      // "나"와 공원 사람들은 좌표만으로 머리 위를 못 찾는다 — 캐릭터 버튼은
+      // 발밑에 앉아 있고(translate -100%), 사람 스프라이트는 그림마다 키가 다르다.
+      // 그려진 뒤 실측해서 얹는다 (syncTags)
+      if (d.character) tagFits.push({ node: put(), sel: '.me-spot' });
+      else if (d.building) put(d.building[0] + d.building[2] / 2, d.building[1]);
+      // 공원은 건물이 없다 — 땅이 아니라 사람들이 반응하므로 사람들 무리를 가리킨다
+      else if (d.id === 'park') tagFits.push({ node: put(), sel: '#folks .person' });
+
+      if (d.mailbox) {
+        const [mx, my, mw] = d.mailbox.box;
+        put(mx + mw / 2, my);
+      }
+    });
+  }
+
+  /** 실측이 필요한 화살표를 그림 위에 얹는다.
+   *  잴 때는 상시 움직임을 잠깐 꺼야 한다 — getBoundingClientRect는 변형이 적용된
+   *  크기를 주므로, 켜둔 채로 재면 애니메이션 위상만큼 어긋난 자리에 박힌다.
+   *
+   *  **끄는 것은 transform이 아니라 animation이다.** 사람들(.folk)과 "나"(.me-spot)는
+   *  translate(-50%, -100%)로 제 발밑에 앉아 있어서, 뾰잉 복제본처럼 transform을
+   *  none으로 눌러버리면 자리 자체가 통째로 어긋난다. animation만 끄면 CSS 규칙의
+   *  transform(= 0% 키프레임과 같다)이 남아 제자리에서 멈춘다. */
+  function syncTags() {
+    const base = $('mapImg').getBoundingClientRect();
+    if (!base.width || !tagFits.length) return;
+
+    const held = [];
+    tagFits.forEach(({ sel }) => $$(sel).forEach((n) => {
+      [n, n.firstElementChild].forEach((x) => {
+        if (!x) return;
+        held.push(x);
+        x.style.setProperty('animation', 'none', 'important');
+      });
+    }));
+
+    tagFits.forEach(({ node, sel }) => {
+      const rs = $$(sel).map((n) => n.getBoundingClientRect()).filter((r) => r.width);
+      if (!rs.length) return;
+      const cx = (Math.min(...rs.map((r) => r.left)) + Math.max(...rs.map((r) => r.right))) / 2;
+      const top = Math.min(...rs.map((r) => r.top));
+      node.style.left = pct((cx - base.left) / base.width * 100);
+      node.style.top = pct(Math.max(0.4,
+        (top - base.top) / base.height * 100 - TAG_H - TAG_GAP));
+    });
+
+    held.forEach((x) => x.style.removeProperty('animation'));
+    resyncIdle();          // 껐다 켠 것들은 0부터 다시 시작한다 → 마을 박자에 되붙인다
+  }
+
+  /** 그림이 늦게 도착하면 잰 키가 0이라 화살표가 발밑에 박힌다.
+   *  init()이 fetch를 기다리는 사이 window의 load가 이미 지나가 있을 수 있어
+   *  그쪽에 기대면 늦는 날과 안 늦는 날이 갈린다 — 크기가 잡히는 순간 다시 얹는다. */
+  function watchTags() {
+    if (!('ResizeObserver' in window)) { window.addEventListener('load', syncTags); return; }
+    const ro = new ResizeObserver(() => syncTags());
+    tagFits.forEach(({ sel }) => $$(sel).forEach((n) => ro.observe(n)));
   }
 
   /** 우편함 — 구역과 별개의 문. districts[].mailbox = { box, item }.
@@ -296,7 +378,6 @@
     mimg.src = 'assets/map/town-web.jpg';
     mimg.alt = '';
     mbox.appendChild(mimg);
-    rowOf.set(mbox, bandOf(y + h / 2));
     a.appendChild(mbox);
     pops.push({ pop: mbox, pimg: mimg, rect: d.mailbox.box, building: d.mailbox.box });
 
@@ -391,46 +472,44 @@
     }
   }
 
-  /* ── 마을의 박자 ─────────────────────────── */
+  /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
+   *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
+  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle', 'tag-float'];
 
-  /** 마을은 한 곡을 함께 탄다 — 다만 **줄마다 조금씩 늦게** 탄다.
-   *  지도가 3열 블록이라 위·가운데·아래 세 줄로 묶고, 아래로 갈수록 위상을
-   *  ROW_STEP씩 미루면 뾰잉이 위에서 아래로 끊임없이 흘러내린다.
-   *
-   *  전에는 전부 같은 위상이었는데(「하나만 다른 리듬이면 어수선하다」),
-   *  그 합주가 폰에서 5px짜리 제자리 움직임이라 자동차·새·구름에 묻혔다.
-   *  **흘러가는 움직임은 제자리 움직임보다 눈에 걸린다** — 줄이 차례로 솟으면
-   *  「이 열 개가 한 세트」라는 것도 함께 읽힌다. 박자(2.4초)는 그대로라
-   *  마을이 어수선해지지는 않는다.
-   *
-   *  처음 한 번만 크게 인사하고 마는 방식도 만들어 봤는데, 상시 파도로 대체했다 —
-   *  한 번 지나가면 늦게 온 사람은 못 보고, 다시 볼 방법도 없었다. */
-  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'];
-  const ROWS = 3, ROW_STEP = 280;          // ms. 2.4초 주기의 약 12%
-  const rowOf = new WeakMap();             // 움직이는 요소 → 0(위) · 1(가운데) · 2(아래)
-  /** 지도 세로 %로 줄을 가른다. 지도가 3열 블록이라 경계가 뚜렷하다 */
-  const bandOf = (y) => (y < 40 ? 0 : y < 75 ? 1 : 2);   // 화면에 보이는 중심 y(%) 기준
+  function syncIdle() {
+    const anims = document.getAnimations().filter((a) =>
+      IDLE_ANIMS.includes(a.animationName));
+    if (!anims.length) return;
+    // 기준은 문서 타임라인의 현재 시각. 다른 애니메이션의 startTime을 베끼면
+    // 아직 시작 전이라 null일 수 있고, null을 넣으면 전부 멈춰버린다.
+    const t = document.timeline.currentTime;
+    if (t == null) return;
+    anims.forEach((a) => { try { a.startTime = t; } catch (_) {} });
+  }
 
-  /** 기준 시각은 **한 번만** 정하고 계속 쓴다. 부를 때마다 「지금」으로 다시 잡으면
-   *  호출할 때마다 온 마을이 한 번 움찔한다. 주기가 무한 반복이라 기준이 과거
-   *  어디든 위상은 같다. */
-  let beatOrigin = null;
-
-  /** 모든 idle을 제 줄의 위상에 앉힌다. 같은 값을 다시 넣는 것이므로
-   *  몇 번을 불러도 움찔하지 않는다 — 호버·뾰옹에서 돌아온 것만 제자리를 찾는다.
+  /** 호버·뾰옹처럼 잠깐 다른 애니메이션이 얹혔다 물러나면 idle이 0부터 다시 시작해
+   *  그 요소만 마을과 박자가 어긋난다. 뒤늦게 합류한 것을 **마을이 이미 타고 있는
+   *  박자에 끌어다 붙인다.** syncIdle()처럼 전부 0으로 되돌리면 어긋남은 없어져도
+   *  온 마을이 그 순간 한 번 움찔한다 — 눌렀을 때 튀어 보이는 게 그 때문이다.
    *  스타일을 강제로 계산해야 되살아난 애니메이션이 getAnimations()에 잡힌다. */
-  function syncBeat() {
+  function resyncIdle() {
     void document.body.offsetHeight;
-    if (beatOrigin == null) {
-      const t = document.timeline.currentTime;
-      if (t == null) return;
-      beatOrigin = t;
-    }
-    document.getAnimations().forEach((a) => {
-      if (!IDLE_ANIMS.includes(a.animationName)) return;
-      const row = rowOf.get(a.effect?.target) ?? 0;
-      // 전부 과거로 두어야 한다 — 미래로 잡으면 그때까지 첫 프레임에 멈춰 있는다
-      try { a.startTime = beatOrigin - (ROWS - 1 - row) * ROW_STEP; } catch (_) {}
+    const anims = document.getAnimations().filter((a) => IDLE_ANIMS.includes(a.animationName));
+    if (anims.length < 2) return;
+
+    // 가장 많은 요소가 쓰고 있는 startTime이 곧 마을의 박자다
+    const tally = new Map();
+    anims.forEach((a) => {
+      if (a.startTime == null) return;
+      tally.set(+a.startTime, (tally.get(+a.startTime) || 0) + 1);
+    });
+    let ref = null, best = 0;
+    tally.forEach((n, t) => { if (n > best) { best = n; ref = t; } });
+    if (ref == null) return;
+
+    anims.forEach((a) => {
+      if (a.startTime != null && +a.startTime === ref) return;
+      try { a.startTime = ref; } catch (_) {}
     });
   }
 
@@ -594,7 +673,7 @@
     $('panelWrap').hidden = true;
     document.querySelectorAll('[aria-expanded="true"]')
       .forEach((b) => b.setAttribute('aria-expanded', 'false'));
-    syncBeat();      // 뾰옹에서 idle로 돌아오며 그 건물만 박자가 어긋난다
+    resyncIdle();      // 뾰옹에서 idle로 돌아오며 그 건물만 박자가 어긋난다
     syncHint();
   }
 
@@ -1042,9 +1121,14 @@
 
     paintScenery();
     makeSpots();
+    makeTags();
     syncPops();
-    syncBeat();
-    if (!$('mapImg').complete) $('mapImg').addEventListener('load', syncPops, { once: true });
+    syncTags();
+    watchTags();
+    syncIdle();
+    if (!$('mapImg').complete) {
+      $('mapImg').addEventListener('load', () => { syncPops(); syncTags(); }, { once: true });
+    }
     makeChips();
     renderModalList();
     initPicks();
@@ -1084,6 +1168,7 @@
       clearTimeout(t);
       t = setTimeout(() => {
         syncPops();
+        syncTags();
         if (openId) placePanel(data.districts.find((x) => x.id === openId));
       }, 80);
     });

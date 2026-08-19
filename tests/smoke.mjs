@@ -146,40 +146,31 @@ head('캐릭터 판정 영역');
    깨진 적 있음 ②: 터치에서 :hover가 눌린 채 남아 그 건물만 얼어붙었다. */
 head('마을 박자');
 {
-  /** 마을은 한 박자를 타되 줄마다 위상이 어긋난다 (위→아래 파도).
-   *  그래서 「전부 같은 startTime」이 아니라 **위상 값이 세 종류이고
-   *  간격이 일정한지**를 본다. `steps`가 3이고 `gap`이 ROW_STEP이면 파도가 산 것이다. */
   const beat = (p) => p.evaluate(() => {
     const a = document.getAnimations().filter((x) =>
-      ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName));
-    const st = [...new Set(a.map((x) => x.startTime).filter((v) => v != null)
-      .map((v) => Math.round(Number(v))))].sort((x, y) => x - y);
-    const gaps = st.slice(1).map((v, i) => v - st[i]);
+      ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle', 'tag-float'].includes(x.animationName));
+    const st = a.map((x) => x.startTime).filter((v) => v != null).map(Number);
     return {
       n: a.length,
-      steps: st.length,
-      gap: gaps.length ? Math.max(...gaps) : 0,
-      even: gaps.every((g) => g === gaps[0]),
+      spread: st.length ? Math.round(Math.max(...st) - Math.min(...st)) : -1,
       frozen: a.filter((x) => x.playState !== 'running').length,
     };
   });
-  const waveOk = (b) => b.steps === 3 && b.gap === 280 && b.even;
 
   const d = await desktop();
   await d.goto(BASE, { waitUntil: 'networkidle' });
   await d.waitForTimeout(900);
-  ok(waveOk(await beat(d)), '처음부터 줄마다 어긋난 한 박자 (위→아래 파도)',
-    JSON.stringify(await beat(d)));
+  ok((await beat(d)).spread === 0, '처음부터 한 박자');
 
   await d.click('.spot[data-district="bank"]'); await d.waitForTimeout(700);
   await d.click('.panel-close'); await d.mouse.move(5, 5); await d.waitForTimeout(500);
   let b = await beat(d);
-  ok(waveOk(b), '팝오버를 열었다 닫아도 파도가 유지된다', JSON.stringify(b));
+  ok(b.spread === 0, '팝오버를 열었다 닫아도 박자가 유지된다', b.spread + 'ms 어긋남');
 
   await d.hover('.spot[data-district="school"]'); await d.waitForTimeout(400);
   await d.mouse.move(5, 5); await d.waitForTimeout(500);
   b = await beat(d);
-  ok(waveOk(b), '호버가 풀려도 파도가 유지된다', JSON.stringify(b));
+  ok(b.spread === 0, '호버가 풀려도 박자가 유지된다', b.spread + 'ms 어긋남');
   await d.close();
 
   const m = await phone();
@@ -190,7 +181,7 @@ head('마을 박자');
     await m.tap('.panel-close'); await m.waitForTimeout(500);
   }
   b = await beat(m);
-  ok(waveOk(b), '터치로 여러 번 여닫아도 파도가 유지된다', JSON.stringify(b));
+  ok(b.spread === 0, '터치로 여러 번 여닫아도 박자가 유지된다', b.spread + 'ms 어긋남');
   ok(b.frozen === 0, '터치 뒤에 얼어붙은 건물이 없다 (sticky :hover)', b.frozen + '개 멈춤');
   await m.close();
 }
@@ -525,56 +516,50 @@ head('게임 안내서');
   await p.close();
 }
 
-/* ── 11. 위에서 아래로 흐르는 파도 ────────────────────────
-   처음 온 사람에게 이 지도는 그냥 그림이다 — 폰에서 건물 뾰잉은 몇 px뿐이고
-   자동차·새·구름·사람이 다 움직여서 그게 배경 소음에 묻힌다.
-   그래서 위·가운데·아래 세 줄로 묶어 위상을 어긋내, 뾰잉이 위에서 아래로
-   **끊임없이** 흘러내리게 했다. 흘러가는 움직임은 제자리 움직임보다 눈에 걸린다.
-   한때 첫 방문에만 한 번 인사하게 했으나, 한 번 지나가면 다시 볼 길이 없어 접었다. */
-head('위→아래 파도');
+/* ── 11. 눌러볼 곳을 가리키는 화살표 ──────────────────────
+   폰에서 건물 뾰잉은 5px, 우편함은 0.2px뿐이라 무엇이 눌리는지가 드러나지 않았다.
+   깨진 적 있음: "나"와 공원 사람들은 그림 발밑에 좌표가 잡혀 있어, 데이터만 보고
+   얹으면 화살표가 머리 위가 아니라 배 위에 박혔다 — 실측으로 얹는다.
+   또 하나: 그림이 늦게 오면 키가 0이라 같은 증상이 난다 (ResizeObserver로 다시 얹음). */
+head('가리키는 화살표');
 {
   const p = await phone();
   await p.goto(BASE, { waitUntil: 'networkidle' });
-  await p.waitForTimeout(900);
+  await p.waitForTimeout(1200);
 
-  // 줄마다 위상이 다르고, 같은 줄은 서로 같아야 한다
-  const rows = await p.evaluate(() => {
-    const band = (y) => (y < 40 ? 0 : y < 75 ? 1 : 2);   // app.js의 bandOf와 같은 경계
-    const map = document.querySelector('.map').getBoundingClientRect();
-    const out = {};
-    document.getAnimations().forEach((a) => {
-      if (!['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(a.animationName)) return;
-      const el = a.effect?.target;
-      if (!el || a.startTime == null) return;
-      const r = el.getBoundingClientRect();
-      const y = (r.top + r.height / 2 - map.top) / map.height * 100;
-      (out[band(y)] ||= []).push(Math.round(Number(a.startTime)));
+  const tags = await p.evaluate(() => {
+    const m = document.getElementById('mapImg').getBoundingClientRect();
+    return [...document.querySelectorAll('.tag')].map((t) => {
+      const r = t.getBoundingClientRect();
+      // 화살표 끝 바로 아래에 실제로 눌리는 것이 있어야 한다
+      const under = document.elementFromPoint(r.left + r.width / 2, r.bottom + m.height * 0.012);
+      // 화살표 자신은 클릭을 먹지 않아야 한다 — 한가운데를 찍어도 뒤엣것이 잡힌다
+      const through = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return {
+        top: +((r.top - m.top) / m.height * 100).toFixed(1),
+        w: +r.width.toFixed(1),
+        hits: !!under?.closest('.spot, .me-spot, .mbox-spot'),
+        blocks: !!through?.closest('.tag'),
+      };
     });
-    return out;
   });
-  const bands = Object.keys(rows).sort();
-  ok(bands.length === 3, `세 줄이 다 움직인다 (${bands.length}줄)`);
-  const oneEach = bands.every((k) => new Set(rows[k]).size === 1);
-  ok(oneEach, '같은 줄은 위상이 같다', JSON.stringify(rows));
-  const phases = bands.map((k) => rows[k][0]);
-  ok(phases[0] < phases[1] && phases[1] < phases[2],
-    '위쪽 줄이 먼저 솟는다 (파도가 아래로 흐른다)', phases.join(' → '));
-  ok(phases[1] - phases[0] === 280 && phases[2] - phases[1] === 280,
-    `줄 간격이 280ms로 고르다 (${phases[1] - phases[0]} · ${phases[2] - phases[0]})`);
 
-  // 상시로 돈다 — 한참 뒤에도 살아 있어야 한다
-  await p.waitForTimeout(2600);
-  const alive = await p.evaluate(() => document.getAnimations().filter((x) =>
-    ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName)
-    && x.playState === 'running').length);
-  ok(alive >= 10, `잠시 뒤에도 계속 돈다 (${alive}개)`);
+  ok(tags.length === 10, `문마다 화살표가 하나씩 (${tags.length}개)`);
+  ok(tags.every((t) => t.top >= 0), '지도 위로 잘려 나간 화살표가 없다',
+    JSON.stringify(tags.map((t) => t.top)));
+  ok(tags.every((t) => t.hits), '화살표마다 그 아래에 누를 것이 있다',
+    JSON.stringify(tags.map((t) => t.hits)));
+  ok(tags.every((t) => !t.blocks), '화살표가 클릭을 가로채지 않는다');
 
-  // 새로고침해도 계속 돈다 — 한 번만 도는 인사가 아니다
-  await p.reload({ waitUntil: 'networkidle' });
-  await p.waitForTimeout(900);
-  const again = await p.evaluate(() => document.getAnimations().filter((x) =>
-    ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName)).length);
-  ok(again >= 10, `다시 들어와도 돈다 (${again}개)`);
+  // 우편함만 하게 — 그림을 가리면 마을이 아니라 표지판이 된다
+  const mbox = await p.evaluate(() =>
+    document.querySelector('.mbox-spot').getBoundingClientRect().width);
+  ok(Math.abs(tags[0].w - mbox) < 3, `화살표가 우편함만 하다 (${tags[0].w}px vs ${mbox.toFixed(1)}px)`);
+
+  // 지도의 초록·베이지에 없는 색이라야 눈이 먼저 잡는다
+  const hue = await p.evaluate(() => getComputedStyle(document.querySelector('.tag > i')).backgroundColor);
+  ok(hue === 'rgb(255, 45, 149)', `핫핑크다 (${hue})`);
+
   await p.close();
 }
 
