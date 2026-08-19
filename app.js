@@ -425,6 +425,63 @@
     });
   }
 
+  /* ── 첫 인사 ─────────────────────────────── */
+
+  /** 처음 온 사람에게만 한 번, 왼쪽 위에서 오른쪽 아래로 차례로 인사한다.
+   *  왜 표식(화살표·물결)이 아니라 파도인지는 styles.css의 `@keyframes greet`.
+   *  요약하면 — 표식은 열 개가 되는 순간 두 번째 벽지가 되고, 차례로 번지는 것만이
+   *  「이것들은 한 세트」를 말해준다. 한 번 배우면 일반화되므로 다시 나오지 않는다. */
+  const GREETED = 'dada-greeted';
+
+  function greetTown() {
+    // 링크로 바로 들어와 책이 열려 있으면 파도가 그 뒤에서 헛돈다
+    if (location.hash) return;
+    try {
+      if (localStorage.getItem(GREETED)) return;
+      localStorage.setItem(GREETED, '1');
+    } catch (_) { return; }      // 저장을 못 하면 매번 인사하게 되므로 아예 접는다
+
+    const flash = (node, cls) => {
+      node.classList.add(cls);
+      node.addEventListener('animationend',
+        () => node.classList.remove(cls), { once: true });
+    };
+    const popFolks = () => {
+      const layer = $('folks');
+      layer.classList.remove('folks-pop');
+      void layer.offsetWidth;                 // 리플로우로 애니메이션 재시작
+      layer.classList.add('folks-pop');
+      setTimeout(() => layer.classList.remove('folks-pop'), 700);
+    };
+
+    // 대각선으로 번지게 — x+y가 작은 것부터. 우편함이 자연히 맨 끝에 온다
+    const steps = [];
+    data.districts.forEach((d) => {
+      const btn = document.querySelector(`[data-district="${d.id}"]`);
+      if (!btn) return;
+      if (d.character) {
+        const fig = btn.querySelector('.me-figure');
+        if (fig) steps.push({ at: d.character[0] + d.character[1], run: () => flash(fig, 'greet') });
+      } else {
+        const pop = btn.querySelector('.pop');
+        if (pop) steps.push({ at: d.rect[0] + d.rect[1], run: () => flash(pop, 'greet') });
+        else if (d.id === 'park') steps.push({ at: d.rect[0] + d.rect[1], run: popFolks });
+      }
+      if (d.mailbox) {
+        const mb = document.querySelector('.mbox');
+        const [x, y] = d.mailbox.box;
+        if (mb) steps.push({ at: x + y, run: () => flash(mb, 'greet') });
+      }
+    });
+    steps.sort((a, b) => a.at - b.at);
+
+    const LEAD = 500, STEP = 175;
+    steps.forEach((s, i) => setTimeout(s.run, LEAD + i * STEP));
+    // 파도가 다 지나가면 온 마을을 한 박자로 되맞춘다. 인사가 idle을 밀어냈다가
+    // 물러나면서 그 요소만 0부터 다시 시작하기 때문이다 (README 「움직임」).
+    setTimeout(syncIdle, LEAD + steps.length * STEP + 1200);
+  }
+
   /** 건물 복제본을 지도 픽셀에 정확히 맞춘다. %로 계산하면 반올림이 누적돼
    *  원본과 미세하게 어긋나 이중으로 보인다. 창 크기가 바뀌면 다시 부른다. */
   function syncPops() {
@@ -1035,6 +1092,7 @@
     makeSpots();
     syncPops();
     syncIdle();
+    greetTown();
     if (!$('mapImg').complete) $('mapImg').addEventListener('load', syncPops, { once: true });
     makeChips();
     renderModalList();

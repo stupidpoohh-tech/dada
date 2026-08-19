@@ -256,6 +256,39 @@ button, input { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
+/* ── 첫 인사 ─────────────────────────────────
+   처음 온 사람에게 이 지도는 링크 모음이 아니라 그냥 그림이다. 나무도 건물도
+   똑같이 공들여 그려져 있어서 무엇이 눌리는지가 드러나지 않는다.
+   상시 뾰잉은 폰에서 5px뿐이고, 이 마을은 자동차·새·구름·사람이 전부 움직여서
+   그 5px이 배경 소음에 묻힌다. 재보고 확인한 사실이다.
+
+   그래서 **처음 한 번만** 왼쪽 위에서 오른쪽 아래로 차례로 크게 인사한다.
+   차례로 번지는 것이 「이것들은 한 세트」를 말해준다 — 표식을 하나씩 얹어서는
+   못 하는 일이다. 표식은 열 개가 되는 순간 두 번째 벽지가 된다.
+   다 지나가면 지금의 조용한 합주로 가라앉고 다시 나오지 않는다.
+
+   복제본 규칙은 여기서도 지킨다 — 1보다 작게 줄이지 않는다. */
+@keyframes greet {
+  0%   { transform: scale(1, 1); }
+  20%  { transform: scale(1.04, 1.20); }
+  44%  { transform: scale(1.13, 1.01); }
+  70%  { transform: scale(1.02, 1.09); }
+  100% { transform: scale(1, 1); }
+}
+.pop.greet, .me-figure.greet {
+  animation: greet .95s cubic-bezier(.34, 1.2, .64, 1) both;
+}
+/* 우편함은 폰에서 9px이라 같은 배율로는 0.2px밖에 안 움직인다.
+   더 크게 뛰되, 파도의 **맨 마지막**이라는 자리가 실은 더 큰 몫을 한다. */
+.mbox.greet { animation: greet-mbox 1.05s cubic-bezier(.34, 1.2, .64, 1) both; }
+@keyframes greet-mbox {
+  0%   { transform: scale(1, 1); }
+  20%  { transform: scale(1.08, 1.45); }
+  44%  { transform: scale(1.34, 1.04); }
+  70%  { transform: scale(1.04, 1.22); }
+  100% { transform: scale(1, 1); }
+}
+
 /* "나" 캐릭터 — 공원 사람들·건물과 똑같은 folk-idle 박자로 움직인다.
    혼자 다른 리듬으로 움직이면 마을 전체가 어수선해 보인다.
 

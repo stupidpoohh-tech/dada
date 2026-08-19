@@ -27,10 +27,19 @@ const watch = (p) => {
   p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   return p;
 };
-const desktop = () => browser.newPage({ viewport: { width: 1280, height: 900 } }).then(watch);
+/** 첫 인사 파도가 도는 3초 남짓 동안은 마을이 **일부러** 한 박자가 아니다.
+ *  나머지 검사는 마을이 이미 조용해진 상태를 보는 것이므로 재방문자로 열어
+ *  파도를 건너뛴다. 파도 자체는 §11에서 따로 본다. */
+const asReturning = (p) =>
+  p.addInitScript(() => {
+    try { localStorage.setItem('dada-greeted', '1'); } catch (_) {}
+  }).then(() => p);
+
+const desktop = () => browser.newPage({ viewport: { width: 1280, height: 900 } })
+  .then(watch).then(asReturning);
 const phone = () => browser.newPage({
   viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
-}).then(watch);
+}).then(watch).then(asReturning);
 
 /* ── 1. 책 뷰어 ────────────────────────────────────────────
    아트북과 세모집 카탈로그가 뷰어 한 벌을 나눠 쓴다. 폴더·쪽수·해시·비율이
@@ -514,6 +523,58 @@ head('게임 안내서');
     document.querySelector('.chip[aria-current="true"]')?.dataset.chapter) === 'ch2',
     '문을 누르면 다음 챕터 뭉치로 넘어간다');
   await p.close();
+}
+
+/* ── 11. 첫 인사 파도 ──────────────────────────────────────
+   처음 온 사람에게 이 지도는 그냥 그림이다 — 폰에서 건물 뾰잉은 5px뿐이고
+   자동차·새·구름·사람이 다 움직여서 그 5px이 배경 소음에 묻힌다.
+   그래서 처음 한 번만 대각선으로 번지는 파도를 돌린다. 차례로 번지는 것이
+   「이것들은 한 세트」를 말해준다. 두 번째부터는 나오지 않아야 한다. */
+head('첫 인사 파도');
+{
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
+  });
+  const p = watch(await ctx.newPage());
+  await p.goto(BASE, { waitUntil: 'domcontentloaded' });
+
+  const seen = await p.evaluate(() => new Promise((done) => {
+    const out = [];
+    const mo = new MutationObserver((recs) => recs.forEach((r) => {
+      const n = r.target;
+      if (!n.classList) return;
+      if (!n.classList.contains('greet') && !n.classList.contains('folks-pop')) return;
+      const who = n.classList.contains('mbox') ? 'mailbox'
+        : n.classList.contains('me-figure') ? 'me'
+        : n.id === 'folks' ? 'park'
+        : n.closest('[data-district]')?.dataset.district || '?';
+      if (!out.includes(who)) out.push(who);
+    }));
+    mo.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    setTimeout(() => { mo.disconnect(); done(out); }, 4200);
+  }));
+  ok(seen.length >= 9, `마을이 차례로 인사한다 (${seen.length}곳)`, seen.join(' → '));
+  ok(seen[0] === 'museum', '왼쪽 위에서 시작한다', seen[0]);
+  // 우편함은 9px이라 스스로 눈에 띌 수 없다 — 맨 끝이라는 자리가 그 몫을 한다
+  ok(seen[seen.length - 1] === 'mailbox', '우편함이 맨 마지막이다', seen[seen.length - 1]);
+
+  // 인사가 idle을 밀어냈다 물러나면 그 요소만 0부터 다시 시작한다 → 되맞춰야 한다
+  await p.waitForTimeout(1800);
+  const spread = await p.evaluate(() => {
+    const a = document.getAnimations().filter((x) =>
+      ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName));
+    const st = a.map((x) => +x.startTime).filter((v) => !isNaN(v));
+    return st.length ? Math.round(Math.max(...st) - Math.min(...st)) : -1;
+  });
+  ok(spread === 0, '인사가 끝나면 마을이 다시 한 박자다', spread + 'ms 어긋남');
+
+  // 같은 방문자에게 두 번 인사하지 않는다 (localStorage)
+  const p2 = watch(await ctx.newPage());
+  await p2.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await p2.waitForTimeout(2600);
+  ok(await p2.evaluate(() => document.querySelectorAll('.greet').length) === 0,
+    '두 번째 방문에는 인사하지 않는다');
+  await ctx.close();
 }
 
 /* ── 마무리 ─────────────────────────────────────────────── */
