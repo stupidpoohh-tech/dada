@@ -193,31 +193,47 @@ button, input { font: inherit; color: inherit; }
   100% { transform: scale(1.06, 1.06); }
 }
 
-/* 우편함 — 세모집 카탈로그가 여기서 날아온다 (districts[].mailbox · book.from).
-   건물 복제본과 같은 원리지만 지도 폭의 2%밖에 안 되는 물건이라, 건물의 진폭으로는
-   눈에 띄지 않는다. 같은 2.4초 박자·같은 위상(25%·75%)에 폭만 크게 뛴다.
-   복제본이라 1보다 작게 줄이면 뒤의 원본이 드러나므로 여기서도 늘어나기만 한다. */
+/* 우편함 — 구역과 별개의 문 (districts[].mailbox). 건물은 소개서를 열고
+   우편함은 게임 안내서를 연다. 겉의 링크(.mbox-spot)는 가만히 있고 안의
+   복제본(.mbox)만 움직인다 — "나" 캐릭터와 같은 이유로, 누를 자리는 고정이어야 한다. */
+.mbox-spot {
+  position: absolute;
+  pointer-events: auto;
+  display: block;
+  z-index: 4;                      /* 세모집 구역 버튼 위 — 우편함 자리는 우편함이 받는다 */
+  line-height: 0;
+}
+/* 우편함은 지도 폭의 2%라 폰에서 8px 남짓. 판정 영역을 그림보다 넓게 깐다 */
+.mbox-spot::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  width: max(100%, 44px); height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
 .mbox {
   position: absolute;
   overflow: hidden;
   transform-origin: 50% 100%;
   pointer-events: none;
+  /* 건물과 같은 2.4초 박자·같은 위상(25%)이되 **한 바퀴에 한 번만** 뛴다.
+     건물은 두 번 숨쉬듯 부풀고 우편함은 한 번 크게 뛰어오른다 — 같은 리듬 위에서
+     다른 걸음이라, 같은 요소로 안 읽힌다. 복제본이라 1보다 작게 줄이면
+     뒤의 원본이 드러나므로 여기서도 늘어나기만 한다. */
   animation: mbox-idle 2.4s ease-in-out infinite;
 }
 .mbox > img { position: absolute; display: block; max-width: none; }
 @keyframes mbox-idle {
-  0%, 6%    { transform: scale(1, 1); }
+  0%, 14%   { transform: scale(1, 1); }
   25%       { transform: scale(1.05, 1.32); }
-  44%, 56%  { transform: scale(1.22, 1.02); }
-  75%       { transform: scale(1.05, 1.32); }
-  94%, 100% { transform: scale(1, 1); }
+  33%       { transform: scale(1.18, 1.03); }
+  42%, 100% { transform: scale(1, 1); }
 }
 @media (hover: hover) {
-  .spot:hover .mbox { animation: none; transform: scale(1.14, 1.28); }
+  .mbox-spot:hover .mbox { animation: none; transform: scale(1.14, 1.28); }
 }
-.spot:focus-visible .mbox { animation: none; transform: scale(1.14, 1.28); }
-/* 발송 — 책이 뜨고 내리는 순간 한 번 크게 튄다. 출발점이 작아서 이 강조가 없으면
-   어디서 날아왔는지 놓친다. 여기도 1 아래로는 안 내려간다 */
+.mbox-spot:focus-visible .mbox { animation: none; transform: scale(1.14, 1.28); }
+/* 발송 — 안내서가 튀어나오는 순간 한 번 크게. 여기도 1 아래로는 안 내려간다 */
 .mbox.send { animation: mbox-send .62s cubic-bezier(.34, 1.5, .64, 1) forwards; }
 @keyframes mbox-send {
   0%   { transform: scale(1, 1); }
@@ -225,6 +241,17 @@ button, input { font: inherit; color: inherit; }
   55%  { transform: scale(1.04, 1.52); }
   80%  { transform: scale(1.18, 1.04); }
   100% { transform: scale(1, 1); }
+}
+/* 우편함에서 날아가는 겉장. 도착 페이지가 이 그림(표지)에서 시작하므로 이어져 보인다 */
+.mail-fly {
+  position: fixed;
+  z-index: 80;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  object-fit: cover;
+  will-change: transform;
+  pointer-events: none;
 }
 
 /* "나" 캐릭터 — 공원 사람들·건물과 똑같은 folk-idle 박자로 움직인다.

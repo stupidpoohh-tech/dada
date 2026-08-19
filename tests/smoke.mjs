@@ -53,11 +53,9 @@ head('책 뷰어');
     return i.complete && i.naturalWidth > 0; }), '페이지 이미지가 실제로 뜬다');
 
   // 세모집으로 갈아타기 — 이전 책 값이 남으면 여기서 걸린다.
-  // 세모집은 항목이 둘(카탈로그·게임 안내서)이라 바로 열리지 않고 팝오버가 뜬다
+  // 세모집에 항목이 둘이지만 건물은 소개서를 바로 연다 (안내서는 우편함이 연다)
   await p.keyboard.press('Escape'); await p.waitForTimeout(700);
   await p.click('.spot[data-district="house"]');
-  await p.waitForSelector('#panel .card', { timeout: 4000 });
-  await p.click('#panel .card[href="#house"]');
   await p.waitForSelector('#bookOverlay:not([hidden])', { timeout: 4000 });
   await p.waitForTimeout(800);
   const sw = await p.evaluate(() => ({
@@ -277,33 +275,37 @@ head('책이 건물에서 날아온다');
   });
   ok(settled, '닫은 뒤 변형이 남지 않는다');
 
-  // 세모집 카탈로그는 건물이 아니라 마당의 우편함에서 날아온다 (book.from: "mailbox").
-  // 우편함이 작아 출발점이 흐릿하면 장식이 아니라 소음이 된다 — 좌표로 지킨다.
-  await p.click('.spot[data-district="house"]');
-  await p.waitForSelector('#panel .card', { timeout: 4000 });
-  await p.click('#panel .card[href="#house"]');       // 첫 열기로 그림을 데운다
-  await p.waitForSelector('#bookOverlay:not([hidden])', { timeout: 4000 });
-  await p.waitForTimeout(800);
-  await p.keyboard.press('Escape'); await p.waitForTimeout(750);
+  // 우편함 — 구역과 별개의 문. 건물은 소개서를 열고 우편함은 게임 안내서를 연다.
+  // 링크 상자는 가만히 있어야 한다 (그림만 뛴다 — "나" 캐릭터와 같은 규칙).
+  const mba = p.locator('.mbox-spot');
+  ok(await mba.count() === 1, '우편함이 자기 문(링크)을 가진다');
+  ok(await mba.getAttribute('href') === '/game/', '우편함이 게임 안내서로 간다');
 
-  const mb = await p.locator('.spot[data-district="house"] .mbox').boundingBox();
-  ok(!!mb, '세모집에 우편함 복제본이 있다');
-  await p.click('.spot[data-district="house"]');
-  await p.waitForSelector('#panel .card', { timeout: 4000 });
-  await p.click('#panel .card[href="#house"]');
-  const path2 = await p.evaluate(async () => {
-    const bk = document.getElementById('bk'); const o = []; const t0 = performance.now();
-    while (performance.now() - t0 < 500) {
-      const r = bk.getBoundingClientRect();
-      o.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
-      await new Promise((x) => requestAnimationFrame(x));
+  const drift = await p.evaluate(async () => {
+    const a = document.querySelector('.mbox-spot');
+    const xs = [], ys = [];
+    for (let i = 0; i < 24; i++) {
+      const r = a.getBoundingClientRect(); xs.push(r.left); ys.push(r.top);
+      await new Promise((r2) => requestAnimationFrame(r2));
     }
-    return o;
+    return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
   });
-  const dMb = Math.min(...path2.map((f) =>
-    Math.hypot(f.cx - (mb.x + mb.width / 2), f.cy - (mb.y + mb.height / 2))));
-  ok(dMb < 70, `카탈로그가 우편함에서 날아온다 (우편함까지 ${dMb.toFixed(0)}px)`);
-  await p.keyboard.press('Escape'); await p.waitForTimeout(600);
+  ok(drift < 0.5, '우편함 링크 상자는 흔들리지 않는다', drift.toFixed(2) + 'px');
+
+  const hitBox = await p.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.mbox-spot'), '::after');
+    return [parseFloat(cs.width), parseFloat(cs.height)];
+  });
+  ok(hitBox[0] >= 44 && hitBox[1] >= 44,
+    `우편함 판정이 터치 기준 44px 이상 (${hitBox[0].toFixed(0)}x${hitBox[1].toFixed(0)})`);
+
+  // 누르면 겉장이 날아오르고 /game/ 표지에서 이어진다
+  await p.click('.mbox-spot');
+  await p.waitForURL('**/game/?from=town', { timeout: 4000 });
+  await p.waitForTimeout(700);
+  const atCover = await p.evaluate(() =>
+    document.getElementById('deck').scrollTop === 0);
+  ok(atCover, '우편함으로 열면 표지에서 시작한다 (?from=town)');
   await p.close();
 }
 
@@ -323,8 +325,10 @@ head('데이터 단일 소스');
 
   for (const d of data.districts) {
     const n = data.items.filter((i) => i.district === d.id).length;
-    const label = await p.getAttribute(`[data-district="${d.id}"]`, 'aria-label');
-    const want = n ? `${d.name} — 작업물 ${n}개` : `${d.name} — 준비 중`;
+    const label = await p.getAttribute(`button[data-district="${d.id}"]`, 'aria-label');
+    const direct = d.direct && data.items.find((i) => i.id === d.direct);
+    const want = direct ? `${d.name} — ${direct.name}`
+      : n ? `${d.name} — 작업물 ${n}개` : `${d.name} — 준비 중`;
     if (label !== want) ok(false, `${d.name} 구역 라벨`, `${label} ≠ ${want}`);
   }
   ok(true, '구역 라벨이 전부 데이터와 맞다');

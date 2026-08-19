@@ -427,8 +427,10 @@
 
       preload(0);
 
+      // 마을 우편함에서 겉장이 날아와 열린 경우엔 그 그림 그대로 — 표지에서 시작한다
+      const fromTown = new URLSearchParams(location.search).has('from');
       // 목차에서 시작한다. 첫 화면은 37편의 리스트가 아니라 챕터를 고르는 화면이다
-      if (!location.hash) {
+      if (!location.hash && !fromTown) {
         requestAnimationFrame(() => {
           const deck = $('deck');
           const prev = deck.style.scrollBehavior;

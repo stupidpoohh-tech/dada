@@ -197,8 +197,11 @@
       btn.type = 'button';
       btn.dataset.district = d.id;
       btn.setAttribute('aria-expanded', 'false');
-      btn.setAttribute('aria-label',
-        `${d.name}${count ? ` — 작업물 ${count}개` : ' — 준비 중'}`);
+      // 바로 열리는 구역은 개수가 아니라 무엇이 열리는지를 말한다.
+      // 세모집은 항목이 둘이지만 건물은 소개서만 열고, 안내서는 우편함이 연다
+      const direct = d.direct && data.items.find((x) => x.id === d.direct);
+      btn.setAttribute('aria-label', direct ? `${d.name} — ${direct.name}`
+        : `${d.name}${count ? ` — 작업물 ${count}개` : ' — 준비 중'}`);
 
       if (isMe) {
         btn.style.left = pct(d.character[0]);
@@ -237,18 +240,7 @@
           pops.push({ pop, pimg, rect: d.rect, building: d.building });
         }
 
-        if (d.mailbox) {
-          // 우편함 — 세모집 카탈로그가 여기서 날아온다 (book.from: "mailbox").
-          // 건물 복제본과 같은 원리라 위치·크기는 syncPops()가 함께 맞춘다.
-          // 지도 폭의 2%밖에 안 되는 물건이라, 눈에 띄라고 건물보다 큰 폭으로 뛴다.
-          const mbox = el('span', 'mbox');
-          const mimg = new Image();
-          mimg.src = 'assets/map/town-web.jpg';
-          mimg.alt = '';
-          mbox.appendChild(mimg);
-          btn.appendChild(mbox);
-          pops.push({ pop: mbox, pimg: mimg, rect: d.rect, building: d.mailbox });
-        }
+        if (d.mailbox) makeMailbox(wrap, d);
 
         // 사람들 구역은 공원 땅이 아니라 사람들이 반응한다
         if (d.id === 'park') {
@@ -275,6 +267,94 @@
       btn.addEventListener('click', () => toggle(d.id, btn));
       wrap.appendChild(btn);
     });
+  }
+
+  /** 우편함 — 구역과 별개의 문. districts[].mailbox = { box, item }.
+   *  건물은 자기 항목(direct)을 열고, 우편함은 자기 항목을 연다 — 물건마다 문이 하나씩.
+   *  링크(<a>)로 만들어 JS가 없어도, 새 탭으로 열어도 동작한다.
+   *  겉의 링크는 가만히 있고 안의 복제본만 움직인다 ("나" 캐릭터와 같은 이유 —
+   *  버튼이 흔들리면 누를 자리도 같이 흔들린다). */
+  function makeMailbox(wrap, d) {
+    const item = data.items.find((x) => x.id === d.mailbox.item);
+    if (!item || !item.url) return;
+    const [x, y, w, h] = d.mailbox.box;
+
+    const a = el('a', 'mbox-spot');
+    a.href = item.url;
+    a.setAttribute('aria-label', `우편함 — ${item.name}`);
+    Object.assign(a.style, { left: pct(x), top: pct(y), width: pct(w), height: pct(h) });
+
+    // 우편함 복제본 — 건물 복제본과 같은 원리라 위치·크기는 syncPops()가 함께 맞춘다
+    const mbox = el('span', 'mbox');
+    const mimg = new Image();
+    mimg.src = 'assets/map/town-web.jpg';
+    mimg.alt = '';
+    mbox.appendChild(mimg);
+    a.appendChild(mbox);
+    pops.push({ pop: mbox, pimg: mimg, rect: d.mailbox.box, building: d.mailbox.box });
+
+    // 겉장을 미리 받아 두면 누르는 순간 바로 날아오른다
+    const warm = () => { if (item.cover) new Image().src = item.cover; };
+    a.addEventListener('pointerenter', warm, { once: true });
+    a.addEventListener('focus', warm, { once: true });
+
+    a.addEventListener('click', (e) => {
+      // 새 탭(⌘·중클릭)은 브라우저에 맡긴다
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      sendMail(a, mbox, item);
+    });
+    wrap.appendChild(a);
+  }
+
+  /** 우편함에서 안내서가 날아온다. 책 뷰어가 아니라 별도 페이지라 결국 이동해야
+   *  하는데, 그냥 이동하면 "눌렀더니 어디론가 갔다"가 된다. 겉장(표지)을 우편함에서
+   *  화면 가득 날려 보낸 뒤 그 그림 그대로 페이지를 연다 — 도착한 페이지도
+   *  표지에서 시작하므로(?from=town) 이어져 보인다. */
+  function sendMail(anchor, mbox, item) {
+    const go = () => { location.href = item.url + (item.cover ? '?from=town' : ''); };
+
+    // 발송의 뾰옹 — 편지가 튀어나오는 순간
+    mbox.classList.remove('send');
+    void mbox.offsetWidth;
+    mbox.classList.add('send');
+
+    if (!item.cover) return void setTimeout(go, 240);
+
+    const img = new Image();
+    img.src = item.cover;
+    img.className = 'mail-fly';
+    img.alt = '';
+    const start = anchor.getBoundingClientRect();
+    let done = false;
+
+    const fly = () => {
+      if (done) return;
+      done = true;
+      // 표지(16:9)가 화면에 contain으로 들어갈 크기에서 출발점으로 되민다
+      const vw = innerWidth, vh = innerHeight;
+      const W = Math.min(vw, vh * 16 / 9), H = W * 9 / 16;
+      Object.assign(img.style, { width: W + 'px', height: H + 'px',
+        left: (vw - W) / 2 + 'px', top: (vh - H) / 2 + 'px' });
+      document.body.appendChild(img);
+      const dx = (start.left + start.width / 2) - vw / 2;
+      const dy = (start.top + start.height / 2) - vh / 2;
+      const sc = Math.max(start.width / W, 0.04);
+      img.animate(
+        [{ transform: `translate(${dx}px, ${dy}px) scale(${sc}) rotate(-9deg)`, opacity: 0 },
+         { opacity: 1, offset: .12 },
+         { transform: 'none', opacity: 1 }],
+        { duration: 480, easing: 'cubic-bezier(.33, .62, .3, 1)', fill: 'forwards' })
+        .addEventListener('finish', go);
+      setTimeout(go, 900);               // finish가 안 와도 잠기지 않게
+    };
+
+    if (img.complete && img.naturalWidth) fly();
+    else {
+      img.addEventListener('load', fly, { once: true });
+      // 겉장이 늦으면 그냥 간다 — 이동을 그림이 막아서는 안 된다
+      setTimeout(() => { if (!done) { done = true; go(); } }, 350);
+    }
   }
 
   /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
@@ -664,19 +744,7 @@
    *  설명이 된다 — 세모집을 눌렀으니 그 집에서 카탈로그를 꺼내온 것처럼 보인다.
    *  dir > 0이면 날아오고, dir < 0이면 그 자리로 되돌아간다. */
   function flyBook(dir) {
-    let src = document.querySelector(`[data-district="${book.district}"]`);
-    if (book.from === 'mailbox') {
-      const mb = src && src.querySelector('.mbox');
-      if (mb) {
-        src = mb;
-        // 발송의 뾰옹 — 책이 뜨고 내리는 순간 우편함이 한 번 크게 튄다.
-        // 우편함이 작아서, 이게 없으면 어디서 날아왔는지 놓치기 쉽다
-        mb.classList.remove('send');
-        void mb.offsetWidth;               // 리플로우로 애니메이션 재시작
-        mb.classList.add('send');
-        setTimeout(() => { mb.classList.remove('send'); resyncIdle(); }, 650);
-      }
-    }
+    const src = document.querySelector(`[data-district="${book.district}"]`);
     const bk = $('bk');
     // 재기 전에 이전 애니메이션을 먼저 걷어낸다. 닫을 때 쓴 변형이 fill로 남아 있으면
     // getBoundingClientRect()가 그 변형이 적용된 좌표를 줘서 출발점이 엉뚱해진다.
@@ -922,7 +990,6 @@
       if (i.open !== 'book' || !i.book) return;
       books.push({ id: i.id, label: i.name, dir: i.book.dir, ratio: i.book.ratio,
                    district: i.district,   // 책이 날아올 출발점 (그 구역 건물)
-                   from: i.book.from,      // "mailbox"면 구역의 우편함에서 날아온다
                    flat: !!i.book.flat, pages: i.book.pages || 0, hash: i.book.hash });
     });
 

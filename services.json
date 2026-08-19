@@ -184,12 +184,16 @@
         12,
         14
       ],
-      "mailbox": [
-        87.9,
-        94.35,
-        1.95,
-        3.15
-      ]
+      "mailbox": {
+        "box": [
+          87.9,
+          94.35,
+          1.95,
+          3.15
+        ],
+        "item": "game-guide"
+      },
+      "direct": "house-catalog"
     },
     {
       "id": "me",
@@ -359,7 +363,6 @@
         "dir": "assets/portfolio/house/",
         "pages": 6,
         "hash": "house",
-        "from": "mailbox",
         "ratio": "449 / 635",
         "flat": true
       }
@@ -371,6 +374,7 @@
       "district": "house",
       "type": "doc",
       "url": "/game/",
+      "cover": "game/pages/01.webp",
       "description": "오늘의 상태를 고르면 그에 맞는 게임이 나오는 다섯 챕터. 1, 2, 3, 4 다음은 42.",
       "date": "2026-07",
       "icon": "🎮",
