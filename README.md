@@ -106,7 +106,7 @@ git show 86bfa0a:assets/map/town.jpg > assets/map/town.jpg
 - `district` — `museum · school · seonggyungwan · park · company · cafe · bank · house · me`
 - `type` — `app`(새 탭) · `doc`(내부 페이지) · `video` · `external`
 - `date` — **만든 시기 `YYYY-MM`. 빠뜨리면 `npm test`가 잡는다.**
-  **목록 모달은 언제나 만든 순서로 늘어놓는다** — 이 값으로 정렬하고 달 단위로 묶는다.
+  **목록 모달은 최근 만든 것부터 늘어놓는다** — 이 값으로 정렬하고 달 단위로 묶는다.
   카드 위 작은 연월도 같은 값이다. 구역별 묶음은 `/list.html`에만 있다 (구역은 지도가 한다).
   화면에는 `26.05`로 짧게 나오지만 정렬을 위해 데이터는 네 자리 연도로 둔다
 - `group` — 한 구역 안에서 소제목으로 나눌 때. 나눌 게 없으면 안 쓴다

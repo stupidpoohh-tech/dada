@@ -71,10 +71,11 @@ for d in data['districts']:
 {chr(10).join(item_html(i) for i in items)}
     </section>''')
 
-# 목록 모달은 언제나 만든 순서로 늘어놓는다. 같은 순서를 크롤러·스크린리더에게도 준다.
+# 목록 모달은 최근 만든 것부터 늘어놓는다. 같은 순서를 크롤러·스크린리더에게도 준다.
 # 구역별 묶음은 이 페이지에만 남는다 — 마을 지도가 구역을 보여주는 곳이라 모달에는 두지 않는다.
 # 설명은 위 구역별 목록에 이미 있으므로 여기서는 이름과 시기만 둔다.
-dated = sorted((i for i in data['items'] if i.get('date')), key=lambda i: i['date'])
+dated = sorted((i for i in data['items'] if i.get('date')),
+               key=lambda i: i['date'], reverse=True)
 blocks = []
 for month, group in itertools.groupby(dated, key=lambda i: i['date']):
     lis = '\n'.join(
@@ -86,7 +87,8 @@ for month, group in itertools.groupby(dated, key=lambda i: i['date']):
     blocks.append(f'      <h3 class="doc-sub">{e(month_label(month))}</h3>\n'
                   f'      <ul class="doc-list">\n{lis}\n      </ul>')
 timeline = '\n'.join(blocks)
-span = (f'{month_label(dated[0]["date"])}부터 {month_label(dated[-1]["date"])}까지'
+# 목록은 최근 것부터지만 이 문장은 「언제부터 언제까지」라 시간 순서를 지킨다
+span = (f'{month_label(dated[-1]["date"])}부터 {month_label(dated[0]["date"])}까지'
         if dated else '')
 
 p = data['profile']
@@ -138,7 +140,7 @@ page = f'''<!doctype html>
 {chr(10).join(sections)}
 
     <section class="doc-group" aria-labelledby="g-time">
-      <h2 id="g-time">🧱 지어진 순서</h2>
+      <h2 id="g-time">🧱 만든 순서</h2>
 {timeline}
     </section>
 

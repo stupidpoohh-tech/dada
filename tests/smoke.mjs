@@ -341,7 +341,7 @@ head('데이터 단일 소스');
   const dates = await p.evaluate(() =>
     [...document.querySelectorAll('#modalBody .card-date')].map((n) => n.textContent));
   ok(dates.length === data.items.length, `날짜가 전부 나온다 (${dates.length} / ${data.items.length})`);
-  ok(dates.every((d, n) => n === 0 || dates[n - 1] <= d), '오래된 것부터 차례로 놓인다');
+  ok(dates.every((d, n) => n === 0 || dates[n - 1] >= d), '최근 것부터 차례로 놓인다');
 
   const months = await p.evaluate(() =>
     [...document.querySelectorAll('#modalBody .group-title')].length);
@@ -380,7 +380,7 @@ head('/list 정적 페이지');
   const timeline = src.slice(src.indexOf('id="g-time"'), src.indexOf('id="g-me"'));
   const noTime = data.items.filter((i) => !timeline.includes(i.name));
   ok(src.includes('id="g-time"') && noTime.length === 0,
-    '지어진 순서 섹션에 항목이 전부 있다', noTime.map((i) => i.id).join(', ') + ' 빠짐');
+    '만든 순서 섹션에 항목이 전부 있다', noTime.map((i) => i.id).join(', ') + ' 빠짐');
 
   const heads = await p.evaluate(() =>
     [...document.querySelectorAll('.doc-item h3')].length);
