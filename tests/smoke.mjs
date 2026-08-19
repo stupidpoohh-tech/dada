@@ -27,19 +27,10 @@ const watch = (p) => {
   p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   return p;
 };
-/** 첫 인사 파도가 도는 3초 남짓 동안은 마을이 **일부러** 한 박자가 아니다.
- *  나머지 검사는 마을이 이미 조용해진 상태를 보는 것이므로 재방문자로 열어
- *  파도를 건너뛴다. 파도 자체는 §11에서 따로 본다. */
-const asReturning = (p) =>
-  p.addInitScript(() => {
-    try { localStorage.setItem('dada-greeted', '1'); } catch (_) {}
-  }).then(() => p);
-
-const desktop = () => browser.newPage({ viewport: { width: 1280, height: 900 } })
-  .then(watch).then(asReturning);
+const desktop = () => browser.newPage({ viewport: { width: 1280, height: 900 } }).then(watch);
 const phone = () => browser.newPage({
   viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
-}).then(watch).then(asReturning);
+}).then(watch);
 
 /* ── 1. 책 뷰어 ────────────────────────────────────────────
    아트북과 세모집 카탈로그가 뷰어 한 벌을 나눠 쓴다. 폴더·쪽수·해시·비율이
@@ -155,31 +146,40 @@ head('캐릭터 판정 영역');
    깨진 적 있음 ②: 터치에서 :hover가 눌린 채 남아 그 건물만 얼어붙었다. */
 head('마을 박자');
 {
+  /** 마을은 한 박자를 타되 줄마다 위상이 어긋난다 (위→아래 파도).
+   *  그래서 「전부 같은 startTime」이 아니라 **위상 값이 세 종류이고
+   *  간격이 일정한지**를 본다. `steps`가 3이고 `gap`이 ROW_STEP이면 파도가 산 것이다. */
   const beat = (p) => p.evaluate(() => {
     const a = document.getAnimations().filter((x) =>
       ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName));
-    const st = a.map((x) => x.startTime).filter((v) => v != null).map(Number);
+    const st = [...new Set(a.map((x) => x.startTime).filter((v) => v != null)
+      .map((v) => Math.round(Number(v))))].sort((x, y) => x - y);
+    const gaps = st.slice(1).map((v, i) => v - st[i]);
     return {
       n: a.length,
-      spread: st.length ? Math.round(Math.max(...st) - Math.min(...st)) : -1,
+      steps: st.length,
+      gap: gaps.length ? Math.max(...gaps) : 0,
+      even: gaps.every((g) => g === gaps[0]),
       frozen: a.filter((x) => x.playState !== 'running').length,
     };
   });
+  const waveOk = (b) => b.steps === 3 && b.gap === 280 && b.even;
 
   const d = await desktop();
   await d.goto(BASE, { waitUntil: 'networkidle' });
   await d.waitForTimeout(900);
-  ok((await beat(d)).spread === 0, '처음부터 한 박자');
+  ok(waveOk(await beat(d)), '처음부터 줄마다 어긋난 한 박자 (위→아래 파도)',
+    JSON.stringify(await beat(d)));
 
   await d.click('.spot[data-district="bank"]'); await d.waitForTimeout(700);
   await d.click('.panel-close'); await d.mouse.move(5, 5); await d.waitForTimeout(500);
   let b = await beat(d);
-  ok(b.spread === 0, '팝오버를 열었다 닫아도 박자가 유지된다', b.spread + 'ms 어긋남');
+  ok(waveOk(b), '팝오버를 열었다 닫아도 파도가 유지된다', JSON.stringify(b));
 
   await d.hover('.spot[data-district="school"]'); await d.waitForTimeout(400);
   await d.mouse.move(5, 5); await d.waitForTimeout(500);
   b = await beat(d);
-  ok(b.spread === 0, '호버가 풀려도 박자가 유지된다', b.spread + 'ms 어긋남');
+  ok(waveOk(b), '호버가 풀려도 파도가 유지된다', JSON.stringify(b));
   await d.close();
 
   const m = await phone();
@@ -190,7 +190,7 @@ head('마을 박자');
     await m.tap('.panel-close'); await m.waitForTimeout(500);
   }
   b = await beat(m);
-  ok(b.spread === 0, '터치로 여러 번 여닫아도 박자가 유지된다', b.spread + 'ms 어긋남');
+  ok(waveOk(b), '터치로 여러 번 여닫아도 파도가 유지된다', JSON.stringify(b));
   ok(b.frozen === 0, '터치 뒤에 얼어붙은 건물이 없다 (sticky :hover)', b.frozen + '개 멈춤');
   await m.close();
 }
@@ -525,56 +525,57 @@ head('게임 안내서');
   await p.close();
 }
 
-/* ── 11. 첫 인사 파도 ──────────────────────────────────────
-   처음 온 사람에게 이 지도는 그냥 그림이다 — 폰에서 건물 뾰잉은 5px뿐이고
-   자동차·새·구름·사람이 다 움직여서 그 5px이 배경 소음에 묻힌다.
-   그래서 처음 한 번만 대각선으로 번지는 파도를 돌린다. 차례로 번지는 것이
-   「이것들은 한 세트」를 말해준다. 두 번째부터는 나오지 않아야 한다. */
-head('첫 인사 파도');
+/* ── 11. 위에서 아래로 흐르는 파도 ────────────────────────
+   처음 온 사람에게 이 지도는 그냥 그림이다 — 폰에서 건물 뾰잉은 몇 px뿐이고
+   자동차·새·구름·사람이 다 움직여서 그게 배경 소음에 묻힌다.
+   그래서 위·가운데·아래 세 줄로 묶어 위상을 어긋내, 뾰잉이 위에서 아래로
+   **끊임없이** 흘러내리게 했다. 흘러가는 움직임은 제자리 움직임보다 눈에 걸린다.
+   한때 첫 방문에만 한 번 인사하게 했으나, 한 번 지나가면 다시 볼 길이 없어 접었다. */
+head('위→아래 파도');
 {
-  const ctx = await browser.newContext({
-    viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
+  const p = await phone();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(900);
+
+  // 줄마다 위상이 다르고, 같은 줄은 서로 같아야 한다
+  const rows = await p.evaluate(() => {
+    const band = (y) => (y < 40 ? 0 : y < 75 ? 1 : 2);   // app.js의 bandOf와 같은 경계
+    const map = document.querySelector('.map').getBoundingClientRect();
+    const out = {};
+    document.getAnimations().forEach((a) => {
+      if (!['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(a.animationName)) return;
+      const el = a.effect?.target;
+      if (!el || a.startTime == null) return;
+      const r = el.getBoundingClientRect();
+      const y = (r.top + r.height / 2 - map.top) / map.height * 100;
+      (out[band(y)] ||= []).push(Math.round(Number(a.startTime)));
+    });
+    return out;
   });
-  const p = watch(await ctx.newPage());
-  await p.goto(BASE, { waitUntil: 'domcontentloaded' });
+  const bands = Object.keys(rows).sort();
+  ok(bands.length === 3, `세 줄이 다 움직인다 (${bands.length}줄)`);
+  const oneEach = bands.every((k) => new Set(rows[k]).size === 1);
+  ok(oneEach, '같은 줄은 위상이 같다', JSON.stringify(rows));
+  const phases = bands.map((k) => rows[k][0]);
+  ok(phases[0] < phases[1] && phases[1] < phases[2],
+    '위쪽 줄이 먼저 솟는다 (파도가 아래로 흐른다)', phases.join(' → '));
+  ok(phases[1] - phases[0] === 280 && phases[2] - phases[1] === 280,
+    `줄 간격이 280ms로 고르다 (${phases[1] - phases[0]} · ${phases[2] - phases[0]})`);
 
-  const seen = await p.evaluate(() => new Promise((done) => {
-    const out = [];
-    const mo = new MutationObserver((recs) => recs.forEach((r) => {
-      const n = r.target;
-      if (!n.classList) return;
-      if (!n.classList.contains('greet') && !n.classList.contains('folks-pop')) return;
-      const who = n.classList.contains('mbox') ? 'mailbox'
-        : n.classList.contains('me-figure') ? 'me'
-        : n.id === 'folks' ? 'park'
-        : n.closest('[data-district]')?.dataset.district || '?';
-      if (!out.includes(who)) out.push(who);
-    }));
-    mo.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
-    setTimeout(() => { mo.disconnect(); done(out); }, 4200);
-  }));
-  ok(seen.length >= 9, `마을이 차례로 인사한다 (${seen.length}곳)`, seen.join(' → '));
-  ok(seen[0] === 'museum', '왼쪽 위에서 시작한다', seen[0]);
-  // 우편함은 9px이라 스스로 눈에 띌 수 없다 — 맨 끝이라는 자리가 그 몫을 한다
-  ok(seen[seen.length - 1] === 'mailbox', '우편함이 맨 마지막이다', seen[seen.length - 1]);
+  // 상시로 돈다 — 한참 뒤에도 살아 있어야 한다
+  await p.waitForTimeout(2600);
+  const alive = await p.evaluate(() => document.getAnimations().filter((x) =>
+    ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName)
+    && x.playState === 'running').length);
+  ok(alive >= 10, `잠시 뒤에도 계속 돈다 (${alive}개)`);
 
-  // 인사가 idle을 밀어냈다 물러나면 그 요소만 0부터 다시 시작한다 → 되맞춰야 한다
-  await p.waitForTimeout(1800);
-  const spread = await p.evaluate(() => {
-    const a = document.getAnimations().filter((x) =>
-      ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName));
-    const st = a.map((x) => +x.startTime).filter((v) => !isNaN(v));
-    return st.length ? Math.round(Math.max(...st) - Math.min(...st)) : -1;
-  });
-  ok(spread === 0, '인사가 끝나면 마을이 다시 한 박자다', spread + 'ms 어긋남');
-
-  // 같은 방문자에게 두 번 인사하지 않는다 (localStorage)
-  const p2 = watch(await ctx.newPage());
-  await p2.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await p2.waitForTimeout(2600);
-  ok(await p2.evaluate(() => document.querySelectorAll('.greet').length) === 0,
-    '두 번째 방문에는 인사하지 않는다');
-  await ctx.close();
+  // 새로고침해도 계속 돈다 — 한 번만 도는 인사가 아니다
+  await p.reload({ waitUntil: 'networkidle' });
+  await p.waitForTimeout(900);
+  const again = await p.evaluate(() => document.getAnimations().filter((x) =>
+    ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName)).length);
+  ok(again >= 10, `다시 들어와도 돈다 (${again}개)`);
+  await p.close();
 }
 
 /* ── 마무리 ─────────────────────────────────────────────── */

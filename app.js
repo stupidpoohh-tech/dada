@@ -123,9 +123,13 @@
 
     startCars(road);
 
-    FOLKS.forEach((f) => folks.appendChild(sprite('folk person', f.src, {
-      left: pct(f.x), top: pct(f.y), width: pct(f.w),
-    })));
+    FOLKS.forEach((f) => {
+      const node = sprite('folk person', f.src, {
+        left: pct(f.x), top: pct(f.y), width: pct(f.w),
+      });
+      rowOf.set(node, bandOf(f.y));
+      folks.appendChild(node);
+    });
 
     PERCHED.forEach((p) => folks.appendChild(sprite('folk', p.src, {
       left: pct(p.x), top: pct(p.y), width: pct(p.w), animation: 'none',
@@ -213,6 +217,7 @@
         img.src = S + 'me.png';
         img.alt = '';
         fig.appendChild(img);
+        rowOf.set(fig, bandOf(d.character[1]));
         btn.appendChild(fig);
       } else {
         const [x, y, w, h] = d.rect;
@@ -237,6 +242,7 @@
           }
           pop.appendChild(pimg);
           btn.appendChild(pop);
+          rowOf.set(pop, bandOf(d.building[1] + d.building[3] / 2));
           pops.push({ pop, pimg, rect: d.rect, building: d.building });
         }
 
@@ -247,22 +253,22 @@
           const layer = $('folks');
           const hot = (on) => layer.classList.toggle('folks-hot', on);
           btn.addEventListener('mouseenter', () => hot(true));
-          btn.addEventListener('mouseleave', () => { hot(false); resyncIdle(); });
+          btn.addEventListener('mouseleave', () => { hot(false); syncBeat(); });
           btn.addEventListener('focus', () => hot(true));
-          btn.addEventListener('blur', () => { hot(false); resyncIdle(); });
+          btn.addEventListener('blur', () => { hot(false); syncBeat(); });
           btn.addEventListener('click', () => {
             layer.classList.remove('folks-pop');
             void layer.offsetWidth;          // 리플로우로 애니메이션 재시작
             layer.classList.add('folks-pop');
             // 뾰옹이 끝나면 사람들도 마을 박자로 되돌린다
-            setTimeout(resyncIdle, 600);
+            setTimeout(syncBeat, 600);
           });
         }
       }
 
       // 호버·포커스가 풀리면 그 요소만 idle이 0부터 다시 시작한다 → 박자를 되맞춘다
-      btn.addEventListener('mouseleave', resyncIdle);
-      btn.addEventListener('blur', resyncIdle);
+      btn.addEventListener('mouseleave', syncBeat);
+      btn.addEventListener('blur', syncBeat);
 
       btn.addEventListener('click', () => toggle(d.id, btn));
       wrap.appendChild(btn);
@@ -290,6 +296,7 @@
     mimg.src = 'assets/map/town-web.jpg';
     mimg.alt = '';
     mbox.appendChild(mimg);
+    rowOf.set(mbox, bandOf(y + h / 2));
     a.appendChild(mbox);
     pops.push({ pop: mbox, pimg: mimg, rect: d.mailbox.box, building: d.mailbox.box });
 
@@ -384,102 +391,47 @@
     }
   }
 
-  /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
-   *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
+  /* ── 마을의 박자 ─────────────────────────── */
+
+  /** 마을은 한 곡을 함께 탄다 — 다만 **줄마다 조금씩 늦게** 탄다.
+   *  지도가 3열 블록이라 위·가운데·아래 세 줄로 묶고, 아래로 갈수록 위상을
+   *  ROW_STEP씩 미루면 뾰잉이 위에서 아래로 끊임없이 흘러내린다.
+   *
+   *  전에는 전부 같은 위상이었는데(「하나만 다른 리듬이면 어수선하다」),
+   *  그 합주가 폰에서 5px짜리 제자리 움직임이라 자동차·새·구름에 묻혔다.
+   *  **흘러가는 움직임은 제자리 움직임보다 눈에 걸린다** — 줄이 차례로 솟으면
+   *  「이 열 개가 한 세트」라는 것도 함께 읽힌다. 박자(2.4초)는 그대로라
+   *  마을이 어수선해지지는 않는다.
+   *
+   *  처음 한 번만 크게 인사하고 마는 방식도 만들어 봤는데, 상시 파도로 대체했다 —
+   *  한 번 지나가면 늦게 온 사람은 못 보고, 다시 볼 방법도 없었다. */
   const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'];
+  const ROWS = 3, ROW_STEP = 280;          // ms. 2.4초 주기의 약 12%
+  const rowOf = new WeakMap();             // 움직이는 요소 → 0(위) · 1(가운데) · 2(아래)
+  /** 지도 세로 %로 줄을 가른다. 지도가 3열 블록이라 경계가 뚜렷하다 */
+  const bandOf = (y) => (y < 40 ? 0 : y < 75 ? 1 : 2);   // 화면에 보이는 중심 y(%) 기준
 
-  function syncIdle() {
-    const anims = document.getAnimations().filter((a) =>
-      IDLE_ANIMS.includes(a.animationName));
-    if (!anims.length) return;
-    // 기준은 문서 타임라인의 현재 시각. 다른 애니메이션의 startTime을 베끼면
-    // 아직 시작 전이라 null일 수 있고, null을 넣으면 전부 멈춰버린다.
-    const t = document.timeline.currentTime;
-    if (t == null) return;
-    anims.forEach((a) => { try { a.startTime = t; } catch (_) {} });
-  }
+  /** 기준 시각은 **한 번만** 정하고 계속 쓴다. 부를 때마다 「지금」으로 다시 잡으면
+   *  호출할 때마다 온 마을이 한 번 움찔한다. 주기가 무한 반복이라 기준이 과거
+   *  어디든 위상은 같다. */
+  let beatOrigin = null;
 
-  /** 호버·뾰옹처럼 잠깐 다른 애니메이션이 얹혔다 물러나면 idle이 0부터 다시 시작해
-   *  그 요소만 마을과 박자가 어긋난다. 뒤늦게 합류한 것을 **마을이 이미 타고 있는
-   *  박자에 끌어다 붙인다.** syncIdle()처럼 전부 0으로 되돌리면 어긋남은 없어져도
-   *  온 마을이 그 순간 한 번 움찔한다 — 눌렀을 때 튀어 보이는 게 그 때문이다.
+  /** 모든 idle을 제 줄의 위상에 앉힌다. 같은 값을 다시 넣는 것이므로
+   *  몇 번을 불러도 움찔하지 않는다 — 호버·뾰옹에서 돌아온 것만 제자리를 찾는다.
    *  스타일을 강제로 계산해야 되살아난 애니메이션이 getAnimations()에 잡힌다. */
-  function resyncIdle() {
+  function syncBeat() {
     void document.body.offsetHeight;
-    const anims = document.getAnimations().filter((a) => IDLE_ANIMS.includes(a.animationName));
-    if (anims.length < 2) return;
-
-    // 가장 많은 요소가 쓰고 있는 startTime이 곧 마을의 박자다
-    const tally = new Map();
-    anims.forEach((a) => {
-      if (a.startTime == null) return;
-      tally.set(+a.startTime, (tally.get(+a.startTime) || 0) + 1);
+    if (beatOrigin == null) {
+      const t = document.timeline.currentTime;
+      if (t == null) return;
+      beatOrigin = t;
+    }
+    document.getAnimations().forEach((a) => {
+      if (!IDLE_ANIMS.includes(a.animationName)) return;
+      const row = rowOf.get(a.effect?.target) ?? 0;
+      // 전부 과거로 두어야 한다 — 미래로 잡으면 그때까지 첫 프레임에 멈춰 있는다
+      try { a.startTime = beatOrigin - (ROWS - 1 - row) * ROW_STEP; } catch (_) {}
     });
-    let ref = null, best = 0;
-    tally.forEach((n, t) => { if (n > best) { best = n; ref = t; } });
-    if (ref == null) return;
-
-    anims.forEach((a) => {
-      if (a.startTime != null && +a.startTime === ref) return;
-      try { a.startTime = ref; } catch (_) {}
-    });
-  }
-
-  /* ── 첫 인사 ─────────────────────────────── */
-
-  /** 처음 온 사람에게만 한 번, 왼쪽 위에서 오른쪽 아래로 차례로 인사한다.
-   *  왜 표식(화살표·물결)이 아니라 파도인지는 styles.css의 `@keyframes greet`.
-   *  요약하면 — 표식은 열 개가 되는 순간 두 번째 벽지가 되고, 차례로 번지는 것만이
-   *  「이것들은 한 세트」를 말해준다. 한 번 배우면 일반화되므로 다시 나오지 않는다. */
-  const GREETED = 'dada-greeted';
-
-  function greetTown() {
-    // 링크로 바로 들어와 책이 열려 있으면 파도가 그 뒤에서 헛돈다
-    if (location.hash) return;
-    try {
-      if (localStorage.getItem(GREETED)) return;
-      localStorage.setItem(GREETED, '1');
-    } catch (_) { return; }      // 저장을 못 하면 매번 인사하게 되므로 아예 접는다
-
-    const flash = (node, cls) => {
-      node.classList.add(cls);
-      node.addEventListener('animationend',
-        () => node.classList.remove(cls), { once: true });
-    };
-    const popFolks = () => {
-      const layer = $('folks');
-      layer.classList.remove('folks-pop');
-      void layer.offsetWidth;                 // 리플로우로 애니메이션 재시작
-      layer.classList.add('folks-pop');
-      setTimeout(() => layer.classList.remove('folks-pop'), 700);
-    };
-
-    // 대각선으로 번지게 — x+y가 작은 것부터. 우편함이 자연히 맨 끝에 온다
-    const steps = [];
-    data.districts.forEach((d) => {
-      const btn = document.querySelector(`[data-district="${d.id}"]`);
-      if (!btn) return;
-      if (d.character) {
-        const fig = btn.querySelector('.me-figure');
-        if (fig) steps.push({ at: d.character[0] + d.character[1], run: () => flash(fig, 'greet') });
-      } else {
-        const pop = btn.querySelector('.pop');
-        if (pop) steps.push({ at: d.rect[0] + d.rect[1], run: () => flash(pop, 'greet') });
-        else if (d.id === 'park') steps.push({ at: d.rect[0] + d.rect[1], run: popFolks });
-      }
-      if (d.mailbox) {
-        const mb = document.querySelector('.mbox');
-        const [x, y] = d.mailbox.box;
-        if (mb) steps.push({ at: x + y, run: () => flash(mb, 'greet') });
-      }
-    });
-    steps.sort((a, b) => a.at - b.at);
-
-    const LEAD = 500, STEP = 175;
-    steps.forEach((s, i) => setTimeout(s.run, LEAD + i * STEP));
-    // 파도가 다 지나가면 온 마을을 한 박자로 되맞춘다. 인사가 idle을 밀어냈다가
-    // 물러나면서 그 요소만 0부터 다시 시작하기 때문이다 (README 「움직임」).
-    setTimeout(syncIdle, LEAD + steps.length * STEP + 1200);
   }
 
   /** 건물 복제본을 지도 픽셀에 정확히 맞춘다. %로 계산하면 반올림이 누적돼
@@ -642,7 +594,7 @@
     $('panelWrap').hidden = true;
     document.querySelectorAll('[aria-expanded="true"]')
       .forEach((b) => b.setAttribute('aria-expanded', 'false'));
-    resyncIdle();      // 뾰옹에서 idle로 돌아오며 그 건물만 박자가 어긋난다
+    syncBeat();      // 뾰옹에서 idle로 돌아오며 그 건물만 박자가 어긋난다
     syncHint();
   }
 
@@ -1091,8 +1043,7 @@
     paintScenery();
     makeSpots();
     syncPops();
-    syncIdle();
-    greetTown();
+    syncBeat();
     if (!$('mapImg').complete) $('mapImg').addEventListener('load', syncPops, { once: true });
     makeChips();
     renderModalList();
