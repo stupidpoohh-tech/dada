@@ -50,7 +50,6 @@
   const STATUS_LABEL = { beta: '베타', demo: 'demo' };
 
   const $ = (id) => document.getElementById(id);
-  const $$ = (sel) => [...document.querySelectorAll(sel)];
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -270,93 +269,6 @@
     });
   }
 
-  /** 눌러볼 곳마다 작은 화살표를 하나씩 띄운다.
-   *  폰에서 건물 뾰잉은 5px, 우편함은 0.2px뿐인데 자동차·새·구름·사람이 전부
-   *  움직여 그 5px이 배경 소음에 묻힌다 — 무엇이 눌리는지가 드러나지 않는다.
-   *  그래서 「여기」를 직접 가리킨다. 크기는 우편함만 하게 잡아 그림을 가리지 않는다.
-   *
-   *  가리키는 곳은 **구역 블록이 아니라 반응하는 것**이다 — 성균관은 블록 위쪽이
-   *  비어 있고, 공원은 땅이 아니라 사람들이 반응한다. 블록 한가운데를 가리키면
-   *  아무것도 없는 잔디를 가리키게 된다. */
-  const TAG_H = 3.2, TAG_GAP = 0.9;         // 지도 높이 % — styles.css의 .tag와 같은 값
-  const tagFits = [];                       // 그림을 재야 자리가 나오는 화살표들
-
-  function makeTags() {
-    const wrap = $('tags');
-
-    const put = (x, top) => {
-      const t = el('span', 'tag');
-      // 화살표 끝이 대상 바로 위에 오도록. 학교·미술관처럼 지붕이 지도 위쪽에
-      // 붙은 곳은 위로 뺄 자리가 없어 지붕에 살짝 걸친다 — 잘리는 것보다 낫다
-      if (x != null) {
-        t.style.left = pct(x);
-        t.style.top = pct(Math.max(0.4, top - TAG_H - TAG_GAP));
-      }
-      t.appendChild(el('i'));
-      wrap.appendChild(t);
-      return t;
-    };
-
-    data.districts.forEach((d) => {
-      // "나"와 공원 사람들은 좌표만으로 머리 위를 못 찾는다 — 캐릭터 버튼은
-      // 발밑에 앉아 있고(translate -100%), 사람 스프라이트는 그림마다 키가 다르다.
-      // 그려진 뒤 실측해서 얹는다 (syncTags)
-      if (d.character) tagFits.push({ node: put(), sel: '.me-spot' });
-      else if (d.building) put(d.building[0] + d.building[2] / 2, d.building[1]);
-      // 공원은 건물이 없다 — 땅이 아니라 사람들이 반응하므로 사람들 무리를 가리킨다
-      else if (d.id === 'park') tagFits.push({ node: put(), sel: '#folks .person' });
-
-      if (d.mailbox) {
-        const [mx, my, mw] = d.mailbox.box;
-        put(mx + mw / 2, my);
-      }
-    });
-  }
-
-  /** 실측이 필요한 화살표를 그림 위에 얹는다.
-   *  잴 때는 상시 움직임을 잠깐 꺼야 한다 — getBoundingClientRect는 변형이 적용된
-   *  크기를 주므로, 켜둔 채로 재면 애니메이션 위상만큼 어긋난 자리에 박힌다.
-   *
-   *  **끄는 것은 transform이 아니라 animation이다.** 사람들(.folk)과 "나"(.me-spot)는
-   *  translate(-50%, -100%)로 제 발밑에 앉아 있어서, 뾰잉 복제본처럼 transform을
-   *  none으로 눌러버리면 자리 자체가 통째로 어긋난다. animation만 끄면 CSS 규칙의
-   *  transform(= 0% 키프레임과 같다)이 남아 제자리에서 멈춘다. */
-  function syncTags() {
-    const base = $('mapImg').getBoundingClientRect();
-    if (!base.width || !tagFits.length) return;
-
-    const held = [];
-    tagFits.forEach(({ sel }) => $$(sel).forEach((n) => {
-      [n, n.firstElementChild].forEach((x) => {
-        if (!x) return;
-        held.push(x);
-        x.style.setProperty('animation', 'none', 'important');
-      });
-    }));
-
-    tagFits.forEach(({ node, sel }) => {
-      const rs = $$(sel).map((n) => n.getBoundingClientRect()).filter((r) => r.width);
-      if (!rs.length) return;
-      const cx = (Math.min(...rs.map((r) => r.left)) + Math.max(...rs.map((r) => r.right))) / 2;
-      const top = Math.min(...rs.map((r) => r.top));
-      node.style.left = pct((cx - base.left) / base.width * 100);
-      node.style.top = pct(Math.max(0.4,
-        (top - base.top) / base.height * 100 - TAG_H - TAG_GAP));
-    });
-
-    held.forEach((x) => x.style.removeProperty('animation'));
-    resyncIdle();          // 껐다 켠 것들은 0부터 다시 시작한다 → 마을 박자에 되붙인다
-  }
-
-  /** 그림이 늦게 도착하면 잰 키가 0이라 화살표가 발밑에 박힌다.
-   *  init()이 fetch를 기다리는 사이 window의 load가 이미 지나가 있을 수 있어
-   *  그쪽에 기대면 늦는 날과 안 늦는 날이 갈린다 — 크기가 잡히는 순간 다시 얹는다. */
-  function watchTags() {
-    if (!('ResizeObserver' in window)) { window.addEventListener('load', syncTags); return; }
-    const ro = new ResizeObserver(() => syncTags());
-    tagFits.forEach(({ sel }) => $$(sel).forEach((n) => ro.observe(n)));
-  }
-
   /** 우편함 — 구역과 별개의 문. districts[].mailbox = { box, item }.
    *  건물은 자기 항목(direct)을 열고, 우편함은 자기 항목을 연다 — 물건마다 문이 하나씩.
    *  링크(<a>)로 만들어 JS가 없어도, 새 탭으로 열어도 동작한다.
@@ -474,7 +386,7 @@
 
   /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
    *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
-  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle', 'tag-float'];
+  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'];
 
   function syncIdle() {
     const anims = document.getAnimations().filter((a) =>
@@ -1121,14 +1033,9 @@
 
     paintScenery();
     makeSpots();
-    makeTags();
     syncPops();
-    syncTags();
-    watchTags();
     syncIdle();
-    if (!$('mapImg').complete) {
-      $('mapImg').addEventListener('load', () => { syncPops(); syncTags(); }, { once: true });
-    }
+    if (!$('mapImg').complete) $('mapImg').addEventListener('load', syncPops, { once: true });
     makeChips();
     renderModalList();
     initPicks();
@@ -1168,7 +1075,6 @@
       clearTimeout(t);
       t = setTimeout(() => {
         syncPops();
-        syncTags();
         if (openId) placePanel(data.districts.find((x) => x.id === openId));
       }, 80);
     });

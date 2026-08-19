@@ -148,7 +148,7 @@ head('마을 박자');
 {
   const beat = (p) => p.evaluate(() => {
     const a = document.getAnimations().filter((x) =>
-      ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle', 'tag-float'].includes(x.animationName));
+      ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName));
     const st = a.map((x) => x.startTime).filter((v) => v != null).map(Number);
     return {
       n: a.length,
@@ -513,53 +513,6 @@ head('게임 안내서');
   ok(await p.evaluate(() =>
     document.querySelector('.chip[aria-current="true"]')?.dataset.chapter) === 'ch2',
     '문을 누르면 다음 챕터 뭉치로 넘어간다');
-  await p.close();
-}
-
-/* ── 11. 눌러볼 곳을 가리키는 화살표 ──────────────────────
-   폰에서 건물 뾰잉은 5px, 우편함은 0.2px뿐이라 무엇이 눌리는지가 드러나지 않았다.
-   깨진 적 있음: "나"와 공원 사람들은 그림 발밑에 좌표가 잡혀 있어, 데이터만 보고
-   얹으면 화살표가 머리 위가 아니라 배 위에 박혔다 — 실측으로 얹는다.
-   또 하나: 그림이 늦게 오면 키가 0이라 같은 증상이 난다 (ResizeObserver로 다시 얹음). */
-head('가리키는 화살표');
-{
-  const p = await phone();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
-  await p.waitForTimeout(1200);
-
-  const tags = await p.evaluate(() => {
-    const m = document.getElementById('mapImg').getBoundingClientRect();
-    return [...document.querySelectorAll('.tag')].map((t) => {
-      const r = t.getBoundingClientRect();
-      // 화살표 끝 바로 아래에 실제로 눌리는 것이 있어야 한다
-      const under = document.elementFromPoint(r.left + r.width / 2, r.bottom + m.height * 0.012);
-      // 화살표 자신은 클릭을 먹지 않아야 한다 — 한가운데를 찍어도 뒤엣것이 잡힌다
-      const through = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return {
-        top: +((r.top - m.top) / m.height * 100).toFixed(1),
-        w: +r.width.toFixed(1),
-        hits: !!under?.closest('.spot, .me-spot, .mbox-spot'),
-        blocks: !!through?.closest('.tag'),
-      };
-    });
-  });
-
-  ok(tags.length === 10, `문마다 화살표가 하나씩 (${tags.length}개)`);
-  ok(tags.every((t) => t.top >= 0), '지도 위로 잘려 나간 화살표가 없다',
-    JSON.stringify(tags.map((t) => t.top)));
-  ok(tags.every((t) => t.hits), '화살표마다 그 아래에 누를 것이 있다',
-    JSON.stringify(tags.map((t) => t.hits)));
-  ok(tags.every((t) => !t.blocks), '화살표가 클릭을 가로채지 않는다');
-
-  // 우편함만 하게 — 그림을 가리면 마을이 아니라 표지판이 된다
-  const mbox = await p.evaluate(() =>
-    document.querySelector('.mbox-spot').getBoundingClientRect().width);
-  ok(Math.abs(tags[0].w - mbox) < 3, `화살표가 우편함만 하다 (${tags[0].w}px vs ${mbox.toFixed(1)}px)`);
-
-  // 지도의 초록·베이지에 없는 색이라야 눈이 먼저 잡는다
-  const hue = await p.evaluate(() => getComputedStyle(document.querySelector('.tag > i')).backgroundColor);
-  ok(hue === 'rgb(255, 45, 149)', `핫핑크다 (${hue})`);
-
   await p.close();
 }
 
