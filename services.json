@@ -183,6 +183,12 @@
         78,
         12,
         14
+      ],
+      "mailbox": [
+        87.9,
+        94.35,
+        1.95,
+        3.15
       ]
     },
     {
@@ -353,6 +359,7 @@
         "dir": "assets/portfolio/house/",
         "pages": 6,
         "hash": "house",
+        "from": "mailbox",
         "ratio": "449 / 635",
         "flat": true
       }

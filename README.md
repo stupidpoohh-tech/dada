@@ -220,6 +220,12 @@ python3 tools/cut_sprites.py
 **뷰어 한 벌을 여러 권이 나눠 쓴다.** 책마다 다른 것은 폴더·쪽수·해시뿐이고 제목은 항목 이름을 그대로 쓴다.
 항목에 `"open": "book"`과 `book` 덩어리를 두면 등록된다.
 
+책은 그 구역 건물에서 날아온다. `book.from: "mailbox"`를 주면 **구역의 우편함**
+(`districts[].mailbox`, 지도 % 상자)에서 날아온다 — 세모집 카탈로그가 이걸 쓴다.
+우편함 자리에는 건물 복제본과 같은 원리의 `.mbox` 복제본이 깔리고(`syncPops()`가
+같이 맞춘다), 마을과 같은 2.4초 박자(`mbox-idle`, `IDLE_ANIMS`에 포함)로 건물보다
+크게 뛴다. 복제본이므로 여기도 **1보다 작게 줄이면 안 된다** — 뒤의 원본이 드러난다.
+
 ```json
 "open": "book",
 "book": { "dir": "assets/portfolio/house/", "pages": 6, "hash": "house",

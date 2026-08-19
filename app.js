@@ -237,6 +237,19 @@
           pops.push({ pop, pimg, rect: d.rect, building: d.building });
         }
 
+        if (d.mailbox) {
+          // 우편함 — 세모집 카탈로그가 여기서 날아온다 (book.from: "mailbox").
+          // 건물 복제본과 같은 원리라 위치·크기는 syncPops()가 함께 맞춘다.
+          // 지도 폭의 2%밖에 안 되는 물건이라, 눈에 띄라고 건물보다 큰 폭으로 뛴다.
+          const mbox = el('span', 'mbox');
+          const mimg = new Image();
+          mimg.src = 'assets/map/town-web.jpg';
+          mimg.alt = '';
+          mbox.appendChild(mimg);
+          btn.appendChild(mbox);
+          pops.push({ pop: mbox, pimg: mimg, rect: d.rect, building: d.mailbox });
+        }
+
         // 사람들 구역은 공원 땅이 아니라 사람들이 반응한다
         if (d.id === 'park') {
           const layer = $('folks');
@@ -266,7 +279,7 @@
 
   /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
    *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
-  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle'];
+  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'];
 
   function syncIdle() {
     const anims = document.getAnimations().filter((a) =>
@@ -651,7 +664,19 @@
    *  설명이 된다 — 세모집을 눌렀으니 그 집에서 카탈로그를 꺼내온 것처럼 보인다.
    *  dir > 0이면 날아오고, dir < 0이면 그 자리로 되돌아간다. */
   function flyBook(dir) {
-    const src = document.querySelector(`[data-district="${book.district}"]`);
+    let src = document.querySelector(`[data-district="${book.district}"]`);
+    if (book.from === 'mailbox') {
+      const mb = src && src.querySelector('.mbox');
+      if (mb) {
+        src = mb;
+        // 발송의 뾰옹 — 책이 뜨고 내리는 순간 우편함이 한 번 크게 튄다.
+        // 우편함이 작아서, 이게 없으면 어디서 날아왔는지 놓치기 쉽다
+        mb.classList.remove('send');
+        void mb.offsetWidth;               // 리플로우로 애니메이션 재시작
+        mb.classList.add('send');
+        setTimeout(() => { mb.classList.remove('send'); resyncIdle(); }, 650);
+      }
+    }
     const bk = $('bk');
     // 재기 전에 이전 애니메이션을 먼저 걷어낸다. 닫을 때 쓴 변형이 fill로 남아 있으면
     // getBoundingClientRect()가 그 변형이 적용된 좌표를 줘서 출발점이 엉뚱해진다.
@@ -897,6 +922,7 @@
       if (i.open !== 'book' || !i.book) return;
       books.push({ id: i.id, label: i.name, dir: i.book.dir, ratio: i.book.ratio,
                    district: i.district,   // 책이 날아올 출발점 (그 구역 건물)
+                   from: i.book.from,      // "mailbox"면 구역의 우편함에서 날아온다
                    flat: !!i.book.flat, pages: i.book.pages || 0, hash: i.book.hash });
     });
 

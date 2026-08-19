@@ -150,7 +150,7 @@ head('마을 박자');
 {
   const beat = (p) => p.evaluate(() => {
     const a = document.getAnimations().filter((x) =>
-      ['bldg-idle', 'folk-idle', 'me-idle'].includes(x.animationName));
+      ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName));
     const st = a.map((x) => x.startTime).filter((v) => v != null).map(Number);
     return {
       n: a.length,
@@ -276,6 +276,34 @@ head('책이 건물에서 날아온다');
     return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)';
   });
   ok(settled, '닫은 뒤 변형이 남지 않는다');
+
+  // 세모집 카탈로그는 건물이 아니라 마당의 우편함에서 날아온다 (book.from: "mailbox").
+  // 우편함이 작아 출발점이 흐릿하면 장식이 아니라 소음이 된다 — 좌표로 지킨다.
+  await p.click('.spot[data-district="house"]');
+  await p.waitForSelector('#panel .card', { timeout: 4000 });
+  await p.click('#panel .card[href="#house"]');       // 첫 열기로 그림을 데운다
+  await p.waitForSelector('#bookOverlay:not([hidden])', { timeout: 4000 });
+  await p.waitForTimeout(800);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(750);
+
+  const mb = await p.locator('.spot[data-district="house"] .mbox').boundingBox();
+  ok(!!mb, '세모집에 우편함 복제본이 있다');
+  await p.click('.spot[data-district="house"]');
+  await p.waitForSelector('#panel .card', { timeout: 4000 });
+  await p.click('#panel .card[href="#house"]');
+  const path2 = await p.evaluate(async () => {
+    const bk = document.getElementById('bk'); const o = []; const t0 = performance.now();
+    while (performance.now() - t0 < 500) {
+      const r = bk.getBoundingClientRect();
+      o.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
+      await new Promise((x) => requestAnimationFrame(x));
+    }
+    return o;
+  });
+  const dMb = Math.min(...path2.map((f) =>
+    Math.hypot(f.cx - (mb.x + mb.width / 2), f.cy - (mb.y + mb.height / 2))));
+  ok(dMb < 70, `카탈로그가 우편함에서 날아온다 (우편함까지 ${dMb.toFixed(0)}px)`);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(600);
   await p.close();
 }
 
