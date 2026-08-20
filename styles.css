@@ -337,6 +337,9 @@ button, input { font: inherit; color: inherit; }
   transform: translate(-50%, -50%);
   width: max(150%, 56px); height: max(170%, 56px);
 }
+/* 열 문서가 없는 동안은 풍경이다 — 누를 수 없는 것이 손가락을 부르면 안 된다 */
+.crow-spot.scenery { pointer-events: none; cursor: default; }
+.crow-spot.scenery::after { content: none; }
 .crow-figure {
   position: relative; display: block;
   transform-origin: 50% 100%;

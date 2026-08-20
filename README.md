@@ -10,7 +10,6 @@
 index.html          마을 페이지
 list.html           작업물 전체 목록 (생성물 — 직접 고치지 않는다)
 game/               게임 안내서 — 원본 슬라이드 46면. 챕터마다 따로 놓인 카드 뭉치 일곱
-case/playgrown.html PlayGrown 케이스 스터디 — 손으로 쓴 정적 페이지 (생성물이 아니다)
 sitemap.xml         (생성물)
 robots.txt          (생성물)
 styles.css
@@ -23,11 +22,10 @@ assets/
   map/town-web.jpg  실제로 쓰는 배경
   map/mask-*.png    건물 실루엣 마스크
   sprites/cut/      잘라낸 스프라이트 22개 + 까마귀 3장 — 실제로 쓰는 것
-  case/playgrown.css  케이스 스터디 전용 CSS (마을 규칙과 섞지 않는다)
 tools/cut_sprites.py  시트에서 스프라이트를 잘라내고 배경을 투명 처리
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
 tools/cut_crow.py     까마귀 시트를 프레임 세 장으로 자른다 (같은 캔버스·같은 기준점)
-tests/smoke.mjs       회귀 테스트 97개 (npm test)
+tests/smoke.mjs       회귀 테스트 94개 (npm test)
 ```
 
 편집용 원본(원본 지도·스프라이트 시트)은 저장소에 두지 않는다 — 아래 「편집용 원본」 참고.
@@ -48,7 +46,7 @@ npm run serve &      # 8000번 포트로 띄운 뒤
 npm test
 ```
 
-`tests/smoke.mjs`의 97개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
+`tests/smoke.mjs`의 94개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
 만든 게 아니라 "또 이럴까 봐" 남긴 목록이니, 새 버그를 잡으면 여기에 한 줄 더한다.
 지금 지키고 있는 것 — 두 책이 서로의 설정을 물고 오지 않기, 목록 카드가 빈 해시를 물지 않기,
 캐릭터 판정이 흔들리지 않고 64px을 넘기, 여닫고 호버한 뒤에도 마을이 한 박자이기,
@@ -427,9 +425,15 @@ Cloudflare는 「몇 명이 왔나」로 나눠 읽는 편이 낫다.
 
 ## 카페 앞 까마귀 Croww
 
-PlayGrown의 마스코트다. 카페 건물을 누르면 팝오버가 항목 둘을 다 보여주고,
-**까마귀를 누르면 PlayGrown 기록(`/case/playgrown.html`)만 열린다** — 세모집 우편함과
-같은 「물건마다 문이 하나씩」이다. 링크(`<a>`)라 JS가 없어도, 새 탭으로 열어도 동작한다.
+PlayGrown의 마스코트다. 카페 건물을 누르면 팝오버가 항목을 다 보여주고,
+**까마귀를 누르면 그 기록만 열린다** — 세모집 우편함과 같은 「물건마다 문이 하나씩」이다.
+링크(`<a>`)라 JS가 없어도, 새 탭으로 열어도 동작한다.
+
+**지금은 문이 닫혀 있다.** 전시 세션을 다시 짓는 중이라(PLAN §5) 열 문서가 없다.
+`mascot`에서 `item`을 빼면 까마귀는 링크가 아니라 **풍경으로만 선다** —
+`<span>`으로 그려지고 `pointer-events: none`에 스크린리더에서도 감춘다.
+**없는 곳을 가리키는 링크를 두지 않기 위해서다.** 새 페이지가 올라가면 `item`을
+도로 채우면 그만이고, 회귀 테스트가 지금 상태(문 닫힘)를 지킨다.
 
 자리와 크기는 `services.json`의 `districts[].mascot`에서 읽는다.
 
@@ -442,8 +446,8 @@ PlayGrown의 마스코트다. 카페 건물을 누르면 팝오버가 항목 둘
     "rest": "crow-side.png",
     "flap": "crow-fly.png",
     "tilt": "crow-look.png"
-  },
-  "item": "playgrown"
+  }
+  // "item": "playgrown"       // 열 문서가 생기면 다시 채운다. 없으면 풍경으로 선다
 }
 ```
 
@@ -483,19 +487,24 @@ python3 tools/cut_crow.py      # assets/sprites/crow.png → cut/crow-side · cr
 앞모습·뒷모습을 쓸 일이 생기면 `cut_crow.py`의 `FRAMES`에 이름을 더한다.
 원본 시트(`assets/sprites/crow.png`)는 다른 시트와 마찬가지로 `.gitignore`에 있다.
 
-## 케이스 스터디 (`/case/playgrown.html`)
+## 케이스 스터디 (`/case/playgrown.html`) — 다시 짓는 중
 
-**생성물이 아니라 손으로 쓴 페이지다.** `list.html`처럼 다시 만들지 않으므로
-`build_list.py`를 돌려도 덮이지 않는다. 다만 `services.json`에 항목으로 올라가 있어
-목록·`/list.html`·`sitemap.xml`에는 자동으로 따라 들어간다.
+한 번 보고서 꼴로 지었다가 내렸다. 절이 「물건」이 아니라 「문단」이어서,
+절마다 형식을 달리해 **아카이브 상자를 꺼내 보게** 하려던 설계가 살지 않았다.
+지금은 **여섯 개의 방으로 이루어진 전시 세션**으로 다시 짓는 중이다 —
+칼럼 · 포지셔닝 보드 · 일력 · 브랜드 보드 · 맵 & 방문자 동선 · 타이핑 노트.
+설계와 구현 기술 검토는 [PLAN §5](PLAN.md)에 있다.
 
-CSS는 `assets/case/playgrown.css`로 나눠 둔다. 절마다 형식이 다른 문서라 규칙이 꽤
-느는데, 마을 한 채를 위한 규칙을 `styles.css`에 섞으면 이후 마을을 손볼 때마다 같이
-읽어야 한다.
+다시 지을 때 지킬 것 몇 가지를 여기 남긴다.
 
-**칸 사이 선은 `gap`이 아니라 겹치는 `outline`으로 긋는다.** `gap: 1px` + 부모 배경색으로
-격자를 그리면 항목 수가 열 수의 배수가 아닐 때 **빈 자리에 선 색이 그대로 드러나
-회색 띠가 생긴다.** 타일이 13개라 실제로 그렇게 됐다.
+- **CSS는 `assets/case/playgrown.css`로 나눈다.** 형식이 여섯이라 규칙이 꽤 느는데,
+  마을 한 채를 위한 규칙을 `styles.css`에 섞으면 이후 마을을 손볼 때마다 같이 읽어야 한다
+- **손으로 쓰는 페이지다.** `list.html`처럼 생성되지 않으므로 `build_list.py`를 돌려도
+  덮이지 않는다. 다만 `services.json`에 항목으로 올리면 목록 · `/list.html` ·
+  `sitemap.xml`에는 자동으로 따라 들어간다
+- **칸 사이 선은 `gap`이 아니라 겹치는 `outline`으로 긋는다.** `gap: 1px` + 부모 배경색으로
+  격자를 그리면 항목 수가 열 수의 배수가 아닐 때 **빈 자리에 선 색이 그대로 드러나
+  회색 띠가 생긴다.** 타일이 13개였을 때 실제로 그랬다
 
 ## 배포
 

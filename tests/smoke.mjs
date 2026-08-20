@@ -557,9 +557,9 @@ head('게임 안내서');
 }
 
 /* ── 11. 카페 앞 까마귀 Croww ─────────────────────────────
-   구역과 별개의 문이다 (세모집 우편함과 같은 규칙). 마스코트가 자기 기록으로 데려간다.
-   이 마을에는 프레임 애니메이션이 없어서 날갯짓만 그림 두 장을 번갈아 쓰는데,
-   두 장이 겹쳐 보이거나 마을과 박자가 어긋나면 그 자리만 딴 세상이 된다. */
+   PlayGrown 기록을 전시 세션으로 다시 짓는 동안(PLAN §5) 까마귀는 문 없이 풍경으로만
+   서 있다. 이 마을에는 프레임 애니메이션이 없어서 퍼덕임과 갸웃만 그림 세 장을
+   번갈아 쓰는데, 두 장이 겹쳐 보이거나 마을과 박자가 어긋나면 그 자리만 딴 세상이 된다. */
 head('카페 앞 까마귀');
 {
   const p = await desktop();
@@ -568,8 +568,15 @@ head('카페 앞 까마귀');
 
   const crow = p.locator('.crow-spot');
   ok(await crow.count() === 1, '카페 앞에 까마귀가 한 마리 있다');
-  ok(await crow.getAttribute('href') === '/case/playgrown.html',
-    '누르면 PlayGrown 기록으로 간다', String(await crow.getAttribute('href')));
+
+  // 문서가 없는 동안은 누를 수 없어야 한다 — 없는 곳을 가리키는 링크를 두지 않는다
+  const idle = await p.evaluate(() => {
+    const n = document.querySelector('.crow-spot');
+    return { tag: n.tagName, href: n.getAttribute('href'),
+             pe: getComputedStyle(n).pointerEvents };
+  });
+  ok(idle.tag === 'SPAN' && !idle.href && idle.pe === 'none',
+    '열 문서가 없으면 문이 아니라 풍경이다', JSON.stringify(idle));
 
   // 한 번에 한 장만 보여야 한다 — 두 장이 함께 뜨면 날개가 유령처럼 겹친다
   const frames = await p.evaluate(() => {
@@ -606,32 +613,6 @@ head('카페 앞 까마귀');
     '까마귀가 마을과 같은 박자에 물려 있다', JSON.stringify(beat));
   ok(beat.dur[0] === 2400, '2.4초 한 박자다', String(beat.dur[0]));
   await p.close();
-}
-{
-  // 폰에서 까마귀는 22px 남짓이다. 판정은 그림보다 넓게 깔려 있어야 한다
-  const p = await phone();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
-  await p.waitForTimeout(900);
-  const hit = await p.evaluate(() => {
-    const a = document.querySelector('.crow-spot');
-    const r = getComputedStyle(a, '::after');
-    const box = a.getBoundingClientRect();
-    return { w: parseFloat(r.width), h: parseFloat(r.height), img: Math.round(box.width) };
-  });
-  ok(hit.w >= 44 && hit.h >= 44, `판정 영역이 터치 기준을 넘는다 (${hit.w}x${hit.h}, 그림 ${hit.img}px)`);
-  await p.close();
-}
-{
-  // 마을이 가리키는 페이지가 실제로 서 있는가. 링크만 검사하면 404를 못 잡는다
-  const ctx = await browser.newContext({ javaScriptEnabled: false });
-  const p = await ctx.newPage();
-  const res = await p.goto(BASE + '/case/playgrown.html', { waitUntil: 'load' });
-  ok(res.status() === 200, 'PlayGrown 기록이 200으로 뜬다', String(res.status()));
-  const text = (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
-  ok(text.length > 900, `JS 없이도 본문이 읽힌다 (${text.length}자)`);
-  ok(/파일럿/.test(text) && /2025\. 7\. 18/.test(text),
-    '파일럿 1회라는 사실이 첫 화면에 있다');
-  await ctx.close();
 }
 
 /* ── 12. 방문 통계 ────────────────────────────────────────

@@ -276,9 +276,13 @@
 
   /** 마스코트 — 구역과 별개의 문. districts[].mascot = { name, at, w, frames, item }.
    *  카페 앞에 선 까마귀 Croww가 PlayGrown 기록으로 데려간다. 세모집의 우편함과 같은
-   *  규칙이다 — **물건마다 문이 하나씩**. 카페 건물은 팝오버로 항목 둘을 다 보여주고,
+   *  규칙이다 — **물건마다 문이 하나씩**. 카페 건물은 팝오버로 항목을 다 보여주고,
    *  까마귀는 자기 문서 하나만 연다. 마스코트가 자기 기록으로 데려가는 것이라
    *  문이 둘이어도 층위가 갈린다.
+   *
+   *  **`item`이 없으면 문 없이 풍경으로만 선다.** 지금이 그 상태다 — PlayGrown 기록을
+   *  전시 세션으로 다시 짓는 동안(§5) 문서가 없으므로, 없는 곳을 가리키는 링크를
+   *  두지 않는다. 까마귀는 카페 앞에 그대로 있고 걸음도 그대로다.
    *
    *  우편함과 다른 점은 그림이다. 우편함은 지도를 오려낸 복제본이지만 까마귀는
    *  지도에 없던 스프라이트라 `<img>` 세 장을 겹쳐 깐다 — 이 마을에는 프레임
@@ -292,11 +296,16 @@
     const m = d.mascot;
     const item = data.items.find((x) => x.id === m.item);
     const frames = Object.entries(m.frames || {});
-    if (!item || !item.url || !frames.length) return;
+    if (!frames.length) return;
+    const open = item && item.url;          // 열 문서가 있을 때만 링크가 된다
 
-    const a = el('a', 'crow-spot');
-    a.href = item.url;
-    a.setAttribute('aria-label', `${m.name} — ${item.name}`);
+    const a = el(open ? 'a' : 'span', 'crow-spot' + (open ? '' : ' scenery'));
+    if (open) {
+      a.href = item.url;
+      a.setAttribute('aria-label', `${m.name} — ${item.name}`);
+    } else {
+      a.setAttribute('aria-hidden', 'true');   // 누를 수 없는 것을 읽어줄 이유가 없다
+    }
     Object.assign(a.style, { left: pct(m.at[0]), top: pct(m.at[1]), width: pct(m.w) });
 
     // 프레임은 이름이 곧 역할이다 (rest · flap · tilt). 그 이름이 그대로 클래스가 되고
@@ -311,9 +320,11 @@
     });
     a.appendChild(fig);
 
-    a.addEventListener('click', () => track('item_click', {
-      item: item.id, item_type: item.type, from: 'mascot',
-    }));
+    if (open) {
+      a.addEventListener('click', () => track('item_click', {
+        item: item.id, item_type: item.type, from: 'mascot',
+      }));
+    }
     wrap.appendChild(a);
   }
 
