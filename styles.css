@@ -307,7 +307,7 @@ button, input { font: inherit; color: inherit; }
   86%      { transform: translateY(0)    scale(1.03, .96); }
 }
 
-/* ── 세모집 지붕 위 확성기 ────────────────────
+/* ── 세모집 마당의 확성기 ────────────────────
    집 테마송이 나오는 자리다. `speaker.song`이 없으면 `.horn-spot`만 있고
    `.horn-live`가 없다 — 그때는 아래에서 `pointer-events: none`으로 막혀 풍경으로만 선다
    (까마귀와 같은 규칙). 노래가 있으면 진짜 버튼이라 `.horn-live`가 붙는다.
@@ -336,7 +336,7 @@ button, input { font: inherit; color: inherit; }
 }
 .horn-fig {
   display: block;
-  transform-origin: 34% 92%;        /* 지붕에 붙은 받침 */
+  transform-origin: 34% 92%;        /* 잔디에 닿은 받침 */
   animation: horn-idle 2.4s ease-in-out infinite;
 }
 /* 호버 확대를 idle 애니메이션과 다른 요소에 건다 — 한 요소에 겹치면 애니메이션의

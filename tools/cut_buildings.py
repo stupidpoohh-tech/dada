@@ -24,6 +24,12 @@ assets/sprites/cut/mailbox.webp.
 붙는다 — 이 여덟 장만으로 배포 전체 무게가 두 배 가까이 뛴다. 같은 그림을
 webp로 뽑으면 20~30KB대로 줄어든다(실측). 게임 안내서 슬라이드
 (`game/pages/*.webp`)에서 이미 쓰던 선택이라 이 저장소에 새로 들이는 형식은 아니다.
+
+**채도를 낮춰서 뽑는다(`SATURATION`).** 배경과 따로 그려진 그림이라 색이 저희끼리
+튄다 — 받은 그대로 얹으면 빨간 지붕·파란 지붕·차양이 배경의 순한 초록 위에서 쨍하게
+도드라져 촌스럽다. 건물이 배경에 박혀 있던 옛 지도에서는 둘이 한 그림에서 나와
+저절로 어울렸는데, 그 시절 건물의 채도를 재서 견주니 새 그림이 1.34배 높았다.
+0.75를 곱하면 그 수준으로 돌아온다(실측 0.745, 눈으로도 같은 자리).
 """
 import os
 import sys
@@ -43,6 +49,25 @@ BUILDING_NAMES = ['museum', 'school', 'seonggyungwan', 'company', 'cafe', 'bank'
 
 MAILBOX_SRC = 'assets/sprites/mailbox.png'
 
+# 채도 배율 — 머리말 참고. 1.0이면 받은 그대로.
+SATURATION = 0.75
+
+
+def desaturate(im, f=SATURATION):
+    """색상(H)과 밝기(V)는 그대로 두고 채도(S)만 f배 한다.
+
+    HSV로 오갈 필요가 없다. 어떤 채널이든 `(V - 채널) / (V - min)`은 색상이 정하는
+    고정된 비율이므로, `새 채널 = V - f * (V - 채널)`로 두면 그 비율이 그대로 남는다
+    — 색이 돌아가지도(H) 어두워지지도(V) 않고 채도만 준다. 알파는 건드리지 않는다.
+    """
+    if f == 1.0:
+        return im
+    a = np.array(im).astype(np.float32)
+    rgb, alpha = a[:, :, :3], a[:, :, 3:]
+    v = rgb.max(axis=2, keepdims=True)
+    rgb = np.clip(v - (v - rgb) * f, 0, 255)
+    return Image.fromarray(np.concatenate([rgb, alpha], axis=2).astype(np.uint8), 'RGBA')
+
 
 def cut(src, min_pixels=800):
     """알파가 있는 픽셀을 연결 요소로 묶어 읽는 순서(위→아래, 왼쪽→오른쪽)로 돌려준다."""
@@ -55,7 +80,7 @@ def cut(src, min_pixels=800):
 
 def save_webp(im, box, path, quality=88):
     x0, y0, x1, y1, _ = box
-    crop = im.crop((x0, y0, x1, y1))
+    crop = desaturate(im.crop((x0, y0, x1, y1)))
     crop.save(path, 'WEBP', quality=quality, alpha_quality=quality, method=6)
     print(f'  {os.path.basename(path)}  {crop.size[0]}x{crop.size[1]}  '
           f'{os.path.getsize(path) // 1024}KB')

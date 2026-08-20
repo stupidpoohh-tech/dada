@@ -25,7 +25,7 @@ SHEETS = {
     "me": ("assets/sprites/me.png", 1, ["me"], ("h", 130)),
     "people": ("assets/sprites/people.png", 8,
                [f"person-{i}" for i in range(1, 9)], ("h", 88)),
-    # 세모집 지붕 위 확성기. 한 장짜리라 프레임 맞춤이 필요 없어 여기서 자른다
+    # 세모집 마당의 확성기. 한 장짜리라 프레임 맞춤이 필요 없어 여기서 자른다
     # (까마귀·쪽지는 여러 장을 포개야 해서 cut_crow.py · cut_note.py로 따로 나갔다)
     "horn": ("assets/sprites/horn.png", 1, ["horn"], ("w", 120)),
 }

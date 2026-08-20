@@ -628,16 +628,16 @@ head('카페 앞 까마귀');
   await p.close();
 }
 
-/* ── 12. 세모집 지붕 위 확성기 ────────────────────────────
+/* ── 12. 세모집 마당의 확성기 ────────────────────────────
    집 테마송이 나오는 자리다. `speaker.song`이 있으면 진짜 버튼이라 눌리고,
-   지붕 위에 얹혀 있으면서도 세모집 클릭을 가로채면 안 된다. */
-head('지붕 위 확성기');
+   세모집 옆에 서 있으면서도 세모집 클릭을 가로채면 안 된다. */
+head('마당의 확성기');
 {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(700);
 
-  ok(await p.locator('.horn-spot').count() === 1, '세모집 지붕에 확성기가 하나 있다');
+  ok(await p.locator('.horn-spot').count() === 1, '세모집 마당에 확성기가 하나 있다');
 
   const how = await p.evaluate(() => {
     const n = document.querySelector('.horn-spot');
@@ -664,7 +664,7 @@ head('지붕 위 확성기');
   ok(shove[0] === 0 && shove[1] > 1 && shove[2] === 0 && shove[3] > 1 && shove[4] === 0,
     `한 박자에 두 번 앞으로 내지른다 (${shove.join(' ')})`);
 
-  // 지붕 위에 있어도 세모집은 눌려야 한다
+  // 확성기가 옆에 있어도 세모집은 눌려야 한다
   await p.click('.spot[data-district="house"]');
   await p.waitForSelector('#bookOverlay:not([hidden])', { timeout: 4000 });
   ok(true, '확성기가 세모집 클릭을 가로채지 않는다');
@@ -695,6 +695,24 @@ head('지붕 위 확성기');
     return document.getAnimations().find((a) => a.effect && a.effect.target === fig)?.animationName;
   });
   ok(shoutName === 'horn-shout', `재생 중 걸음이 갈린다 (${shoutName})`);
+
+  /* 깨진 적 있음: 확성기를 마당(지도 오른쪽 끝)으로 옮기자 패널이 오른쪽에 **17px**
+     모자란다는 이유로 376px을 건너뛰어 왼쪽에 떨어졌고, 카페를 통째로 덮었다.
+     모자란 양과 건너뛰는 거리가 비례하지 않는 게 문제였다 — 오른쪽 절반에 있는 것은
+     오른쪽에 붙인다. 가운데 구역(회사·카페)이 가려지면 안 된다. */
+  const hides = await p.evaluate(() => {
+    const pr = document.getElementById('panel').getBoundingClientRect();
+    const out = {};
+    document.querySelectorAll('.spot').forEach((s) => {
+      const r = s.getBoundingClientRect();
+      const ox = Math.max(0, Math.min(r.right, pr.right) - Math.max(r.left, pr.left));
+      const oy = Math.max(0, Math.min(r.bottom, pr.bottom) - Math.max(r.top, pr.top));
+      out[s.dataset.district] = Math.round(ox * oy / (r.width * r.height) * 100);
+    });
+    return out;
+  });
+  ok(hides.cafe === 0 && hides.company === 0 && hides.school === 0,
+    '노래 패널이 지도를 건너뛰어 가운데 구역을 덮지 않는다', JSON.stringify(hides));
 
   // 다시 누르면(토글) 닫히고 멈춘다
   await p.click('.horn-spot');

@@ -46,7 +46,7 @@
         25,
         32
       ],
-      "building": { "src": "building-museum.webp", "at": [18.3, 21.5], "w": 14.5 },
+      "building": { "src": "building-museum.webp", "at": [19.0, 26.7], "w": 13.8 },
       "direct": "art-portfolio"
     },
     {
@@ -60,7 +60,7 @@
         35,
         36
       ],
-      "building": { "src": "building-school.webp", "at": [54.1, 24.8], "w": 22.2 }
+      "building": { "src": "building-school.webp", "at": [50.3, 24.3], "w": 18.6 }
     },
     {
       "id": "seonggyungwan",
@@ -73,7 +73,7 @@
         25,
         27
       ],
-      "building": { "src": "building-seonggyungwan.webp", "at": [84, 29], "w": 12 }
+      "building": { "src": "building-seonggyungwan.webp", "at": [84.3, 29.4], "w": 12.2 }
     },
     {
       "id": "park",
@@ -98,7 +98,7 @@
         18,
         34
       ],
-      "building": { "src": "building-company.webp", "at": [43.2, 70.5], "w": 13.5 }
+      "building": { "src": "building-company.webp", "at": [43.6, 68.3], "w": 9.7 }
     },
     {
       "id": "cafe",
@@ -111,7 +111,7 @@
         18,
         33
       ],
-      "building": { "src": "building-cafe.webp", "at": [61.8, 72], "w": 13.5 },
+      "building": { "src": "building-cafe.webp", "at": [59.7, 71.0], "w": 12.5 },
       "mascot": {
         "name": "까마귀 Croww",
         "at": [65.2, 74.4],
@@ -134,7 +134,7 @@
         25,
         29
       ],
-      "building": { "src": "building-bank.webp", "at": [84, 68], "w": 14 }
+      "building": { "src": "building-bank.webp", "at": [84.3, 67.3], "w": 12.6 }
     },
     {
       "id": "house",
@@ -147,11 +147,11 @@
         24,
         26
       ],
-      "building": { "src": "building-house.webp", "at": [86, 92], "w": 12 },
+      "building": { "src": "building-house.webp", "at": [85.0, 91.4], "w": 10.2 },
       "speaker": {
         "name": "집 테마송 확성기",
-        "at": [83.8, 82.9],
-        "w": 3.08,
+        "at": [91.8, 92.0],
+        "w": 3.4,
         "sprite": "horn.png",
         "song": {
           "title": "집이 어떻게 세모",
@@ -401,7 +401,7 @@
       "type": "doc",
       "open": "song",
       "route": "/#house-theme",
-      "description": "세모집 지붕 위 확성기를 누르면 나오는 집 테마송. 가사도 함께 뜬다",
+      "description": "세모집 마당의 확성기를 누르면 나오는 집 테마송. 가사도 함께 뜬다",
       "date": "2025-05",
       "icon": "📣",
       "status": "live",
