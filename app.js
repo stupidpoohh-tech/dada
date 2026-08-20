@@ -324,38 +324,28 @@
     fig.appendChild(zoom);
     btn.appendChild(fig);
 
-    /* 경로를 keyframes 두 벌로 굽는다.
+    /* 경로를 keyframes로 굽는다. `stop: true`인 길목에서는 그 자리에 잠깐 머문다 —
+     *  이 「멈춤」이 새·구름과 갈리는 가장 큰 신호다.
      *
-     *  ① note-fly — 어디를 지나는가. `stop: true`인 길목에서는 그 자리에 잠깐 머문다.
-     *     이 「멈춤」이 새·구름과 갈리는 가장 큰 신호다.
-     *  ② note-catch — **언제 잡히는가.** 멈춰 선 동안만 `pointer-events: auto`다.
-     *
-     *  ②가 없으면 실제로 깨진다. 날아가는 쪽지가 건물 위를 지날 때 그 건물의 클릭을
-     *  가로챈다 — 미술관을 누르려는데 쪽지가 먹는다. 지도 위 가장 높이 뜬 것이라
-     *  피할 방법이 없으므로, **멈춰 있을 때만 잡히게** 했다.
-     *  머무는 자리는 전부 건물이 없는 빈 땅이라(services.json의 path) 거기서는 겹치지 않는다.
-     *  키보드 포커스는 pointer-events와 무관하므로 탭으로는 언제든 닿는다. */
+     *  한때 **멈춰 있는 동안만 잡히게** 해 뒀다. 날아가는 쪽지가 건물 위를 지날 때
+     *  그 건물의 클릭을 가로채는 게 싫어서였는데, 실제로 써 보니 **한 바퀴의 5분의 1만
+     *  눌리는 물건**이 됐다. 누르려다 안 눌리는 문은 문이 아니다.
+     *  지금은 언제든 잡힌다 — 위에 있는 것이 클릭을 받는 건 원래 그래야 하는 일이고,
+     *  머무는 자리를 전부 빈 땅에 둬서 오래 겹치는 일은 없다. */
     const pts = m.path;
     const legs = pts.length - 1;
     const DWELL = 0.45;                   // 한 구간에서 머무는 몫
     const span = 100 / legs;
-    let fly = '', grab = '';
+    let fly = '';
     pts.forEach((w, i) => {
       const at = i * span;
       const here = `left:${w.at[0]}%;top:${w.at[1]}%`;
       fly += `${at.toFixed(2)}%{${here}}`;
-      grab += `${at.toFixed(2)}%{pointer-events:${w.stop ? 'auto' : 'none'}}`;
-      if (w.stop && i < legs) {
-        const till = at + span * DWELL;
-        fly += `${till.toFixed(2)}%{${here}}`;
-        grab += `${till.toFixed(2)}%{pointer-events:none}`;
-      }
+      if (w.stop && i < legs) fly += `${(at + span * DWELL).toFixed(2)}%{${here}}`;
     });
     const sheet = document.styleSheets[0];
     sheet.insertRule(`@keyframes note-fly{${fly}}`, sheet.cssRules.length);
-    sheet.insertRule(`@keyframes note-catch{${grab}}`, sheet.cssRules.length);
-    const dur = (m.dur || 40) + 's';
-    btn.style.animationDuration = dur + ', ' + dur;
+    btn.style.animationDuration = (m.dur || 40) + 's';
 
     btn.addEventListener('click', () => toggleBundle(btn));
     wrap.appendChild(btn);

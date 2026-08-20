@@ -28,6 +28,17 @@ const watch = (p) => {
   return p;
 };
 const desktop = () => browser.newPage({ viewport: { width: 1280, height: 900 } }).then(watch);
+/** 마을을 열고 **날아다니는 쪽지를 첫 길목(빈 땅)에 세워 둔다.**
+ *  쪽지는 지도에서 가장 높이 떠 있어 지나가는 자리의 클릭을 받는다 — 실제로도 그게
+ *  맞지만, 그러면 「건물을 누른다」 검사가 쪽지가 마침 그 위를 지나느냐에 따라 흔들린다.
+ *  움직이는 배경을 한자리에 묶어 두고 상호작용만 보는 것이다. */
+const town = async (p, url = BASE) => {
+  await p.goto(url, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.note-spot', { timeout: 4000 }).catch(() => {});
+  await p.evaluate(() => document.getAnimations()
+    .filter((a) => (a.animationName || '').startsWith('note-'))
+    .forEach((a) => { a.pause(); a.currentTime = 0; }));
+};
 const phone = () => browser.newPage({
   viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
 }).then(watch);
@@ -38,7 +49,7 @@ const phone = () => browser.newPage({
 head('책 뷰어');
 {
   const p = await desktop();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(600);
 
   await p.click('.spot[data-district="museum"]');
@@ -81,7 +92,7 @@ head('책 뷰어');
   ok(back.total === '11' && !back.full && !back.flat, '아트북으로 돌아오면 설정이 복구된다', JSON.stringify(back));
 
   await p.keyboard.press('Escape'); await p.waitForTimeout(700);
-  await p.goto(BASE + '#nope', { waitUntil: 'networkidle' }); await p.waitForTimeout(500);
+  await town(p, BASE + '#nope'); await p.waitForTimeout(500);
   ok(await p.locator('#bookOverlay').getAttribute('hidden') !== null, '등록 안 된 해시는 무시한다');
   await p.close();
 }
@@ -91,7 +102,7 @@ head('책 뷰어');
 head('목록 카드');
 {
   const p = await desktop();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(500);
   await p.click('#openList'); await p.waitForTimeout(400);
   const hrefs = await p.evaluate(() =>
@@ -107,7 +118,7 @@ head('목록 카드');
 head('캐릭터 판정 영역');
 {
   const p = await phone();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(900);
 
   const drift = await p.evaluate(async () => {
@@ -158,7 +169,7 @@ head('마을 박자');
   });
 
   const d = await desktop();
-  await d.goto(BASE, { waitUntil: 'networkidle' });
+  await town(d);
   await d.waitForTimeout(900);
   ok((await beat(d)).spread === 0, '처음부터 한 박자');
 
@@ -174,7 +185,7 @@ head('마을 박자');
   await d.close();
 
   const m = await phone();
-  await m.goto(BASE, { waitUntil: 'networkidle' });
+  await town(m);
   await m.waitForTimeout(900);
   for (const id of ['bank', 'school', 'company']) {
     await m.tap(`.spot[data-district="${id}"]`); await m.waitForTimeout(400);
@@ -192,7 +203,7 @@ head('마을 박자');
 head('안내 문구');
 {
   const p = await desktop();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(600);
   const shown = () => p.evaluate(() => !document.getElementById('hint').classList.contains('gone'));
 
@@ -231,7 +242,7 @@ head('안내 문구');
 head('책이 건물에서 날아온다');
 {
   const p = await desktop();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(900);
 
   const fly = async (district) => {
@@ -314,7 +325,7 @@ head('책이 건물에서 날아온다');
 head('데이터 단일 소스');
 {
   const p = await desktop();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(600);
   const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
   await p.click('#openList'); await p.waitForTimeout(400);
@@ -394,7 +405,7 @@ head('/list 정적 페이지');
   ok(dead.length === 0, '죽은 링크가 없다', dead.join(', '));
 
   // 마을에서 이 페이지로 가는 길
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(500);
   await p.click('#openList'); await p.waitForTimeout(400);
   ok(await p.locator('.modal-foot a').count() === 1, '목록 모달에서 이 페이지로 가는 링크가 있다');
@@ -563,7 +574,7 @@ head('게임 안내서');
 head('카페 앞 까마귀');
 {
   const p = await desktop();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(900);
 
   const crow = p.locator('.crow-spot');
@@ -623,7 +634,7 @@ head('카페 앞 까마귀');
 head('날아다니는 쪽지');
 {
   const p = await desktop();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(900);
 
   ok(await p.locator('.note-spot').count() === 1, '마을 위에 쪽지가 한 장 떠 있다');
@@ -644,12 +655,25 @@ head('날아다니는 쪽지');
   ok(how.flapDur > 0 && how.flapDur !== 2400,
     `펄럭임이 마을 박자가 아니다 (${how.flapDur}ms)`);
 
+  // 파장처럼 커졌다 작아진다. 새와 구름은 크기가 변하지 않는다 — 갈리는 신호다
+  const pulse = await p.evaluate(() => {
+    const el = document.querySelector('.note-fig');
+    const a = document.getAnimations().find((x) => x.animationName === 'note-bob');
+    if (!a) return null;
+    const read = (t) => { a.pause(); a.currentTime = t;
+      return new DOMMatrix(getComputedStyle(el).transform).a; };
+    return { big: read(450), small: read(1350), dur: a.effect.getTiming().duration };
+  });
+  ok(pulse && pulse.big > 1.04 && pulse.small < 0.96,
+    `파장처럼 커졌다 작아진다 (${pulse && pulse.big.toFixed(2)} ↔ ${pulse && pulse.small.toFixed(2)})`);
+  ok(pulse && pulse.dur !== 2400, `뽀잉 박자가 마을과 다르다 (${pulse && pulse.dur}ms)`);
+
   // 길목마다 멈춘다 — 같은 좌표가 두 번 연속 찍혀 있으면 그 구간이 「머무름」이다
   const rules = await p.evaluate(() => {
     const out = {};
     for (const s of document.styleSheets) {
       for (const r of s.cssRules) {
-        if (r.name === 'note-fly' || r.name === 'note-catch') {
+        if (r.name === 'note-fly') {
           out[r.name] = [...r.cssRules].map((k) => ({
             at: k.keyText, pos: k.style.left + ',' + k.style.top,
             pe: k.style.pointerEvents,
@@ -661,9 +685,6 @@ head('날아다니는 쪽지');
   });
   const same = rules['note-fly'].filter((k, i, a) => i && k.pos === a[i - 1].pos).length;
   ok(same >= 3, `길목마다 멈춰 선다 (멈춤 ${same}곳)`);
-  // 잡히는 구간과 멈추는 구간의 개수가 같아야 한다 — 어긋나면 날면서 잡히거나 그 반대다
-  const grabs = rules['note-catch'].filter((k) => k.pe === 'auto').length;
-  ok(grabs === same, `멈춰 있는 동안만 잡힌다 (멈춤 ${same} · 잡힘 ${grabs})`);
 
   // 멈춰 서는 자리는 전부 빈 땅이어야 한다 — 건물 위에서 멈추면 그 건물 클릭을 먹는다
   const clash = await p.evaluate(async () => {
@@ -680,14 +701,15 @@ head('날아다니는 쪽지');
   });
   ok(clash.length === 0, '멈춰 서는 자리가 구역 위에 없다', clash.join(' / '));
 
-  // 눌러 열면 묶음 팝업 — 셋이 한 자리에 온다. 멈춘 순간으로 시계를 돌려놓고 누른다
+  // **언제든 잡혀야 한다.** 한때 멈춰 있는 동안만 잡히게 해 뒀더니 한 바퀴의 5분의 1만
+  // 눌리는 물건이 됐다 — 누르려다 안 눌리는 문은 문이 아니다. 날고 있는 중에도 눌러 본다.
   await p.evaluate(() => document.getAnimations()
-    .filter((a) => ['note-fly', 'note-catch', 'note-bob'].includes(a.animationName))
-    .forEach((a) => { a.pause(); a.currentTime = 0; }));
+    .filter((a) => a.animationName === 'note-fly')
+    .forEach((a) => { a.pause(); a.currentTime = 52000 * 0.62; }));   // 두 길목 사이
   await p.waitForTimeout(150);
   ok(await p.evaluate(() =>
     getComputedStyle(document.querySelector('.note-spot')).pointerEvents) === 'auto',
-    '멈춰 서면 잡힌다');
+    '날고 있는 중에도 잡힌다');
 
   await p.locator('.note-spot').click();
   await p.waitForTimeout(500);
@@ -723,7 +745,7 @@ head('캐시 어긋남');
   p.on('request', async (r) => {
     if (/services\.json/.test(r.url())) asked.push((await r.allHeaders())['cache-control'] || '');
   });
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(900);
   ok(asked.length === 1 && /no-cache|max-age=0/.test(asked[0]),
     'services.json은 캐시를 다시 확인하고 쓴다', JSON.stringify(asked));
@@ -744,7 +766,7 @@ head('캐시 어긋남');
   // 일부러 끊는 것이라 이 페이지는 콘솔 오류 수집에서 뺀다 (watch를 안 건다)
   const p = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await p.route('**/assets/sprites/cut/crow-side.png', (r) => r.abort());
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(900);
   const left = await p.evaluate(() =>
     [...document.querySelectorAll('.crow-figure img')].map((i) => i.className));
@@ -763,7 +785,7 @@ head('방문 통계');
 {
   const p = await desktop();
   const sent = [];
-  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await town(p);
   await p.waitForTimeout(600);
 
   ok(await p.locator('script[src="/ga.js"]').count() === 1, '마을에 ga.js가 붙어 있다');

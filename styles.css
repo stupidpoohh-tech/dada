@@ -319,26 +319,27 @@ button, input { font: inherit; color: inherit; }
    비행 경로(@keyframes note-fly)는 services.json의 floater.path로 JS가 굽는다. */
 .note-spot {
   position: absolute;
-  /* 기본값은 「안 잡힌다」다. 잡히는 것은 note-catch가 멈춰 선 동안만 열어 준다 —
-     날아가는 쪽지가 건물 위를 지날 때 그 건물의 클릭을 가로채면 안 되기 때문이다.
-     애니메이션이 어떤 이유로 안 붙어도 남의 클릭을 먹지 않는 쪽으로 넘어진다. */
-  pointer-events: none;
+  /* 언제든 잡힌다. 한때 멈춰 선 동안만 잡히게 해 뒀는데, 그러면 한 바퀴의 5분의 1만
+     눌리는 물건이 된다 — 누르려다 안 눌리는 문은 문이 아니다. 위에 있는 것이 클릭을
+     받는 건 원래 그래야 하는 일이고, 머무는 자리가 전부 빈 땅이라 오래 겹치지도 않는다. */
+  pointer-events: auto;
   z-index: 7;                       /* 새·구름(6)보다 위 — 문은 가려지면 안 된다 */
   background: none; border: 0; padding: 0; cursor: pointer;
   line-height: 0;
   transform: translate(-50%, -50%);
-  animation: note-fly linear infinite, note-catch steps(1, end) infinite;
+  animation: note-fly linear infinite;
 }
-/* 날아다니는 것을 눌러야 하므로 판정은 그림보다 넉넉하게 (터치 기준 44px) */
+/* 판정은 그림만큼. 늘 잡히는 물건이라 그림보다 크게 잡으면 남의 자리까지 먹는다.
+   그림이 이미 70px 남짓이라 터치 기준(44px)은 그대로 넘는다. */
 .note-spot::after {
   content: '';
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
-  width: max(120%, 56px); height: max(150%, 56px);
+  width: max(100%, 44px); height: max(100%, 44px);
 }
 .note-fig {
   display: block;
-  animation: note-bob 2.9s ease-in-out infinite alternate;
+  animation: note-bob 1.8s ease-in-out infinite;
 }
 .note-zoom {
   display: block; position: relative;
@@ -362,8 +363,15 @@ button, input { font: inherit; color: inherit; }
                          50%, 74% { opacity: 0; } 75%, 100% { opacity: 1; } }
 @keyframes note-f-up   { 0%, 49% { opacity: 0; } 50%, 74% { opacity: 1; } 75%, 100% { opacity: 0; } }
 
-/* 날개가 위아래로 뜨는 만큼 몸도 느리게 오르내린다 */
-@keyframes note-bob { from { transform: translateY(-6%); } to { transform: translateY(6%); } }
+/* 오르내리면서 **파장처럼 커졌다 작아진다.** 이 뽀잉거림이 「눌러도 되는 것」이라는
+   신호다 — 새와 구름은 크기가 변하지 않는다. 마을의 뾰잉(2.4초)과는 박자를 달리해
+   같은 것으로 안 읽히게 한다. */
+@keyframes note-bob {
+  0%, 100% { transform: translateY(-4%) scale(1); }
+  25%      { transform: translateY(1%)  scale(1.1); }
+  50%      { transform: translateY(4%)  scale(1); }
+  75%      { transform: translateY(1%)  scale(.92); }
+}
 
 /* **손을 대면 멈춘다.** 날아다니는 것을 눌러야 하므로 이게 없으면 조준이 안 된다.
    멈추면서 살짝 커지는 것이 「잡혔다」는 신호가 된다. */
