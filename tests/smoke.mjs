@@ -628,7 +628,51 @@ head('카페 앞 까마귀');
   await p.close();
 }
 
-/* ── 12. 날아다니는 쪽지 ──────────────────────────────────
+/* ── 12. 세모집 지붕 위 확성기 ────────────────────────────
+   집 테마송이 나올 자리다. 아직 노래를 안 받아 **누를 수 없는 풍경**이라,
+   지붕 위에 얹혀 있으면서도 세모집 클릭을 가로채면 안 된다. */
+head('지붕 위 확성기');
+{
+  const p = await desktop();
+  await town(p);
+  await p.waitForTimeout(700);
+
+  ok(await p.locator('.horn-spot').count() === 1, '세모집 지붕에 확성기가 하나 있다');
+
+  const how = await p.evaluate(() => {
+    const n = document.querySelector('.horn-spot');
+    const a = document.getAnimations().find((x) => x.animationName === 'horn-idle');
+    const folk = document.getAnimations().find((x) => x.animationName === 'folk-idle');
+    return {
+      pe: getComputedStyle(n).pointerEvents,
+      hidden: n.getAttribute('aria-hidden'),
+      dur: a && a.effect.getTiming().duration,
+      beat: a && folk && Math.round(+a.startTime) === Math.round(+folk.startTime),
+    };
+  });
+  ok(how.pe === 'none' && how.hidden === 'true',
+    '아직 문이 아니다 — 풍경으로만 선다', JSON.stringify(how));
+  ok(how.dur === 2400 && how.beat, '마을과 같은 2.4초 한 박자에 물려 있다');
+
+  // 한 박자에 **두 번** 내지른다 — 우편함(좌우 인사)·캐릭터(폴짝)와 겹치지 않는 걸음
+  const shove = await p.evaluate(() => {
+    const el = document.querySelector('.horn-fig');
+    const a = document.getAnimations().find((x) => x.animationName === 'horn-idle');
+    const at = (t) => { a.pause(); a.currentTime = t;
+      return new DOMMatrix(getComputedStyle(el).transform).e; };
+    return [0, 0.17, 0.28, 0.37, 0.6].map((f) => Math.round(at(2400 * f)));
+  });
+  ok(shove[0] === 0 && shove[1] > 1 && shove[2] === 0 && shove[3] > 1 && shove[4] === 0,
+    `한 박자에 두 번 앞으로 내지른다 (${shove.join(' ')})`);
+
+  // 지붕 위에 있어도 세모집은 눌려야 한다
+  await p.click('.spot[data-district="house"]');
+  await p.waitForSelector('#bookOverlay:not([hidden])', { timeout: 4000 });
+  ok(true, '확성기가 세모집 클릭을 가로채지 않는다');
+  await p.close();
+}
+
+/* ── 13. 날아다니는 쪽지 ──────────────────────────────────
    새·구름은 풍경이고 이건 문이다. 그 차이가 눈에 보여야 한다.
    깨진 적 있음: 지도 위 가장 높이 뜬 채로 늘 잡히게 뒀더니 **건물 위를 지날 때
    그 건물의 클릭을 가로챘다** — 미술관을 누르려는데 쪽지가 먹었다.
@@ -736,7 +780,7 @@ head('날아다니는 쪽지');
   await p.close();
 }
 
-/* ── 13. 캐시가 어긋나도 지도가 깨지지 않는다 ─────────────
+/* ── 14. 캐시가 어긋나도 지도가 깨지지 않는다 ─────────────
    깨진 적 있음: services.json만 예전 것이 캐시에 남은 채 새 app.js를 만났다.
    프레임 역할 이름이 CSS와 어긋나 세 장이 한꺼번에 뜨고, 그중 사라진 파일 하나가
    404가 나면서 **카페 앞에 브라우저의 물음표 상자가 그대로 섰다.** */

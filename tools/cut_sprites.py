@@ -25,6 +25,9 @@ SHEETS = {
     "me": ("assets/sprites/me.png", 1, ["me"], ("h", 130)),
     "people": ("assets/sprites/people.png", 8,
                [f"person-{i}" for i in range(1, 9)], ("h", 88)),
+    # 세모집 지붕 위 확성기. 한 장짜리라 프레임 맞춤이 필요 없어 여기서 자른다
+    # (까마귀·쪽지는 여러 장을 포개야 해서 cut_crow.py · cut_note.py로 따로 나갔다)
+    "horn": ("assets/sprites/horn.png", 1, ["horn"], ("w", 120)),
 }
 
 # 마을 배경: 원본은 무겁기 때문에 표시 상한(1440px)보다 조금 큰 폭으로 다시 인코딩한다.
@@ -199,12 +202,24 @@ def build_map():
 
 
 def main():
+    """있는 시트만 자른다.
+
+    원본 시트는 .gitignore에 있어서(README 「편집용 원본」) 새로 받은 저장소에는
+    보통 한두 장만 있다. 예전에는 없는 파일에서 그냥 터졌는데, 그러면 지금 손보려는
+    시트 하나 때문에 나머지를 전부 구해 와야 했다. 없는 것은 건너뛴다."""
     import os
     os.makedirs(OUT_DIR, exist_ok=True)
+    only = sys.argv[1:]
     ok = True
     for key, (path, expected, names, size_spec) in SHEETS.items():
+        if only and key not in only:
+            continue
+        if not os.path.exists(path):
+            print(f"{key:8s} 원본 시트 없음 — 건너뜀 ({path})")
+            continue
         ok &= process(key, path, expected, names, size_spec)
-    build_map()
+    if not only and os.path.exists(MAP_SRC):
+        build_map()
     return 0 if ok else 1
 
 

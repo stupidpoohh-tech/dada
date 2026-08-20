@@ -255,6 +255,7 @@
         }
 
         if (d.mailbox) makeMailbox(wrap, d);
+        if (d.speaker) makeSpeaker(wrap, d);
         if (d.mascot) makeMascot(wrap, d);
 
         // 사람들 구역은 공원 땅이 아니라 사람들이 반응한다
@@ -284,6 +285,27 @@
     });
 
     makeFloater(wrap);
+  }
+
+  /** 확성기 — 세모집 지붕 위. 집 테마송이 여기서 나올 자리다.
+   *
+   *  **아직 문이 아니다.** 노래와 가사를 받기 전이라 열 것이 없으므로 풍경으로만 선다
+   *  (까마귀와 같은 규칙 — 없는 곳을 가리키는 문을 만들지 않는다).
+   *  `speaker.item`이 생기면 그때 링크나 버튼이 된다.
+   *
+   *  걸음은 **한 박자에 두 번 앞으로 내지르는 것**이다. 마을의 다른 것들과 겹치지
+   *  않아야 해서 회전(우편함)도 뜀(캐릭터)도 아닌 **반동**을 골랐다 — 소리를 내는
+   *  물건이니 앞으로 밀렸다 돌아오는 게 제 몸짓이다. 축은 지붕에 붙은 받침이다. */
+  function makeSpeaker(wrap, d) {
+    const s = d.speaker;
+    if (!s || !s.sprite) return;
+    const box = el('span', 'horn-spot');
+    box.setAttribute('aria-hidden', 'true');      // 아직 누를 수 없는 것을 읽어줄 이유가 없다
+    Object.assign(box.style, { left: pct(s.at[0]), top: pct(s.at[1]), width: pct(s.w) });
+    const fig = el('span', 'horn-fig');
+    fig.appendChild(pixel(S + s.sprite));
+    box.appendChild(fig);
+    wrap.appendChild(box);
   }
 
   /* ── 날아다니는 쪽지 ─────────────────────── */
@@ -587,7 +609,7 @@
   /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
    *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
   const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle', 'crow-idle',
-                      'crow-frame-rest', 'crow-frame-flap', 'crow-frame-tilt'];
+                      'crow-frame-rest', 'crow-frame-flap', 'crow-frame-tilt', 'horn-idle'];
 
   function syncIdle() {
     const anims = document.getAnimations().filter((a) =>
