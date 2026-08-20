@@ -215,7 +215,7 @@
           ]
         }
       },
-      "mailbox": { "sprite": "mailbox.webp", "at": [88.9, 97.5], "w": 1.95, "item": "game-guide" },
+      "mailbox": { "sprite": "mailbox.webp", "at": [82.3, 97.5], "w": 1.95, "item": "game-guide" },
       "direct": "house-catalog"
     },
     {

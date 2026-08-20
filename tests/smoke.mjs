@@ -149,6 +149,50 @@ head('캐릭터 판정 영역');
     ok(opened, `중심에서 ${label} 빗나가도 열린다`);
     if (opened) { await p.click('.panel-close').catch(() => {}); await p.waitForTimeout(200); }
   }
+
+  /* **지도 위의 문끼리 판정이 겹치면 안 된다.** 넓힌 판정(::after 44px)은 그림보다
+     크므로, 작은 것 둘이 가까이 서면 손가락이 어느 쪽으로 갈지 알 수 없다 —
+     세모집 마당에서 확성기를 오른쪽으로 옮긴 뒤 우편함과 24px이 겹쳐, 우편함을
+     누르려는데 노래가 나왔다. 지금은 우편함이 길 왼편에 있다.
+     쪽지(.note-spot)는 뺀다 — 마을 위를 도는 것이라 무엇과도 잠깐씩 겹친다. */
+  const clash = await p.evaluate(() => {
+    const rect = (n) => {
+      const r = n.getBoundingClientRect();
+      const cs = getComputedStyle(n, '::after');
+      const w = Math.max(r.width, parseFloat(cs.width) || 0);
+      const h = Math.max(r.height, parseFloat(cs.height) || 0);
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      return { n, l: cx - w / 2, r: cx + w / 2, t: cy - h / 2, b: cy + h / 2 };
+    };
+    const doors = [...document.querySelectorAll('.mbox-spot, .horn-spot, .crow-spot, .me-spot')]
+      .map(rect);
+    const out = [];
+    for (let i = 0; i < doors.length; i++) {
+      for (let j = i + 1; j < doors.length; j++) {
+        const a = doors[i], c = doors[j];
+        const ox = Math.min(a.r, c.r) - Math.max(a.l, c.l);
+        const oy = Math.min(a.b, c.b) - Math.max(a.t, c.t);
+        if (ox <= 0 || oy <= 0) continue;
+        // 얼마나 겹치느냐로 본다. 모서리가 조금 물리는 것과 **판정의 한쪽이
+        // 통째로 남의 것에 들어가 있는 것**은 다른 일이다. 작은 쪽의 4분의 1을
+        // 넘게 먹으면 손가락이 어디로 갈지 알 수 없다 (옛 우편함×확성기가 38%였다)
+        const area = ox * oy;
+        const small = Math.min((a.r - a.l) * (a.b - a.t), (c.r - c.l) * (c.b - c.t));
+        out.push({
+          pair: `${a.n.className.split(' ')[0]}×${c.n.className.split(' ')[0]}`,
+          share: area / small,
+          detail: `${Math.round(ox)}x${Math.round(oy)}px (${Math.round(area / small * 100)}%)`,
+        });
+      }
+    }
+    return out;
+  });
+  const bad = clash.filter((c) => c.share > 0.25);
+  ok(bad.length === 0, '지도 위의 문끼리 판정이 서로를 먹지 않는다',
+    bad.map((c) => c.pair + ' ' + c.detail).join(', '));
+  // 봐주고 넘어간 것은 숨기지 말고 적어 둔다 — 다음에 늘어나면 눈에 띄어야 한다
+  if (clash.length) console.log('     · 모서리만 물린 것: '
+    + clash.filter((c) => c.share <= 0.25).map((c) => c.pair + ' ' + c.detail).join(', '));
   await p.close();
 }
 
@@ -974,9 +1018,9 @@ head('캐시 어긋남');
    대답을 정직하게 옮기는지**만 본다 — 특히 실패했을 때 성공한 척하지 않는지.
    조용히 고맙다고 하면 방문자는 남겼다고 믿고 나는 못 받는다.
 
-   배치도 함께 지킨다. 세 줄짜리 폼 → 푸터에 그림 셋 → **이름 옆 👋 하나**로
-   두 번 옮겼다. 나가는 길에 자리를 먹지 않는 것이 요점이라, 푸터에 그림이
-   다시 늘어서면 여기서 잡힌다. */
+   배치도 함께 지킨다. 푸터에 남는 것은 이름 옆의 👋 하나뿐이고, 적는 칸은 창
+   안에 있다 — 나가는 길에 자리를 먹지 않는 것이 요점이라, 푸터에 폼이 다시
+   펼쳐지면 여기서 잡힌다. */
 head('제작자에게 한마디');
 {
   const p = await desktop();
@@ -985,31 +1029,31 @@ head('제작자에게 한마디');
 
   const foot = await p.evaluate(() => ({
     hi: !!document.getElementById('sayHi'),
-    // 푸터에 남는 것은 손짓 하나뿐 — 그림 셋은 창 안에 있어야 한다
-    picksInFooter: document.querySelectorAll('.site-footer .say-pick').length,
+    // 푸터에 남는 것은 손짓 하나뿐 — 적는 칸은 창 안에 있어야 한다
+    fieldsInFooter: document.querySelectorAll('.site-footer textarea, .site-footer input').length,
     winHidden: document.getElementById('sayModal').hidden,
   }));
-  ok(foot.hi && foot.picksInFooter === 0, '푸터에는 👋 하나만 있다',
-    JSON.stringify(foot));
+  ok(foot.hi && foot.fieldsInFooter === 0, '푸터에는 👋 하나만 있다', JSON.stringify(foot));
   ok(foot.winHidden, '창은 처음부터 열려 있지 않다');
 
   await p.click('#sayHi');
   await p.waitForTimeout(300);
   const opened = await p.evaluate(() => ({
     shown: !document.getElementById('sayModal').hidden,
-    picks: document.querySelectorAll('#sayPicks .say-pick').length,
-    kinds: [...document.querySelectorAll('#sayPicks .say-pick')].map((b) => b.dataset.kind).join(','),
-    formHidden: document.getElementById('sayForm').hidden,
+    // 창을 열면 곧장 적는 칸이다 — 거쳐야 할 버튼을 앞에 두지 않는다
+    text: !!document.getElementById('sayText'),
+    fields: [...document.querySelectorAll('#sayForm textarea, #sayForm input[type="text"]')]
+      .filter((n) => n.id !== 'sayHp').map((n) => n.id).join(','),
     locked: getComputedStyle(document.body).overflow,
   }));
-  ok(opened.shown && opened.kinds === 'hi,good,idea', '👋를 누르면 창이 열리고 그림 셋이 있다',
+  ok(opened.shown && opened.text, '👋를 누르면 창이 열리고 곧장 적는 칸이다',
     JSON.stringify(opened));
-  ok(opened.formHidden, '적는 칸은 창을 열자마자 나오지 않는다');
+  ok(opened.fields === 'sayText,sayName,sayReply', '한마디·이름·답장받을곳 세 칸이다',
+    opened.fields);
   ok(opened.locked === 'hidden', '창이 열린 동안 뒤가 스크롤되지 않는다', opened.locked);
 
   /* **글자가 16px보다 작은 칸은 두지 않는다.** iOS 사파리는 그런 칸에 커서가
-     들어가면 읽히도록 화면을 통째로 확대한다 — 「할 말 있어요」를 누르면 바로
-     커서를 넣어 주므로, 그때 창이 확대돼 보였다. 목록의 검색칸까지 함께 지킨다. */
+     들어가면 읽히도록 화면을 통째로 확대한다. 목록의 검색칸까지 함께 지킨다. */
   const small = await p.evaluate(() => [...document.querySelectorAll('input[type="text"], input[type="search"], textarea')]
     .filter((n) => parseFloat(getComputedStyle(n).fontSize) < 16)
     .map((n) => n.id + ':' + getComputedStyle(n).fontSize));
@@ -1035,42 +1079,8 @@ head('제작자에게 한마디');
     JSON.stringify(closed));
   ok(closed.unlocked !== 'hidden', '닫으면 스크롤이 풀린다', closed.unlocked);
 
-  /* 인사·좋았어요는 **한 번에 간다.** 적는 칸을 거치지 않는 것이 이 배치의 요점이다 */
   await p.click('#sayHi');
   await p.waitForTimeout(250);
-  let sent = null;
-  await p.route('**/api/word', async (route) => {
-    sent = JSON.parse(route.request().postData() || '{}');
-    await route.fulfill({ status: 200, contentType: 'application/json',
-                          body: JSON.stringify({ ok: true }) });
-  });
-  await p.click('.say-pick[data-kind="good"]');
-  await p.waitForTimeout(400);
-  const quick = await p.evaluate(() => ({
-    good: document.getElementById('sayNote').classList.contains('say-good'),
-    gone: !document.getElementById('sayPicks') && !document.getElementById('sayForm'),
-    stillOpen: !document.getElementById('sayModal').hidden,
-  }));
-  ok(sent && sent.kind === 'good' && !sent.text, '그림만 눌러도 그대로 간다', JSON.stringify(sent));
-  ok(quick.good && quick.gone && quick.stillOpen,
-    '보내고 나면 그림이 사라지고 고맙다는 말만 남는다', JSON.stringify(quick));
-
-  /* 「할 말 있어요」는 적는 칸을 편다 — 말이 있어야 뜻이 사는 하나다 */
-  await p.unroute('**/api/word');
-  await town(p);
-  await p.waitForTimeout(500);
-  await p.click('#sayHi');
-  await p.waitForTimeout(250);
-  await p.click('.say-pick[data-kind="idea"]');
-  await p.waitForTimeout(300);
-  const idea = await p.evaluate(() => ({
-    formShown: !document.getElementById('sayForm').hidden,
-    pressed: document.querySelector('.say-pick[data-kind="idea"]').getAttribute('aria-pressed'),
-    focused: document.activeElement.id,
-  }));
-  ok(idea.formShown && idea.pressed === 'true',
-    '「할 말 있어요」를 누르면 적는 칸이 열린다', JSON.stringify(idea));
-  ok(idea.focused === 'sayText', '열린 칸에 커서까지 들어간다', idea.focused);
 
   // 빈 채로 누르면 서버까지 가지 않는다
   let calls = 0;
@@ -1093,7 +1103,7 @@ head('제작자에게 한마디');
   const failed = await p.evaluate(() => ({
     note: document.getElementById('sayNote').textContent,
     bad: document.getElementById('sayNote').classList.contains('say-bad'),
-    kept: !!document.getElementById('sayForm') && !!document.getElementById('sayPicks'),
+    kept: !!document.getElementById('sayForm'),
     typed: document.getElementById('sayText').value,
     btnBack: !document.getElementById('sayBtn').disabled,
   }));
@@ -1102,25 +1112,27 @@ head('제작자에게 한마디');
   ok(failed.kept && failed.typed === '마을 잘 봤어요' && failed.btnBack,
     '실패하면 적은 것과 버튼이 그대로 남는다', JSON.stringify(failed));
 
-  // 다시 눌러 성공하면 그림도 칸도 치우고 고맙다고만 한다
+  // 다시 눌러 성공하면 폼을 치우고 고맙다고만 한다
   await p.unroute('**/api/word');
-  sent = null;
+  let sent = null;
   await p.route('**/api/word', async (route) => {
     sent = JSON.parse(route.request().postData() || '{}');
     await route.fulfill({ status: 200, contentType: 'application/json',
                           body: JSON.stringify({ ok: true }) });
   });
+  await p.fill('#sayName', '다원');
   await p.fill('#sayReply', 'a@b.c');
   await p.click('#sayBtn');
   await p.waitForTimeout(400);
   const done = await p.evaluate(() => ({
     good: document.getElementById('sayNote').classList.contains('say-good'),
-    gone: !document.getElementById('sayForm') && !document.getElementById('sayPicks'),
+    gone: !document.getElementById('sayForm'),
+    stillOpen: !document.getElementById('sayModal').hidden,
   }));
-  ok(sent && sent.kind === 'idea' && sent.text === '마을 잘 봤어요' && sent.reply === 'a@b.c',
-    '적은 것이 무엇을 눌렀는지와 함께 간다', JSON.stringify(sent));
-  ok(done.good && done.gone, '남기면 그림과 칸이 사라지고 고맙다는 말만 남는다',
-    JSON.stringify(done));
+  ok(sent && sent.text === '마을 잘 봤어요' && sent.name === '다원' && sent.reply === 'a@b.c',
+    '적은 것이 그대로 서버로 간다', JSON.stringify(sent));
+  ok(done.good && done.gone && done.stillOpen,
+    '남기면 폼이 사라지고 고맙다는 말만 남는다', JSON.stringify(done));
 
   // 바깥을 눌러도 닫힌다 (목록 모달과 같은 규칙)
   await p.mouse.click(5, 5);

@@ -9,10 +9,6 @@
  * 지도·그림·목록은 이 파일이 배포돼도 예전과 똑같은 길로 나간다. 없는 주소
  * (`/api/word`)만 여기로 온다.
  *
- * ── 받는 것 ─────────────────────────────────
- * 그림 버튼 셋(`kind`: hi · good · idea)과, 「할 말 있어요」에만 따라오는 글(`text`).
- * **그림만 눌러도 한마디다** — 글이 없다고 빈손으로 보지 않는다.
- *
  * ── 저장하는 곳 ─────────────────────────────
  * KV 하나(`WORDS`)에 한 줄씩 넣는다. 키는 `w:<시각역순>:<임의값>`이라
  * **목록이 최신순으로 저절로 정렬된다** — KV의 list는 키 사전순이므로,
@@ -35,10 +31,6 @@
  *    거절하면 봇이 다른 방법을 찾는다
  * 3. 도배 — 같은 IP에서 1분에 3번까지. KV 카운터 하나로 센다
  */
-
-/** 그림 버튼이 보내는 뜻. **여기 없는 값은 버린다** — 남이 아무 문자열이나
- *  넣어 두면 나중에 세어 볼 때 목록이 지저분해진다. */
-const KINDS = ['hi', 'good', 'idea'];
 
 const MAX_NAME = 40;
 const MAX_TEXT = 1000;
@@ -80,12 +72,8 @@ async function leaveWord(request, env) {
   // 봇은 사람 눈에 안 보이는 칸을 채운다. 거절하면 다른 방법을 찾으므로 받은 척한다
   if (typeof body.hp === 'string' && body.hp.trim()) return json({ ok: true });
 
-  const kind = KINDS.includes(body.kind) ? body.kind : '';
   const text = String(body.text || '').trim().slice(0, MAX_TEXT);
-  // 그림만 눌러도 한마디다 — 글이 없다고 빈손으로 보지 않는다
-  if (!text && !kind) {
-    return json({ ok: false, error: 'empty', message: '한마디를 적어 주세요.' }, 400);
-  }
+  if (!text) return json({ ok: false, error: 'empty', message: '한마디를 적어 주세요.' }, 400);
 
   const ip = request.headers.get('cf-connecting-ip') || '';
   if (await overRate(env, ip)) {
@@ -97,7 +85,6 @@ async function leaveWord(request, env) {
   const cf = request.cf || {};
   await env.WORDS.put(deskKey(now), JSON.stringify({
     at: new Date(now).toISOString(),
-    kind,
     name: String(body.name || '').trim().slice(0, MAX_NAME),
     text,
     // 답장이 필요하면 쓰라고 받는다. 없으면 없는 대로 남는다

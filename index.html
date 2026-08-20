@@ -108,39 +108,34 @@
     <div class="modal-body say-body">
       <p class="say-lead">마을을 둘러본 소감이든, 고칠 곳이든, 아무 말이든 좋아요.</p>
 
-      <div class="say-picks" id="sayPicks">
-        <button type="button" class="say-pick" data-kind="hi" aria-pressed="false">
-          <span class="say-ico" aria-hidden="true">👋</span>
-          <span class="say-cap">그냥 인사</span>
-        </button>
-        <button type="button" class="say-pick" data-kind="good" aria-pressed="false">
-          <span class="say-ico" aria-hidden="true">👍</span>
-          <span class="say-cap">좋았어요</span>
-        </button>
-        <button type="button" class="say-pick" data-kind="idea" aria-pressed="false">
-          <span class="say-ico" aria-hidden="true">💡</span>
-          <span class="say-cap">할 말 있어요</span>
-        </button>
-      </div>
+      <!-- novalidate — 브라우저가 제 말풍선("이 입력란을 작성하세요")으로 먼저
+           막아 버리면 우리 안내가 뜰 자리가 없다. 빈 칸 검사는 아래 JS가 한다
+           (한국어이고, 창 안 그 자리에 뜨고, 서버가 준 말과 같은 자리를 쓴다) -->
+      <form id="sayForm" novalidate>
+        <label class="say-label" for="sayText">한마디 <span aria-hidden="true">*</span></label>
+        <textarea id="sayText" name="text" rows="4" maxlength="1000" required
+                  placeholder="여기에 적어 주세요"></textarea>
 
-      <form id="sayForm" hidden>
-        <textarea id="sayText" name="text" rows="3" maxlength="1000"
-                  aria-label="제작자에게 남길 말" placeholder="여기에 적어 주세요"></textarea>
-        <div class="say-send">
-          <input type="text" id="sayReply" name="reply" maxlength="120"
-                 aria-label="답장 받을 곳 (선택)" autocomplete="email"
-                 placeholder="답장 받을 곳 (선택)">
-          <button type="submit" class="say-btn" id="sayBtn">남기기</button>
-        </div>
+        <label class="say-label" for="sayName">이름 <span class="say-opt">(선택)</span></label>
+        <input type="text" id="sayName" name="name" maxlength="40" autocomplete="nickname">
+
+        <label class="say-label" for="sayReply">답장 받을 곳 <span class="say-opt">(선택)</span></label>
+        <input type="text" id="sayReply" name="reply" maxlength="120"
+               autocomplete="email" placeholder="이메일·인스타 등">
+
         <!-- 사람 눈에는 안 보이는 칸. 봇이 채우면 조용히 받은 척하고 버린다 -->
         <div class="say-hp" aria-hidden="true">
           <label for="sayHp">이 칸은 비워 두세요</label>
           <input type="text" id="sayHp" name="hp" tabindex="-1" autocomplete="off">
         </div>
+
+        <div class="say-send">
+          <button type="submit" class="say-btn" id="sayBtn">남기기</button>
+        </div>
       </form>
 
-      <!-- 폼·그림 **바깥**이다. 다 남기고 나면 둘 다 치우는데, 안에 두면
-           고맙다는 말도 같이 사라진다 (실제로 그렇게 만들었다가 잡았다) -->
+      <!-- 폼 **바깥**이다. 다 남기고 나면 폼을 치우는데, 안에 두면 고맙다는 말도
+           같이 사라진다 (실제로 그렇게 만들었다가 잡았다) -->
       <p class="say-note" id="sayNote" role="status" aria-live="polite"></p>
     </div>
   </div>

@@ -1358,31 +1358,29 @@
    *  마을을 다 둘러본 자리(푸터)에서 한마디 남기고 갈 수 있게. 받는 쪽은
    *  `worker.js`의 `/api/word`다 — 이 마을에서 서버가 하는 유일한 일이다.
    *
-   *  **푸터에는 👋 하나뿐이고, 나머지는 창 안에 있다.** 처음에는 펴면 세 줄짜리
-   *  폼(말·이름·답장받을곳)이 나왔고, 다음에는 그림 셋을 푸터에 늘어놓았다.
-   *  둘 다 나가는 길에 마주치기엔 자리를 너무 많이 먹었다 — 이름 옆의 손짓
-   *  하나면 「말을 걸 수 있다」는 뜻은 다 서고, 무엇으로 인사할지는 창에서 고른다.
+   *  **푸터에는 이름 옆의 👋 하나뿐이고, 적는 칸은 창 안에 있다.** 처음에는 폼을
+   *  푸터에 그대로 펼쳐 뒀는데 나가는 길에 마주치기엔 자리를 너무 많이 먹었다.
+   *  손짓 하나면 「말을 걸 수 있다」는 뜻은 다 서고, 칸은 창에서 보면 된다.
+   *
+   *  **빠른 반응 버튼(그냥 인사·좋았어요 같은 것)은 두지 않는다.** 한때 그림 셋을
+   *  놓아 한 번에 보낼 수 있게 했는데, 눌러 봐야 「누가 왔다 갔다」밖에 안 남는다 —
+   *  남길 말이 있어서 창을 연 사람에게는 거쳐야 할 단계가 하나 더 생길 뿐이었다.
+   *  창을 열면 곧장 적는 칸이다.
    *
    *  창은 목록 모달과 **같은 틀**을 쓴다. 배경 덮개·Esc·바깥 누르기·포커스
    *  가두기가 이미 거기 있어서, 새로 만들면 그걸 다시 흉내 내는 셈이 된다.
    *
-   *  **「할 말 있어요」만 적는 칸을 편다.** 인사와 좋았다는 그림 하나로 뜻이
-   *  다 서지만, 할 말은 말이 있어야 뜻이 산다. 필요한 사람에게만 칸이 열리므로
-   *  기본 화면은 한 줄로 남는다.
-   *
    *  **보내는 동안과 보낸 뒤를 눈에 보이게 한다.** 눌렀는데 아무 일도 안 일어나면
-   *  두 번 세 번 누르게 되고, 그러면 같은 말이 여러 줄 쌓인다 — 누르는 동안 그림을
-   *  잠그고 「보내는 중」이라고 말한 뒤 결과를 그 자리에 쓴다.
+   *  두 번 세 번 누르게 되고, 그러면 같은 말이 여러 줄 쌓인다 — 버튼을 잠그고
+   *  「보내는 중」이라고 말한 뒤 결과를 그 자리에 쓴다.
    *
    *  **실패를 성공처럼 보이게 하지 않는다.** KV가 아직 안 붙어 있으면 서버가
    *  503과 함께 그렇다고 말하고, 여기서는 그 말을 그대로 띄운다. 조용히
    *  고맙다고 하면 방문자는 남겼다고 믿고 나는 못 받는다 — 그게 제일 나쁘다. */
   function initSay() {
-    const picks = $('sayPicks'), form = $('sayForm'), note = $('sayNote');
+    const form = $('sayForm'), note = $('sayNote');
     const hi = $('sayHi'), win = $('sayModal');
-    if (!picks || !form || !hi || !win) return;
-    const all = [...picks.querySelectorAll('.say-pick')];
-    let kind = '';
+    if (!form || !hi || !win) return;
 
     hi.addEventListener('click', openSay);
     $('sayClose').addEventListener('click', closeSay);
@@ -1392,58 +1390,38 @@
       note.textContent = msg;
       note.className = 'say-note' + (tone ? ' say-' + tone : '');
     };
-    const lock = (on) => all.forEach((b) => { b.disabled = on; });
 
-    /** 보내고, 결과를 그 자리에 쓴다. 성공하면 그림과 칸을 모두 치운다 —
-     *  빈 칸을 다시 내밀면 방금 남긴 것이 안 갔나 싶어진다. */
-    async function send(payload) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = $('sayText').value.trim();
+      if (!text) { say('한마디를 적어 주세요.', 'bad'); $('sayText').focus(); return; }
+
+      const btn = $('sayBtn');
+      btn.disabled = true;
       say('보내는 중…');
       try {
         const res = await fetch('/api/word', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ hp: $('sayHp').value, ...payload }),
+          body: JSON.stringify({
+            text, name: $('sayName').value, reply: $('sayReply').value, hp: $('sayHp').value,
+          }),
         });
         const out = await res.json().catch(() => ({}));
         if (res.ok && out.ok) {
-          track('say_sent', { kind: payload.kind });
-          picks.remove();
+          // 남긴 뒤에는 폼을 치우고 고마웠다는 말만 남긴다 — 또 쓰라고 빈 칸을
+          // 다시 내밀면 방금 남긴 것이 안 갔나 싶어진다
+          track('say_sent', {});
           form.remove();
           say('고맙습니다. 잘 받았어요.', 'good');
-          return true;
+          return;
         }
         say(out.message || '지금은 남길 수가 없어요. 잠시 뒤에 다시 시도해 주세요.', 'bad');
       } catch (_) {
         // 네트워크가 끊겼거나 정적으로만 띄운 경우(로컬 python 서버 등)
         say('연결이 안 돼요. 잠시 뒤에 다시 시도해 주세요.', 'bad');
       }
-      return false;
-    }
-
-    all.forEach((b) => b.addEventListener('click', async () => {
-      kind = b.dataset.kind;
-      all.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-
-      if (kind === 'idea') {          // 할 말은 말이 있어야 뜻이 산다
-        form.hidden = false;
-        say('');
-        $('sayText').focus();
-        return;
-      }
-      form.hidden = true;
-      lock(true);
-      if (!await send({ kind })) lock(false);
-    }));
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const text = $('sayText').value.trim();
-      if (!text) { say('한마디를 적어 주세요.', 'bad'); $('sayText').focus(); return; }
-      const btn = $('sayBtn');
-      btn.disabled = true;
-      if (!await send({ kind: kind || 'idea', text, reply: $('sayReply').value })) {
-        btn.disabled = false;
-      }
+      btn.disabled = false;
     });
   }
 
@@ -1453,9 +1431,10 @@
     $('sayModal').hidden = false;
     document.body.style.overflow = 'hidden';
     syncHint();
-    // 터치 기기에서 칸에 바로 커서를 주면 키보드가 튀어오른다 — 창 자체를 잡는다
-    // (목록 모달과 같은 규칙)
-    $('sayModal').querySelector('.modal').focus();
+    // 터치 기기에서 칸에 바로 커서를 주면 키보드가 튀어오르며 창을 반쯤 덮는다 —
+    // 창 자체를 잡는다 (목록 모달과 같은 규칙)
+    if (window.matchMedia('(pointer: fine)').matches) $('sayText').focus();
+    else $('sayModal').querySelector('.modal').focus();
   }
 
   function closeSay() {
