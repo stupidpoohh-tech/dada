@@ -86,6 +86,17 @@
       a.addEventListener('click', (e) => { e.preventDefault(); goStack(ch.id); });
       frame.appendChild(a);
     });
+    // 출처는 판권면에 온전한 문장으로 있지만 그건 끝까지 온 사람만 만난다.
+    // 첫 화면인 목차에 회색 한 줄을 얹어 두면 거의 모든 사람이 한 번은 본다.
+    // 원본 이미지 위에 얹을 뿐 파일은 그대로다 — 히트 영역과 같은 방식이다.
+    // 목차 글줄은 86.6%에서 끝나므로 아래 여백은 비어 있다.
+    const short = (data.colophon || {}).sourceShort;
+    if (short) {
+      const line = el('p', 'toc-source', short);
+      line.setAttribute('aria-hidden', 'true');   // 판권면이 같은 말을 온전히 읽어준다
+      frame.appendChild(line);
+    }
+
     card.appendChild(frame);
     return card;
   }

@@ -211,6 +211,21 @@ html, body {
   cursor: pointer;
 }
 .toc-hit:hover { background: rgba(22, 24, 26, .045); }
+/* 목차 면 아래 회색 한 줄 — 출처가 판권면에만 있으면 끝까지 온 사람만 본다.
+   원본 이미지 위에 얹을 뿐이고, 목차 글줄이 86.6%에서 끝나 아래는 비어 있다. */
+.toc-source {
+  position: absolute; left: 0; right: 0; bottom: 2.6%;
+  margin: 0; text-align: center;
+  font-size: 11px; line-height: 1.4; color: var(--mute);
+  word-break: keep-all;
+  pointer-events: none;                  /* 히트 영역을 가리지 않는다 */
+}
+/* 좁은 화면에서는 원본이 손바닥만 해져 지면 안에 넣으면 DADA 로고와 겹친다.
+   대신 위아래로 남는 여백이 넓으므로 지면 바로 아래로 내려 놓는다. */
+@media (max-width: 700px) {
+  .toc-source { font-size: 10px; bottom: auto; top: calc(100% + 12px); }
+}
+
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* ── 문(門) ──────────────────────────────────────────

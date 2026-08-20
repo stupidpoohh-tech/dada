@@ -439,6 +439,16 @@ head('게임 안내서');
   // 목차에서 시작한다 — 첫 화면은 37편의 리스트가 아니라 챕터를 고르는 화면이다
   ok(await p.locator('.toc-hit').count() === 5, '목차 히트 영역이 다섯이다');
 
+  // 첫 화면에 출처 한 줄. 판권면에만 두면 끝까지 온 사람만 보므로 목차에도 얹는다.
+  // 다만 목차 히트 영역 위에 겹치므로 클릭을 먹으면 안 된다.
+  const srcline = await p.evaluate(() => {
+    const n = document.querySelector('.toc-source');
+    return n && { text: n.textContent, pe: getComputedStyle(n).pointerEvents };
+  });
+  ok(!!srcline && srcline.text.includes('Steam'),
+    '목차에 출처 한 줄이 얹혀 있다', JSON.stringify(srcline));
+  ok(!!srcline && srcline.pe === 'none', '출처 줄이 목차 클릭을 먹지 않는다');
+
   // 42는 다섯 번째 챕터가 아니다 — 순번을 다시 매기지 않았는지 본다
   const labels = await p.evaluate(() =>
     [...document.querySelectorAll('.chip')].map((b) => b.firstChild.textContent.trim()));
