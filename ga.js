@@ -16,8 +16,10 @@
  * 손으로 확인할 때는 주소 끝에 `?gadebug`를 붙인다. 실제로 보내는 대신
  * 콘솔에 찍히므로, 어느 자리에서 무엇이 나가는지 로컬에서 그대로 볼 수 있다.
  *
- * Cloudflare Web Analytics는 여기 없다 — 대시보드에서 켜면 Cloudflare가
- * HTML 응답에 비콘을 직접 끼워 넣는다. 코드로 붙일 것이 없다 (README 「방문 통계」).
+ * Cloudflare Web Analytics 비콘도 같은 가드 아래에서 함께 붙인다 (CF_TOKEN).
+ * 「대시보드에서 켜면 알아서 끼워 넣기」는 Pages 프로젝트 얘기라 여기엔 없다 — 이
+ * 사이트는 Workers 정적 에셋이고 `*.workers.dev`는 Cloudflare가 관리하는 존도
+ * 아니라, 호스트 이름을 직접 적어 만든 뒤 토큰을 받아 와야 한다 (README 「방문 통계」).
  *
  * 보내는 것 (이벤트 이름 · 부르는 자리)
  *   district_open   구역을 열었다            app.js openPanel
@@ -31,12 +33,22 @@
  *   list_filter     목록에서 종류를 골랐다    app.js makeChips
  *   guide_chapter   안내서 챕터를 골랐다      game/guide.js goStack
  *   guide_zoom      안내서 면을 확대했다      game/guide.js openZoom
+ *   guide_end       안내서를 끝까지 봤다      game/guide.js mount
  */
 (function () {
   'use strict';
 
   /* GA4 측정 ID — 관리 → 데이터 스트림 → 웹 → 측정 ID (`G-`로 시작한다). */
-  var ID = '';
+  var ID = 'G-62X7QQW0GM';
+
+  /* Cloudflare Web Analytics 토큰 (16진수 32자).
+     Workers 정적 에셋에는 「Settings에서 켜면 알아서 끼워 넣기」가 없다 —
+     그건 Pages 프로젝트에만 있다. `*.workers.dev`는 Cloudflare가 관리하는
+     존(zone)도 아니라 Web Analytics 목록에 뜨지 않으므로, 호스트 이름을 직접
+     적고 **"which does not belong to Cloudflare websites"**를 골라 만든다.
+     그러면 비콘 스니펫과 토큰이 나오고, 그 토큰만 여기 적으면 된다.
+     비어 있으면 비콘을 부르지 않는다. */
+  var CF_TOKEN = '';
 
   /* 통계를 켤 도메인. 커스텀 도메인(dada.town)을 붙이면 여기에 한 줄 더한다. */
   var HOSTS = [
@@ -44,33 +56,44 @@
   ];
 
   var debug = /[?&]gadebug\b/.test(location.search);
-  var live = HOSTS.indexOf(location.hostname) >= 0 && /^G-[A-Z0-9]+$/.test(ID);
+  var onHost = HOSTS.indexOf(location.hostname) >= 0;
+  var live = onHost && /^G-[A-Z0-9]+$/.test(ID);
 
   /* 켜지지 않는 곳에도 자리는 만들어 둔다 — 부르는 쪽이 조건문을 갖지 않도록.
      (그래도 부르는 쪽은 `window.dadaTrack &&`로 한 번 더 감싼다. 광고 차단기가
      이 파일 자체를 막으면 함수가 아예 없기 때문이다.) */
-  if (!live) {
-    window.dadaTrack = debug
-      ? function (name, params) { console.log('[ga:off]', name, params || {}); }
-      : function () {};
-    return;
+  window.dadaTrack = debug
+    ? function (name, params) { console.log('[ga:off]', name, params || {}); }
+    : function () {};
+
+  if (live) {
+    window.dataLayer = window.dataLayer || [];
+    var gtag = function () { window.dataLayer.push(arguments); };
+
+    /* gtag는 큐다. 아래 <script>가 도착하기 전에 쌓아 둬도 그대로 전송된다. */
+    gtag('js', new Date());
+    gtag('config', ID);
+
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(ID);
+    document.head.appendChild(s);
+
+    /** 커스텀 이벤트 한 번. 이름은 소문자·밑줄, 매개변수 값은 100자를 넘기지 않는다. */
+    window.dadaTrack = function (name, params) {
+      gtag('event', name, params || {});
+      if (debug) console.log('[ga]', name, params || {});
+    };
   }
 
-  window.dataLayer = window.dataLayer || [];
-  function gtag() { window.dataLayer.push(arguments); }
-
-  /* gtag는 큐다. 아래 <script>가 도착하기 전에 쌓아 둬도 그대로 전송된다. */
-  gtag('js', new Date());
-  gtag('config', ID);
-
-  var s = document.createElement('script');
-  s.async = true;
-  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(ID);
-  document.head.appendChild(s);
-
-  /** 커스텀 이벤트 한 번. 이름은 소문자·밑줄, 매개변수 값은 100자를 넘기지 않는다. */
-  window.dadaTrack = function (name, params) {
-    gtag('event', name, params || {});
-    if (debug) console.log('[ga]', name, params || {});
-  };
+  /* Cloudflare Web Analytics 비콘. GA와 겹쳐도 되지만 세는 값이 다르다 —
+     쿠키를 심지 않아 차단기에 덜 걸리므로 「몇 명이 왔나」는 이쪽이 정확하고,
+     「무엇을 눌렀나」는 커스텀 이벤트가 있는 GA만 안다. 여기도 HOSTS 안에서만. */
+  if (onHost && CF_TOKEN) {
+    var b = document.createElement('script');
+    b.defer = true;
+    b.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+    b.setAttribute('data-cf-beacon', JSON.stringify({ token: CF_TOKEN }));
+    document.head.appendChild(b);
+  }
 })();

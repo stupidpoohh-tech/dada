@@ -575,6 +575,12 @@ head('방문 통계');
   ok(await p.evaluate(() => [...document.scripts]
        .some((s) => s.src.includes('googletagmanager'))) === false,
     'localhost에서는 GA를 부르지 않는다');
+  ok(await p.evaluate(() => [...document.scripts]
+       .some((s) => s.src.includes('cloudflareinsights'))) === false,
+    'localhost에서는 Cloudflare 비콘도 부르지 않는다');
+  // 측정 ID가 비면 통계가 통째로 멎는데 화면에는 아무 표시도 안 난다
+  const gaSrc = await p.evaluate(() => fetch('/ga.js').then((r) => r.text()));
+  ok(/var ID = 'G-[A-Z0-9]+'/.test(gaSrc), 'ga.js가 측정 ID를 들고 있다');
 
   // 부르는 자리가 실제로 부르는지 — 함수를 갈아 끼우고 눌러 본다
   await p.evaluate(() => { window.dadaTrack = (n, q) => window.__ga.push([n, q]); });

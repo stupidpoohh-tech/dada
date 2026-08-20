@@ -24,7 +24,7 @@ assets/
   sprites/cut/      잘라낸 스프라이트 22개 — 실제로 쓰는 것
 tools/cut_sprites.py  시트에서 스프라이트를 잘라내고 배경을 투명 처리
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
-tests/smoke.mjs       회귀 테스트 86개 (npm test)
+tests/smoke.mjs       회귀 테스트 88개 (npm test)
 ```
 
 편집용 원본(원본 지도·스프라이트 시트)은 저장소에 두지 않는다 — 아래 「편집용 원본」 참고.
@@ -45,7 +45,7 @@ npm run serve &      # 8000번 포트로 띄운 뒤
 npm test
 ```
 
-`tests/smoke.mjs`의 86개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
+`tests/smoke.mjs`의 88개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
 만든 게 아니라 "또 이럴까 봐" 남긴 목록이니, 새 버그를 잡으면 여기에 한 줄 더한다.
 지금 지키고 있는 것 — 두 책이 서로의 설정을 물고 오지 않기, 목록 카드가 빈 해시를 물지 않기,
 캐릭터 판정이 흔들리지 않고 64px을 넘기, 여닫고 호버한 뒤에도 마을이 한 박자이기,
@@ -322,22 +322,25 @@ for i, p in enumerate(d):
 `/` 그대로다. 그래서 자동으로 세어지는 페이지뷰 하나로는 **"몇 명이 왔다"까지만** 알고
 "무엇을 봤는가"는 한 줄도 안 남는다. 그건 커스텀 이벤트로 각자 자리에서 보낸다.
 
-### 켜는 법 — 세 걸음
+### 갈아 끼우는 자리는 `ga.js` 위쪽 두 줄뿐이다
 
-1. **측정 ID를 받는다.** [analytics.google.com](https://analytics.google.com) →
-   관리(왼쪽 아래 톱니) → 데이터 스트림 → 웹 스트림 추가 → 주소는
-   `https://dada-portfolio.stupidpoohh.workers.dev`. 만들면 오른쪽 위에
-   **측정 ID**가 나온다 (`G-`로 시작하는 열 자리 남짓).
-2. **`ga.js`의 `ID` 한 줄에 붙여 넣는다.** 이 저장소에서 고칠 곳은 그 한 줄뿐이다.
+```js
+var ID = 'G-62X7QQW0GM';   // GA4 측정 ID
+var CF_TOKEN = '';         // Cloudflare Web Analytics 토큰 (아래)
+```
 
-   ```js
-   var ID = 'G-XXXXXXXXXX';
-   ```
-3. **커밋하고 배포한다.** 기본 브랜치에 올라가야 사이트에 나타난다 (「배포」 참고).
-   확인은 GA4 **보고서 → 실시간**에서 한다. 사이트를 열고 30초 안에 숫자가 오른다.
+**GA4는 켜져 있다.** 측정 ID를 새로 받아야 할 일이 생기면
+[analytics.google.com](https://analytics.google.com) → 관리(왼쪽 아래 톱니) →
+데이터 스트림 → 웹 → **측정 ID**(`G-`로 시작).
 
-측정 ID를 붙이기 전에도 코드는 그대로 얹혀 있어도 된다 — `ID`가 비어 있으면
-아무것도 하지 않는다.
+**속성(Property)은 사이트마다 따로 만든다.** 한 속성 안에 웹 스트림을 둘 두면
+두 사이트의 방문이 한 보고서에 섞이고 세션이 사이트를 넘나든 것처럼 잡힌다 —
+GA가 스트림을 추가할 때 띄우는 경고가 그 얘기다. 새 사이트에는 스트림이 아니라
+**속성을 새로 만들고** 그 안에 웹 스트림 하나를 둔다.
+
+둘 다 비어 있어도 코드는 그대로 얹혀 있어도 된다 — 비면 그냥 아무것도 하지 않는다.
+배포는 기본 브랜치에 올라가야 사이트에 나타난다 (「배포」 참고). 확인은 GA4
+**보고서 → 실시간**, 사이트를 열고 30초 안에 숫자가 오른다.
 
 ### 켜지는 곳은 배포된 도메인뿐이다
 
@@ -394,11 +397,23 @@ http://localhost:8000/game/?gadebug
 `/list.html`만 조용해진다 — 크롤러가 실제로 읽는 페이지라 오히려 아까운 자리다.
 `npm test`가 세 곳을 다 지킨다.
 
-### Cloudflare Web Analytics는 코드로 붙이지 않는다
+### Cloudflare Web Analytics — 「호스트 이름을 직접 적는」 길로 만든다
 
-대시보드에서 켜면 **Cloudflare가 HTML 응답에 비콘을 직접 끼워 넣는다.** 저장소에서
-할 일이 없다. Cloudflare 대시보드 → Workers & Pages → `dada-portfolio` → Settings →
-**Web Analytics → Enable**. (또는 Analytics & Logs → Web Analytics에서 사이트를 고른다.)
+**Workers 정적 에셋에는 「Settings에서 켜면 알아서 끼워 넣기」가 없다.** 그 토글은
+Pages 프로젝트에만 있다. 게다가 `*.workers.dev`는 Cloudflare가 관리하는 존(zone)이
+아니라 Web Analytics의 사이트 목록에도 안 뜬다 (거기 뜨는 건 이 계정으로 산 도메인뿐).
+
+그래서 이렇게 만든다.
+
+1. Cloudflare 대시보드 → 왼쪽 **Analytics → Web analytics** → **Add a site**
+2. 호스트 이름 칸에 `dada-portfolio.stupidpoohh.workers.dev`를 **직접 타이핑**한다
+3. 드롭다운 아래에 뜨는 **`Click here to use "..." which does not belong to
+   Cloudflare websites`**를 고른다 — 목록에서 고르는 게 아니다
+4. 다음 화면(Installation)이 주는 스니펫에서 **`token` 값만** 꺼내
+   `ga.js`의 `CF_TOKEN`에 넣는다. 비콘 태그 자체는 `ga.js`가 만든다
+
+`CF_TOKEN`이 비어 있으면 비콘을 아예 부르지 않는다. GA와 같은 `HOSTS` 가드 아래에
+있으므로 localhost에서는 이쪽도 조용하다.
 
 GA와 겹쳐도 상관없지만 **숫자는 서로 다르게 나온다.** Cloudflare 쪽이 대체로 크다 —
 쿠키를 심지 않아 광고 차단기에 덜 걸리기 때문이다. GA는 「무엇을 눌렀나」,
