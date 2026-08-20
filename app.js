@@ -245,6 +245,7 @@
         }
 
         if (d.mailbox) makeMailbox(wrap, d);
+        if (d.mascot) makeMascot(wrap, d);
 
         // 사람들 구역은 공원 땅이 아니라 사람들이 반응한다
         if (d.id === 'park') {
@@ -271,6 +272,44 @@
       btn.addEventListener('click', () => toggle(d.id, btn));
       wrap.appendChild(btn);
     });
+  }
+
+  /** 마스코트 — 구역과 별개의 문. districts[].mascot = { name, at, w, frames, item }.
+   *  카페 앞에 선 까마귀 Croww가 PlayGrown 기록으로 데려간다. 세모집의 우편함과 같은
+   *  규칙이다 — **물건마다 문이 하나씩**. 카페 건물은 팝오버로 항목 둘을 다 보여주고,
+   *  까마귀는 자기 문서 하나만 연다. 마스코트가 자기 기록으로 데려가는 것이라
+   *  문이 둘이어도 층위가 갈린다.
+   *
+   *  우편함과 다른 점은 그림이다. 우편함은 지도를 오려낸 복제본이지만 까마귀는
+   *  지도에 없던 스프라이트라 `<img>` 두 장을 겹쳐 깐다 — 이 마을에는 프레임
+   *  애니메이션이 없어서(CSS transform만 쓴다) 날갯짓은 두 장을 번갈아 만든다.
+   *
+   *  링크(<a>)라 JS가 없어도, 새 탭으로 열어도 동작한다. 움직이는 것은 안쪽
+   *  그림뿐이고 링크 상자는 가만히 있는다 — 누를 자리는 고정이어야 한다. */
+  function makeMascot(wrap, d) {
+    const m = d.mascot;
+    const item = data.items.find((x) => x.id === m.item);
+    if (!item || !item.url || !(m.frames || []).length) return;
+
+    const a = el('a', 'crow-spot');
+    a.href = item.url;
+    a.setAttribute('aria-label', `${m.name} — ${item.name}`);
+    Object.assign(a.style, { left: pct(m.at[0]), top: pct(m.at[1]), width: pct(m.w) });
+
+    const fig = el('span', 'crow-figure');
+    m.frames.forEach((src, i) => {
+      const img = new Image();
+      img.src = S + src;
+      img.alt = '';
+      img.className = i ? 'crow-fly' : 'crow-rest';
+      fig.appendChild(img);
+    });
+    a.appendChild(fig);
+
+    a.addEventListener('click', () => track('item_click', {
+      item: item.id, item_type: item.type, from: 'mascot',
+    }));
+    wrap.appendChild(a);
   }
 
   /** 우편함 — 구역과 별개의 문. districts[].mailbox = { box, item }.
@@ -391,7 +430,8 @@
 
   /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
    *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
-  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'];
+  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle',
+                      'crow-idle', 'crow-frame'];
 
   function syncIdle() {
     const anims = document.getAnimations().filter((a) =>

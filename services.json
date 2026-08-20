@@ -147,7 +147,14 @@
         46.5,
         13.5,
         25.5
-      ]
+      ],
+      "mascot": {
+        "name": "까마귀 Croww",
+        "at": [64.9, 74.4],
+        "w": 5.6,
+        "frames": ["crow-side.png", "crow-flap.png"],
+        "item": "playgrown"
+      }
     },
     {
       "id": "bank",
@@ -346,6 +353,19 @@
       "status": "live",
       "needsReview": false,
       "featured": true
+    },
+    {
+      "id": "playgrown",
+      "no": 22,
+      "name": "PlayGrown 어른들의 키즈카페",
+      "district": "cafe",
+      "type": "doc",
+      "url": "/case/playgrown.html",
+      "description": "어른이 놀 곳을 18일 만에 지어 하루 열어 본 기록. 파일럿 1회, 그리고 접기로 한 판단까지.",
+      "date": "2025-07",
+      "icon": "\ud83d\udc26\u200d\u2b1b",
+      "status": "live",
+      "needsReview": true
     },
     {
       "id": "house-catalog",

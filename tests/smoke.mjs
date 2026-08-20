@@ -556,7 +556,79 @@ head('게임 안내서');
   await p.close();
 }
 
-/* ── 11. 방문 통계 ────────────────────────────────────────
+/* ── 11. 카페 앞 까마귀 Croww ─────────────────────────────
+   구역과 별개의 문이다 (세모집 우편함과 같은 규칙). 마스코트가 자기 기록으로 데려간다.
+   이 마을에는 프레임 애니메이션이 없어서 날갯짓만 그림 두 장을 번갈아 쓰는데,
+   두 장이 겹쳐 보이거나 마을과 박자가 어긋나면 그 자리만 딴 세상이 된다. */
+head('카페 앞 까마귀');
+{
+  const p = await desktop();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(900);
+
+  const crow = p.locator('.crow-spot');
+  ok(await crow.count() === 1, '카페 앞에 까마귀가 한 마리 있다');
+  ok(await crow.getAttribute('href') === '/case/playgrown.html',
+    '누르면 PlayGrown 기록으로 간다', String(await crow.getAttribute('href')));
+
+  // 한 번에 한 장만 보여야 한다 — 두 장이 함께 뜨면 날개가 유령처럼 겹친다
+  const frames = await p.evaluate(() => {
+    const read = (t) => {
+      document.getAnimations()
+        .filter((a) => a.animationName && a.animationName.startsWith('crow'))
+        .forEach((a) => { a.pause(); a.currentTime = 2400 * t; });
+      const o = (s) => +getComputedStyle(document.querySelector(s)).opacity;
+      return [o('.crow-rest'), o('.crow-fly')];
+    };
+    return { rest: read(0.1), flap: read(0.46) };
+  });
+  ok(frames.rest[0] === 1 && frames.rest[1] === 0
+     && frames.flap[0] === 0 && frames.flap[1] === 1,
+    '접은 날개와 편 날개가 한 번에 한 장씩만 보인다', JSON.stringify(frames));
+
+  await p.reload({ waitUntil: 'networkidle' });
+  await p.waitForTimeout(900);
+
+  // 마을이 타고 있는 박자에 함께 물려 있는가 (건물·사람들·우편함과 같은 startTime)
+  const beat = await p.evaluate(() => {
+    const g = (n) => document.getAnimations().filter((a) => a.animationName === n);
+    const t = (n) => g(n).map((a) => (a.startTime == null ? null : Math.round(+a.startTime)));
+    return { crow: t('crow-idle'), frame: t('crow-frame'), folk: t('folk-idle')[0],
+             dur: g('crow-idle').map((a) => a.effect.getTiming().duration) };
+  });
+  ok(beat.crow[0] === beat.folk && beat.frame[0] === beat.folk,
+    '까마귀가 마을과 같은 박자에 물려 있다', JSON.stringify(beat));
+  ok(beat.dur[0] === 2400, '2.4초 한 박자다', String(beat.dur[0]));
+  await p.close();
+}
+{
+  // 폰에서 까마귀는 22px 남짓이다. 판정은 그림보다 넓게 깔려 있어야 한다
+  const p = await phone();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(900);
+  const hit = await p.evaluate(() => {
+    const a = document.querySelector('.crow-spot');
+    const r = getComputedStyle(a, '::after');
+    const box = a.getBoundingClientRect();
+    return { w: parseFloat(r.width), h: parseFloat(r.height), img: Math.round(box.width) };
+  });
+  ok(hit.w >= 44 && hit.h >= 44, `판정 영역이 터치 기준을 넘는다 (${hit.w}x${hit.h}, 그림 ${hit.img}px)`);
+  await p.close();
+}
+{
+  // 마을이 가리키는 페이지가 실제로 서 있는가. 링크만 검사하면 404를 못 잡는다
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const p = await ctx.newPage();
+  const res = await p.goto(BASE + '/case/playgrown.html', { waitUntil: 'load' });
+  ok(res.status() === 200, 'PlayGrown 기록이 200으로 뜬다', String(res.status()));
+  const text = (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
+  ok(text.length > 900, `JS 없이도 본문이 읽힌다 (${text.length}자)`);
+  ok(/파일럿/.test(text) && /2025\. 7\. 18/.test(text),
+    '파일럿 1회라는 사실이 첫 화면에 있다');
+  await ctx.close();
+}
+
+/* ── 12. 방문 통계 ────────────────────────────────────────
    ga.js는 HOSTS에 적은 도메인에서만 켜진다. 이 가드가 풀리면 여기 검사들이
    매번 바깥 스크립트를 받으러 나가느라 `networkidle`에 기대는 다른 검사들이
    남의 서버 사정에 흔들리고, 내가 고치면서 여닫은 것이 통계에 섞인다.
