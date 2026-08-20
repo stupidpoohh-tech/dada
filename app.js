@@ -287,25 +287,119 @@
     makeFloater(wrap);
   }
 
-  /** 확성기 — 세모집 지붕 위. 집 테마송이 여기서 나올 자리다.
+  /** 확성기 — 세모집 지붕 위. 집 테마송이 여기서 나온다.
    *
-   *  **아직 문이 아니다.** 노래와 가사를 받기 전이라 열 것이 없으므로 풍경으로만 선다
-   *  (까마귀와 같은 규칙 — 없는 곳을 가리키는 문을 만들지 않는다).
-   *  `speaker.item`이 생기면 그때 링크나 버튼이 된다.
+   *  **`speaker.song`이 없으면 풍경으로만 선다** (까마귀와 같은 규칙 — 없는 곳을
+   *  가리키는 문을 만들지 않는다). 있으면 진짜 버튼이 되어 누르면 노래가 재생되고
+   *  가사 팝업이 뜬다 — 세모집 우편함·까마귀와 같은 「구역과 별개의 문」이다.
+   *  지붕에 얹혀 있지만 세모집 클릭은 가로채지 않는다(각자 판정 영역이 따로 있다).
    *
    *  걸음은 **한 박자에 두 번 앞으로 내지르는 것**이다. 마을의 다른 것들과 겹치지
    *  않아야 해서 회전(우편함)도 뜀(캐릭터)도 아닌 **반동**을 골랐다 — 소리를 내는
-   *  물건이니 앞으로 밀렸다 돌아오는 게 제 몸짓이다. 축은 지붕에 붙은 받침이다. */
+   *  물건이니 앞으로 밀렸다 돌아오는 게 제 몸짓이다. 축은 지붕에 붙은 받침이다.
+   *  **재생 중에는 같은 반동을 더 크고 빠르게**(`horn-playing`) 해서, 소리가 나고
+   *  있다는 것이 눈에도 보이게 한다. */
   function makeSpeaker(wrap, d) {
     const s = d.speaker;
     if (!s || !s.sprite) return;
-    const box = el('span', 'horn-spot');
-    box.setAttribute('aria-hidden', 'true');      // 아직 누를 수 없는 것을 읽어줄 이유가 없다
+    const song = s.song;
+    const box = el(song ? 'button' : 'span', 'horn-spot' + (song ? ' horn-live' : ''));
     Object.assign(box.style, { left: pct(s.at[0]), top: pct(s.at[1]), width: pct(s.w) });
+
     const fig = el('span', 'horn-fig');
-    fig.appendChild(pixel(S + s.sprite));
+    const zoom = el('span', 'horn-zoom');    // 호버 확대를 idle 애니메이션과 다른 요소에 건다
+    zoom.appendChild(pixel(S + s.sprite));
+    fig.appendChild(zoom);
     box.appendChild(fig);
+
+    if (song) {
+      box.type = 'button';
+      box.setAttribute('aria-label', `${s.name} — ${song.title}`);
+      box.setAttribute('aria-expanded', 'false');
+      box.addEventListener('click', () => toggleSong(box, s));
+    } else {
+      box.setAttribute('aria-hidden', 'true');   // 누를 수 없는 것을 읽어줄 이유가 없다
+    }
     wrap.appendChild(box);
+  }
+
+  /* ── 집 테마송 ─────────────────────────────
+   *  확성기가 여는 문. 재생과 가사 팝업이 함께 온다 — 구역 패널을 그대로 쓰되
+   *  자리는 확성기를 따라간다(쪽지 묶음과 같은 liveBox 방식).
+   *
+   *  **자동재생을 페이지 로드에 걸지 않는다.** 브라우저가 막기도 하지만, 그보다
+   *  먼저 소리가 방문자 허락 없이 나는 건 무례하다. 재생은 누르는 손 안에서만 시작된다.
+   *
+   *  `<audio controls>`를 그대로 쓴다 — 재생·일시정지·탐색·볼륨을 직접 만들지 않는
+   *  이유는 브라우저 내장 컨트롤이 이미 접근성(키보드·스크린리더)을 갖추고 있어서다. */
+  let songEl = null;         // 지금 재생 중인 <audio>. 다른 패널이 열리면 멈춘다
+
+  function stopSong() {
+    if (!songEl) return;
+    songEl.pause();
+    songEl = null;
+    document.querySelectorAll('.horn-spot.horn-playing')
+      .forEach((b) => b.classList.remove('horn-playing'));
+    resyncIdle();     // horn-playing이 걷히며 그 확성기만 idle이 0부터 다시 시작한다
+  }
+
+  function toggleSong(btn, d) {
+    if (openId === 'song' && songEl) return closePanel();
+    openSong(btn, d);
+  }
+
+  function openSong(btn, d) {
+    stopSong();
+    const song = d.song;
+    const panel = $('panel');
+    panel.textContent = '';
+    document.querySelectorAll('.spot, .me-spot, .note-spot, .horn-spot')
+      .forEach((x) => x.setAttribute('aria-expanded', String(x === btn)));
+
+    const head = el('div', 'panel-head');
+    head.appendChild(el('h2', 'panel-title', `📣 ${song.title}`));
+    const close = el('button', 'icon-btn panel-close', '✕');
+    close.type = 'button';
+    close.setAttribute('aria-label', '닫기');
+    close.addEventListener('click', () => { closePanel(); btn.focus(); });
+    head.appendChild(close);
+    panel.appendChild(head);
+
+    const audio = el('audio', 'song-audio');
+    audio.controls = true;
+    audio.preload = 'auto';
+    audio.src = song.audio;
+    panel.appendChild(audio);
+    songEl = audio;
+
+    // 눈으로도 보이게 — 재생 중에는 확성기가 더 크고 빠르게 내지른다
+    const sync = () => btn.classList.toggle('horn-playing', !audio.paused);
+    audio.addEventListener('play', sync);
+    audio.addEventListener('pause', sync);
+    audio.addEventListener('ended', sync);
+
+    const lyrics = el('div', 'song-lyrics');
+    (song.lyrics || []).forEach((sec) => {
+      const block = el('div', 'song-section');
+      if (sec.label) block.appendChild(el('p', 'song-label', sec.label));
+      (sec.lines || []).forEach((line) => block.appendChild(el('p', 'song-line', line)));
+      lyrics.appendChild(block);
+    });
+    panel.appendChild(lyrics);
+
+    track('song_open', { song: song.title });
+
+    $('panelWrap').hidden = false;
+    panel.scrollTop = 0;
+    openId = 'song';
+    lastSpot = btn;
+    placePanel({ liveBox: () => btn.getBoundingClientRect() });
+    panel.focus({ preventScroll: true });
+    $('hint').classList.add('gone');
+
+    // 누르는 손 안에서 시작하는 재생이라 브라우저가 막지 않는다. 그래도 자동재생
+    // 정책이 낀 브라우저가 있을 수 있어 실패해도 조용히 넘어간다 — 컨트롤로 누르면 된다
+    audio.play().catch(() => {});
   }
 
   /* ── 날아다니는 쪽지 ─────────────────────── */
@@ -384,9 +478,10 @@
 
   function openBundle(btn) {
     const b = data.floater.bundle;
+    stopSong();        // 노래를 들으며 쪽지를 눌러도 조용히 멈춘다
     const panel = $('panel');
     panel.textContent = '';
-    document.querySelectorAll('.spot, .me-spot, .note-spot')
+    document.querySelectorAll('.spot, .me-spot, .note-spot, .horn-spot')
       .forEach((x) => x.setAttribute('aria-expanded', String(x === btn)));
 
     const head = el('div', 'panel-head');
@@ -820,6 +915,7 @@
     $('panelWrap').hidden = true;
     document.querySelectorAll('[aria-expanded="true"]')
       .forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    stopSong();        // 노래가 나오던 참이면 패널과 함께 멈춘다
     resyncIdle();      // 뾰옹에서 idle로 돌아오며 그 건물만 박자가 어긋난다
     syncHint();
   }
@@ -828,10 +924,11 @@
     const d = data.districts.find((x) => x.id === id);
     const items = byDistrict[id] || [];
     track('district_open', { district: id, items: items.length });
+    stopSong();        // 노래를 들으며 다른 구역을 눌러도 조용히 멈춘다
     const panel = $('panel');
     panel.textContent = '';
 
-    document.querySelectorAll('.spot, .me-spot')
+    document.querySelectorAll('.spot, .me-spot, .note-spot, .horn-spot')
       .forEach((b) => b.setAttribute('aria-expanded', String(b === btn)));
 
     const head = el('div', 'panel-head');

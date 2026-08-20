@@ -28,6 +28,7 @@
  *   book_end        책을 끝까지 넘겼다        app.js bkGo
  *   mailbox_open    우편함을 눌렀다           app.js makeMailbox
  *   bundle_open     날아다니는 쪽지를 눌렀다   app.js openBundle
+ *   song_open       확성기로 집 테마송을 틀었다 app.js openSong
  *   picks_open      추천 픽을 열었다          app.js initPicks
  *   list_open       목록을 열었다             app.js openModal
  *   list_search     목록에서 검색했다         app.js (입력이 멎은 뒤 한 번)

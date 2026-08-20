@@ -629,7 +629,7 @@ head('카페 앞 까마귀');
 }
 
 /* ── 12. 세모집 지붕 위 확성기 ────────────────────────────
-   집 테마송이 나올 자리다. 아직 노래를 안 받아 **누를 수 없는 풍경**이라,
+   집 테마송이 나오는 자리다. `speaker.song`이 있으면 진짜 버튼이라 눌리고,
    지붕 위에 얹혀 있으면서도 세모집 클릭을 가로채면 안 된다. */
 head('지붕 위 확성기');
 {
@@ -644,15 +644,14 @@ head('지붕 위 확성기');
     const a = document.getAnimations().find((x) => x.animationName === 'horn-idle');
     const folk = document.getAnimations().find((x) => x.animationName === 'folk-idle');
     return {
+      live: n.classList.contains('horn-live'),
       pe: getComputedStyle(n).pointerEvents,
-      hidden: n.getAttribute('aria-hidden'),
       dur: a && a.effect.getTiming().duration,
       beat: a && folk && Math.round(+a.startTime) === Math.round(+folk.startTime),
     };
   });
-  ok(how.pe === 'none' && how.hidden === 'true',
-    '아직 문이 아니다 — 풍경으로만 선다', JSON.stringify(how));
-  ok(how.dur === 2400 && how.beat, '마을과 같은 2.4초 한 박자에 물려 있다');
+  ok(how.live && how.pe === 'auto', '노래가 있으니 진짜 문이다', JSON.stringify(how));
+  ok(how.dur === 2400 && how.beat, '재생 전에는 마을과 같은 2.4초 한 박자에 물려 있다');
 
   // 한 박자에 **두 번** 내지른다 — 우편함(좌우 인사)·캐릭터(폴짝)와 겹치지 않는 걸음
   const shove = await p.evaluate(() => {
@@ -669,6 +668,59 @@ head('지붕 위 확성기');
   await p.click('.spot[data-district="house"]');
   await p.waitForSelector('#bookOverlay:not([hidden])', { timeout: 4000 });
   ok(true, '확성기가 세모집 클릭을 가로채지 않는다');
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(500);
+
+  // 누르면 재생되고 가사 팝업이 뜬다
+  await p.click('.horn-spot');
+  await p.waitForTimeout(700);
+  const panel = await p.evaluate(() => ({
+    title: document.querySelector('.panel-title')?.textContent || '',
+    audioSrc: document.querySelector('.song-audio')?.getAttribute('src') || '',
+    paused: document.querySelector('.song-audio')?.paused,
+    sections: document.querySelectorAll('.song-section').length,
+    lines: document.querySelectorAll('.song-line').length,
+    playingClass: document.querySelector('.horn-spot').classList.contains('horn-playing'),
+    expanded: document.querySelector('.horn-spot').getAttribute('aria-expanded'),
+  }));
+  ok(panel.title.includes('집이 어떻게 세모') && panel.audioSrc.includes('house-theme.mp3'),
+    '누르면 노래 패널이 열린다', JSON.stringify(panel));
+  ok(panel.paused === false, '누른 손 안에서 바로 재생된다');
+  ok(panel.sections === 7 && panel.lines === 24, '가사가 절 단위로 전부 실렸다', JSON.stringify(panel));
+  ok(panel.playingClass && panel.expanded === 'true', '재생 중에는 확성기가 더 크게 운다');
+
+  // 재생 중에는 idle이 아니라 별도의 격한 걸음(horn-shout)으로 갈아탄다
+  const shoutName = await p.evaluate(() => {
+    const fig = document.querySelector('.horn-fig');
+    return document.getAnimations().find((a) => a.effect && a.effect.target === fig)?.animationName;
+  });
+  ok(shoutName === 'horn-shout', `재생 중 걸음이 갈린다 (${shoutName})`);
+
+  // 다시 누르면(토글) 닫히고 멈춘다
+  await p.click('.horn-spot');
+  await p.waitForTimeout(300);
+  const closed = await p.evaluate(() => ({
+    hidden: document.getElementById('panelWrap').hidden,
+    paused: document.querySelector('.song-audio')?.paused,
+    playingClass: document.querySelector('.horn-spot').classList.contains('horn-playing'),
+  }));
+  ok(closed.hidden && closed.paused && !closed.playingClass,
+    '다시 누르면 닫히고 노래도 멈춘다', JSON.stringify(closed));
+
+  // 노래를 들으며 다른 구역을 열어도 조용히 멈춘다
+  await p.click('.horn-spot');
+  await p.waitForTimeout(600);
+  await p.click('.spot[data-district="bank"]');
+  await p.waitForTimeout(400);
+  // 다른 패널을 열면 panel.textContent가 통째로 갈리므로 <audio>가 아예 없어진다 —
+  // 없어졌다는 것 자체가 「멈췄다」는 가장 강한 증거다. stopSong()이 먼저 안 불렀다면
+  // 이 요소가 사라지는 순간에도 어딘가에서 계속 소리가 났을 것이다.
+  const switched = await p.evaluate(() => ({
+    audioGone: !document.querySelector('.song-audio'),
+    title: document.querySelector('.panel-title')?.textContent,
+  }));
+  ok(switched.audioGone && switched.title === '🏦 은행',
+    '노래를 듣다 다른 구역을 눌러도 조용히 멈추고 그 구역이 열린다', JSON.stringify(switched));
   await p.close();
 }
 

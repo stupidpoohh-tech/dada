@@ -320,7 +320,9 @@ button, input { font: inherit; color: inherit; }
 }
 
 /* ── 세모집 지붕 위 확성기 ────────────────────
-   집 테마송이 여기서 나올 자리다. 아직 노래를 안 받아 **누를 수 없는 풍경**이다.
+   집 테마송이 나오는 자리다. `speaker.song`이 없으면 `.horn-spot`만 있고
+   `.horn-live`가 없다 — 그때는 아래에서 `pointer-events: none`으로 막혀 풍경으로만 선다
+   (까마귀와 같은 규칙). 노래가 있으면 진짜 버튼이라 `.horn-live`가 붙는다.
 
    걸음은 **한 박자에 두 번 앞으로 내지르는 것.** 마을의 다른 것들과 겹치지 않아야 해서
    회전(우편함)도 뜀(캐릭터)도 아닌 **반동**을 골랐다 — 소리를 내는 물건이니 앞으로
@@ -328,16 +330,32 @@ button, input { font: inherit; color: inherit; }
    마을과 한 박자로 읽히면서도 하는 일은 다르다. */
 .horn-spot {
   position: absolute;
-  pointer-events: none;             /* 아직 문이 아니다 */
+  pointer-events: none;             /* 노래가 없으면 끝까지 이 값이다 */
   transform: translate(-50%, -100%);/* 좌표는 받침이 지붕에 닿는 자리 */
   z-index: 3;
   line-height: 0;
+}
+/* 노래가 있을 때만 문이 된다 — 배경 없는 버튼 + 터치 기준을 넘는 판정 영역 */
+.horn-spot.horn-live {
+  pointer-events: auto;
+  background: none; border: 0; padding: 0; cursor: pointer;
+}
+.horn-spot.horn-live::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, 44px); height: max(100%, 44px);
 }
 .horn-fig {
   display: block;
   transform-origin: 34% 92%;        /* 지붕에 붙은 받침 */
   animation: horn-idle 2.4s ease-in-out infinite;
 }
+/* 호버 확대를 idle 애니메이션과 다른 요소에 건다 — 한 요소에 겹치면 애니메이션의
+   transform이 호버의 transform을 덮어쓴다 (새·쪽지에서 이미 겪은 것) */
+.horn-zoom { display: block; transition: transform .15s ease; }
+.horn-spot.horn-live:hover .horn-zoom,
+.horn-spot.horn-live:focus-visible .horn-zoom { transform: scale(1.1); }
 .horn-fig img {
   display: block; width: 100%; height: auto;
   filter: drop-shadow(0 2px 3px rgba(31, 36, 28, .28));
@@ -350,6 +368,28 @@ button, input { font: inherit; color: inherit; }
   37%       { transform: translateX(8%) scale(1.1, 1.02)  rotate(-5deg); }
   48%, 100% { transform: translateX(0)  scale(1, 1)       rotate(0deg); }
 }
+/* **재생 중에는 같은 반동을 더 크고 빠르게** 한다 — 소리가 나고 있다는 것이
+   눈에도 보이도록. 마을의 idle 박자(IDLE_ANIMS)에는 들어가지 않는다 — 재생은
+   마을의 상시 리듬이 아니라 방문자가 시작한 독립된 사건이라서다. */
+.horn-spot.horn-playing .horn-fig { animation: horn-shout .6s ease-in-out infinite; }
+@keyframes horn-shout {
+  0%, 100% { transform: translateX(0)   scale(1, 1)        rotate(0deg); }
+  35%      { transform: translateX(16%) scale(1.2, 1.06)   rotate(-9deg); }
+  70%      { transform: translateX(5%)  scale(1.08, 1.02)  rotate(-3deg); }
+}
+
+/* 확성기가 여는 패널 — 재생기와 가사. 커스텀 재생·탐색바를 만들지 않고
+   `<audio controls>`를 그대로 쓴다. 브라우저 내장 컨트롤이 이미 키보드·스크린리더
+   접근성을 갖추고 있어서, 새로 만들면 그걸 다시 흉내 내는 셈이 된다. */
+.song-audio { display: block; width: 100%; margin: 2px 0 14px; }
+
+.song-section + .song-section { margin-top: 14px; }
+.song-label {
+  margin: 0 0 3px;
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--faint);
+}
+.song-line { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--ink); }
 
 /* ── 날아다니는 쪽지 ─────────────────────────
    새·구름은 풍경이고 이건 문이다. 그래서 넷을 다르게 뒀다 —
