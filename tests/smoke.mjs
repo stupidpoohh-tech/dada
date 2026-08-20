@@ -969,32 +969,47 @@ head('캐시 어긋남');
   await p.close();
 }
 
-/* ── 15. 개발자에게 한마디 ────────────────────────────────
+/* ── 15. 제작자에게 한마디 ────────────────────────────────
    서버(worker.js) 쪽은 tests/worker.mjs가 따로 본다. 여기서는 **화면이 서버의
    대답을 정직하게 옮기는지**만 본다 — 특히 실패했을 때 성공한 척하지 않는지.
    조용히 고맙다고 하면 방문자는 남겼다고 믿고 나는 못 받는다.
 
-   배치도 함께 지킨다. 처음에는 버튼으로 접어 두고 펴면 세 줄짜리 폼이 나왔는데,
-   나가는 길에 마주치기엔 너무 무거웠다 — 지금은 그림 셋이고 적는 칸은 「할 말
-   있어요」를 누른 사람에게만 열린다. */
-head('개발자에게 한마디');
+   배치도 함께 지킨다. 세 줄짜리 폼 → 푸터에 그림 셋 → **이름 옆 👋 하나**로
+   두 번 옮겼다. 나가는 길에 자리를 먹지 않는 것이 요점이라, 푸터에 그림이
+   다시 늘어서면 여기서 잡힌다. */
+head('제작자에게 한마디');
 {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(500);
 
-  const shape = await p.evaluate(() => ({
-    picks: document.querySelectorAll('.say-pick').length,
-    kinds: [...document.querySelectorAll('.say-pick')].map((b) => b.dataset.kind).join(','),
-    formHidden: document.getElementById('sayForm').hidden,
-    rows: document.querySelectorAll('#sayForm textarea, #sayForm input[type="text"]').length,
+  const foot = await p.evaluate(() => ({
+    hi: !!document.getElementById('sayHi'),
+    // 푸터에 남는 것은 손짓 하나뿐 — 그림 셋은 창 안에 있어야 한다
+    picksInFooter: document.querySelectorAll('.site-footer .say-pick').length,
+    winHidden: document.getElementById('sayModal').hidden,
   }));
-  ok(shape.picks === 3 && shape.kinds === 'hi,good,idea', '그림 셋이 한 줄로 서 있다', shape.kinds);
-  ok(shape.formHidden, '적는 칸은 처음부터 열려 있지 않다');
+  ok(foot.hi && foot.picksInFooter === 0, '푸터에는 👋 하나만 있다',
+    JSON.stringify(foot));
+  ok(foot.winHidden, '창은 처음부터 열려 있지 않다');
+
+  await p.click('#sayHi');
+  await p.waitForTimeout(300);
+  const opened = await p.evaluate(() => ({
+    shown: !document.getElementById('sayModal').hidden,
+    picks: document.querySelectorAll('#sayPicks .say-pick').length,
+    kinds: [...document.querySelectorAll('#sayPicks .say-pick')].map((b) => b.dataset.kind).join(','),
+    formHidden: document.getElementById('sayForm').hidden,
+    locked: getComputedStyle(document.body).overflow,
+  }));
+  ok(opened.shown && opened.kinds === 'hi,good,idea', '👋를 누르면 창이 열리고 그림 셋이 있다',
+    JSON.stringify(opened));
+  ok(opened.formHidden, '적는 칸은 창을 열자마자 나오지 않는다');
+  ok(opened.locked === 'hidden', '창이 열린 동안 뒤가 스크롤되지 않는다', opened.locked);
 
   /* **글자가 16px보다 작은 칸은 두지 않는다.** iOS 사파리는 그런 칸에 커서가
      들어가면 읽히도록 화면을 통째로 확대한다 — 「할 말 있어요」를 누르면 바로
-     커서를 넣어 주므로, 그때 마을이 확대돼 보였다. 목록의 검색칸까지 함께 지킨다. */
+     커서를 넣어 주므로, 그때 창이 확대돼 보였다. 목록의 검색칸까지 함께 지킨다. */
   const small = await p.evaluate(() => [...document.querySelectorAll('input[type="text"], input[type="search"], textarea')]
     .filter((n) => parseFloat(getComputedStyle(n).fontSize) < 16)
     .map((n) => n.id + ':' + getComputedStyle(n).fontSize));
@@ -1008,7 +1023,21 @@ head('개발자에게 한마디');
   });
   ok(!hp, '봇만 보는 칸은 화면 밖에 있다');
 
+  // Esc로 닫히고, 닫으면 눌렀던 👋로 포커스가 돌아온다
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(250);
+  const closed = await p.evaluate(() => ({
+    hidden: document.getElementById('sayModal').hidden,
+    focus: document.activeElement.id,
+    unlocked: getComputedStyle(document.body).overflow,
+  }));
+  ok(closed.hidden && closed.focus === 'sayHi', 'Esc로 닫히고 👋로 돌아온다',
+    JSON.stringify(closed));
+  ok(closed.unlocked !== 'hidden', '닫으면 스크롤이 풀린다', closed.unlocked);
+
   /* 인사·좋았어요는 **한 번에 간다.** 적는 칸을 거치지 않는 것이 이 배치의 요점이다 */
+  await p.click('#sayHi');
+  await p.waitForTimeout(250);
   let sent = null;
   await p.route('**/api/word', async (route) => {
     sent = JSON.parse(route.request().postData() || '{}');
@@ -1018,28 +1047,30 @@ head('개발자에게 한마디');
   await p.click('.say-pick[data-kind="good"]');
   await p.waitForTimeout(400);
   const quick = await p.evaluate(() => ({
-    note: document.getElementById('sayNote').textContent,
     good: document.getElementById('sayNote').classList.contains('say-good'),
     gone: !document.getElementById('sayPicks') && !document.getElementById('sayForm'),
+    stillOpen: !document.getElementById('sayModal').hidden,
   }));
   ok(sent && sent.kind === 'good' && !sent.text, '그림만 눌러도 그대로 간다', JSON.stringify(sent));
-  ok(quick.good && quick.gone, '보내고 나면 그림이 사라지고 고맙다는 말만 남는다',
-    JSON.stringify(quick));
+  ok(quick.good && quick.gone && quick.stillOpen,
+    '보내고 나면 그림이 사라지고 고맙다는 말만 남는다', JSON.stringify(quick));
 
   /* 「할 말 있어요」는 적는 칸을 편다 — 말이 있어야 뜻이 사는 하나다 */
   await p.unroute('**/api/word');
   await town(p);
   await p.waitForTimeout(500);
+  await p.click('#sayHi');
+  await p.waitForTimeout(250);
   await p.click('.say-pick[data-kind="idea"]');
   await p.waitForTimeout(300);
-  const opened = await p.evaluate(() => ({
+  const idea = await p.evaluate(() => ({
     formShown: !document.getElementById('sayForm').hidden,
     pressed: document.querySelector('.say-pick[data-kind="idea"]').getAttribute('aria-pressed'),
     focused: document.activeElement.id,
   }));
-  ok(opened.formShown && opened.pressed === 'true',
-    '「할 말 있어요」를 누르면 적는 칸이 열린다', JSON.stringify(opened));
-  ok(opened.focused === 'sayText', '열린 칸에 커서까지 들어간다', opened.focused);
+  ok(idea.formShown && idea.pressed === 'true',
+    '「할 말 있어요」를 누르면 적는 칸이 열린다', JSON.stringify(idea));
+  ok(idea.focused === 'sayText', '열린 칸에 커서까지 들어간다', idea.focused);
 
   // 빈 채로 누르면 서버까지 가지 않는다
   let calls = 0;
@@ -1090,6 +1121,12 @@ head('개발자에게 한마디');
     '적은 것이 무엇을 눌렀는지와 함께 간다', JSON.stringify(sent));
   ok(done.good && done.gone, '남기면 그림과 칸이 사라지고 고맙다는 말만 남는다',
     JSON.stringify(done));
+
+  // 바깥을 눌러도 닫힌다 (목록 모달과 같은 규칙)
+  await p.mouse.click(5, 5);
+  await p.waitForTimeout(250);
+  ok(await p.evaluate(() => document.getElementById('sayModal').hidden),
+    '바깥을 누르면 닫힌다');
 
   /* 위에서 **일부러** 503을 흉내 냈으므로 브라우저가 "Failed to load resource"를
      콘솔에 한 줄 남긴다. 마지막의 「콘솔 오류 없음」은 그대로 엄격하게 두고,

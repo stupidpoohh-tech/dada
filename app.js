@@ -896,7 +896,7 @@
   /** 지도만 보이는 상태에서만 안내를 띄운다. 예전에는 한 번 열면 영영 사라져서,
    *  닫고 나면 무엇을 눌러야 하는지 알려주는 것이 없었다. */
   function syncHint() {
-    const busy = openId || bookOpen() || !$('modal').hidden;
+    const busy = openId || bookOpen() || !$('modal').hidden || !$('sayModal').hidden;
     $('hint').classList.toggle('gone', !!busy);
   }
 
@@ -1320,10 +1320,20 @@
     syncHint();
   }
 
+  /** 열린 창 안에서만 탭이 돌게 가둔다.
+   *  **창이 둘이 됐다**(목록·한마디). `#modal` 하나에 고정돼 있던 것을 지금 열려
+   *  있는 창으로 찾아 쓴다 — 안 그러면 한마디 창을 열어 두고 탭을 누를 때 뒤의
+   *  지도로 포커스가 새어 나간다. */
+  function openWindow() {
+    return [$('sayModal'), $('modal')].find((n) => n && !n.hidden) || null;
+  }
+
   function trapFocus(e) {
-    if (e.key !== 'Tab' || $('modal').hidden) return;
-    const items = $('modal').querySelectorAll(
-      'a[href], button, input, [tabindex]:not([tabindex="-1"])');
+    if (e.key !== 'Tab') return;
+    const win = openWindow();
+    if (!win) return;
+    const items = win.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])');
     if (!items.length) return;
     const first = items[0], last = items[items.length - 1];
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
@@ -1344,14 +1354,17 @@
     }, true);
   }
 
-  /* ── 개발자에게 한마디 ─────────────────────
+  /* ── 제작자에게 한마디 ─────────────────────
    *  마을을 다 둘러본 자리(푸터)에서 한마디 남기고 갈 수 있게. 받는 쪽은
    *  `worker.js`의 `/api/word`다 — 이 마을에서 서버가 하는 유일한 일이다.
    *
-   *  **접어 두지 않고, 적는 칸을 먼저 내밀지도 않는다.** 처음에는 버튼 하나로
-   *  접어 두고 펴면 세 줄짜리 폼(말·이름·답장받을곳)이 나왔는데, 나가는 길에
-   *  마주치기엔 너무 무거웠다 — 남길 마음이 있어도 세 칸을 보면 접는다.
-   *  지금은 그림 셋뿐이고, 누르면 그대로 간다.
+   *  **푸터에는 👋 하나뿐이고, 나머지는 창 안에 있다.** 처음에는 펴면 세 줄짜리
+   *  폼(말·이름·답장받을곳)이 나왔고, 다음에는 그림 셋을 푸터에 늘어놓았다.
+   *  둘 다 나가는 길에 마주치기엔 자리를 너무 많이 먹었다 — 이름 옆의 손짓
+   *  하나면 「말을 걸 수 있다」는 뜻은 다 서고, 무엇으로 인사할지는 창에서 고른다.
+   *
+   *  창은 목록 모달과 **같은 틀**을 쓴다. 배경 덮개·Esc·바깥 누르기·포커스
+   *  가두기가 이미 거기 있어서, 새로 만들면 그걸 다시 흉내 내는 셈이 된다.
    *
    *  **「할 말 있어요」만 적는 칸을 편다.** 인사와 좋았다는 그림 하나로 뜻이
    *  다 서지만, 할 말은 말이 있어야 뜻이 산다. 필요한 사람에게만 칸이 열리므로
@@ -1366,9 +1379,14 @@
    *  고맙다고 하면 방문자는 남겼다고 믿고 나는 못 받는다 — 그게 제일 나쁘다. */
   function initSay() {
     const picks = $('sayPicks'), form = $('sayForm'), note = $('sayNote');
-    if (!picks || !form) return;
+    const hi = $('sayHi'), win = $('sayModal');
+    if (!picks || !form || !hi || !win) return;
     const all = [...picks.querySelectorAll('.say-pick')];
     let kind = '';
+
+    hi.addEventListener('click', openSay);
+    $('sayClose').addEventListener('click', closeSay);
+    win.addEventListener('click', (e) => { if (e.target === win) closeSay(); });
 
     const say = (msg, tone) => {
       note.textContent = msg;
@@ -1427,6 +1445,24 @@
         btn.disabled = false;
       }
     });
+  }
+
+  function openSay() {
+    track('say_open', {});
+    lastFocus = document.activeElement;
+    $('sayModal').hidden = false;
+    document.body.style.overflow = 'hidden';
+    syncHint();
+    // 터치 기기에서 칸에 바로 커서를 주면 키보드가 튀어오른다 — 창 자체를 잡는다
+    // (목록 모달과 같은 규칙)
+    $('sayModal').querySelector('.modal').focus();
+  }
+
+  function closeSay() {
+    $('sayModal').hidden = true;
+    document.body.style.overflow = '';
+    if (lastFocus) lastFocus.focus();
+    syncHint();
   }
 
   /* ── 시작 ────────────────────────────────── */
@@ -1513,7 +1549,8 @@
         if (e.key === 'End') { bkGo(book.pages, 1); return; }
       }
       if (e.key === 'Escape') {
-        if (!$('modal').hidden) closeModal();
+        if (!$('sayModal').hidden) closeSay();
+        else if (!$('modal').hidden) closeModal();
         else if (!$('picksPanel').hidden) { $('picksPanel').hidden = true; $('picksBtn').setAttribute('aria-expanded', 'false'); $('picksBtn').focus(); }
         else if (openId) { const b = lastSpot; closePanel(); b?.focus(); }
       }

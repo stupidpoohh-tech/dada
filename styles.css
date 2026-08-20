@@ -871,25 +871,39 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
   text-align: center;
   font-size: 13px; color: var(--sub);
 }
-/* ── 개발자에게 한마디 ────────────────────────
-   **그림 셋이 전부다.** 처음에는 버튼으로 접어 두고 펴면 세 줄짜리 폼(말·이름·
-   답장받을곳)이 나왔는데, 나가는 길에 마주치기엔 너무 무거웠다 — 남길 마음이
-   있어도 세 칸을 보면 접는다. 지금은 한 줄이고, 적는 칸은 「할 말 있어요」를
-   누른 사람에게만 열린다. */
-.say { margin: 0 auto 20px; max-width: 460px; text-align: center; }
-.say-title { margin: 0 0 10px; font-size: 13px; font-weight: 700; color: var(--sub); }
+/* ── 제작자에게 한마디 ────────────────────────
+   **푸터에는 이름 옆의 👋 하나뿐이다.** 처음에는 펴면 세 줄짜리 폼이 나왔고,
+   다음에는 그림 셋을 푸터에 늘어놓았다 — 둘 다 나가는 길에 마주치기엔 자리를
+   너무 많이 먹었다. 손짓 하나면 「말을 걸 수 있다」는 뜻은 다 서고, 무엇으로
+   인사할지는 창 안에서 고른다. */
+.say-hi {
+  background: none; border: 0; padding: 2px 4px;
+  font-size: 16px; line-height: 1;
+  cursor: pointer; vertical-align: -1px;
+  border-radius: 8px;
+  transition: transform .16s ease;
+}
+@media (hover: hover) {
+  .say-hi:hover { transform: rotate(-14deg) scale(1.18); }
+}
+.say-hi:active { transform: scale(.94); }
 
-.say-picks { display: flex; justify-content: center; gap: 8px; }
+/* 창 안쪽 — 목록 모달과 같은 틀(.modal)을 쓰고 폭만 좁게 잡는다 */
+.say-modal { max-width: 460px; }
+.say-lead { margin: 0 0 12px; font-size: 13px; color: var(--sub); }
+.say-body { padding-bottom: 18px; }
+
+.say-picks { display: flex; gap: 8px; }
 .say-pick {
-  flex: 1 1 0; min-width: 0; max-width: 132px;
+  flex: 1 1 0; min-width: 0;
   display: flex; flex-direction: column; align-items: center; gap: 5px;
   background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: 14px;
-  padding: 11px 6px 10px;
+  padding: 12px 6px 11px;
   cursor: pointer;
   transition: transform .14s ease, border-color .14s ease, background .14s ease;
 }
-.say-ico { font-size: 22px; line-height: 1; }
+.say-ico { font-size: 24px; line-height: 1; }
 .say-cap { font-size: 12px; font-weight: 600; color: var(--sub); white-space: nowrap; }
 @media (hover: hover) {
   .say-pick:hover { background: var(--accent-tint); border-color: var(--accent); transform: translateY(-2px); }
@@ -903,29 +917,29 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 .say-pick[aria-pressed="true"] .say-cap { color: var(--accent); }
 .say-pick:disabled { opacity: .5; cursor: default; transform: none; }
 
-#sayForm { margin-top: 10px; text-align: left; }
-.say textarea, .say input[type="text"] {
+#sayForm { margin-top: 10px; }
+.say-body textarea, .say-body input[type="text"] {
   width: 100%; box-sizing: border-box;
   background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: 12px;
   /* **16px 아래로 내리지 않는다.** iOS 사파리는 글자가 16px보다 작은 칸에 커서가
      들어가면 그 칸이 읽히도록 화면을 통째로 확대한다 — 「할 말 있어요」를 누르면
-     바로 커서를 넣어 주므로, 그때 마을이 확대돼 보였다. #search가 16px인 것도
+     바로 커서를 넣어 주므로, 그때 창이 확대돼 보였다. #search가 16px인 것도
      같은 이유다. */
   padding: 10px 12px; font-size: 16px;
   line-height: 1.55;
 }
-.say textarea { resize: vertical; min-height: 76px; display: block; }
-/* 눌러서 연 칸이라 커서를 바로 넣어 준다 — 브라우저 기본 포커스 링은 테두리
-   색으로 갈음하고, 키보드로 온 것(:focus-visible)만 그대로 두른다 */
-.say textarea:focus, .say input[type="text"]:focus { border-color: var(--accent); outline: none; }
-/* 브라우저는 적는 칸에 대해서는 프로그램이 넣은 커서에도 :focus-visible을 맞춘다.
-   전역 규칙의 3px 링이 그대로 걸리면 테두리와 겹쳐 두 겹으로 두꺼워 보이므로,
-   여기서는 테두리가 한 눈금 굵어지는 정도로 줄인다 (표시는 그대로 남는다) */
-.say textarea:focus-visible, .say input[type="text"]:focus-visible {
+.say-body textarea { resize: vertical; min-height: 84px; display: block; }
+/* 눌러서 연 칸이라 커서를 바로 넣어 준다. 브라우저는 적는 칸에 대해서는 프로그램이
+   넣은 커서에도 :focus-visible을 맞추는데, 전역 규칙의 3px 링이 그대로 걸리면
+   테두리와 겹쳐 두 겹으로 두꺼워 보인다 — 한 눈금 굵어지는 정도로 줄인다 */
+.say-body textarea:focus, .say-body input[type="text"]:focus {
+  border-color: var(--accent); outline: none;
+}
+.say-body textarea:focus-visible, .say-body input[type="text"]:focus-visible {
   outline: 2px solid var(--accent); outline-offset: -1px;
 }
-/* 답장받을 곳과 보내기 버튼을 한 줄에 — 세로로 쌓으면 다시 세 줄이 된다 */
+/* 답장받을 곳과 보내기 버튼을 한 줄에 — 세로로 쌓으면 창이 길어진다 */
 .say-send { display: flex; gap: 8px; margin-top: 8px; }
 .say-send input { flex: 1 1 auto; min-width: 0; }
 .say-btn {
@@ -939,7 +953,7 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 /* 봇만 보는 칸. display:none이면 채우지 않는 봇이 있어 화면 밖으로 밀어낸다 */
 .say-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
-.say-note:not(:empty) { margin: 10px 0 0; font-size: 12.5px; color: var(--sub); }
+.say-note:not(:empty) { margin: 12px 0 0; font-size: 13px; color: var(--sub); }
 .say-note.say-good { color: var(--accent); font-weight: 700; }
 .say-note.say-bad { color: #B3261E; }
 
@@ -1161,10 +1175,9 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
   .book { flex: none; }
   .book-strip { justify-content: flex-start; }
   .zone { opacity: .35; }
-  /* 그림 셋은 폰에서도 한 줄로 남는다(그게 이 배치의 요점이다). 다만 좁은 폰에서
-     캡션이 눌리므로 글자만 한 눈금 줄인다 */
+  /* 그림 셋은 좁은 폰에서도 한 줄로 남는다 — 캡션 글자만 한 눈금 줄인다 */
   .say-cap { font-size: 11.5px; }
-  .say-pick { padding: 10px 4px 9px; }
+  .say-pick { padding: 11px 4px 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
