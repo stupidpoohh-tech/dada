@@ -154,7 +154,7 @@
         "w": 3.4,
         "sprite": "horn.png",
         "song": {
-          "title": "집이 어떻게 세모",
+          "title": "집이 어떻게 세모.mp3",
           "audio": "assets/audio/house-theme.mp3",
           "lyrics": [
             { "label": "Intro", "lines": ["우리 집은 세모네, 예."] },
@@ -409,12 +409,12 @@
     {
       "id": "house-theme",
       "no": 26,
-      "name": "집이 어떻게 세모 (집 테마송)",
+      "name": "집이 어떻게 세모.mp3",
       "district": "house",
       "type": "doc",
       "open": "song",
       "route": "/#house-theme",
-      "description": "세모집 마당의 확성기를 누르면 나오는 집 테마송. 가사도 함께 뜬다",
+      "description": "집에 어떻게 테마송",
       "date": "2025-05",
       "icon": "📣",
       "status": "live",
