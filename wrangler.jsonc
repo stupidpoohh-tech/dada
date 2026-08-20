@@ -8,7 +8,7 @@
   "compatibility_date": "2026-08-15",
   "observability": { "enabled": true },
 
-  // 「개발자에게 한마디」를 받는 코드 (worker.js). **지도·그림·목록은 여전히
+  // 「제작자에게 한마디」를 받는 코드 (worker.js). **지도·그림·목록은 여전히
   // Worker를 거치지 않는다** — Workers 정적 에셋은 파일이 있는 주소를 곧바로
   // 내주고, 없는 주소(`/api/word`)만 Worker로 보낸다.
   "main": "worker.js",
@@ -19,18 +19,28 @@
      마을의 나머지는 그대로 돈다 — 조용히 성공한 척하면 방문자는 남겼다고 믿고
      나는 못 받으므로, 그 편이 낫다.
 
-     붙이는 법 (두 줄이면 끝난다):
+     붙이려면 **네임스페이스 id 하나**가 필요하다. 만드는 길은 둘 다 된다.
 
-       npx wrangler kv namespace create WORDS
-       npx wrangler secret put ADMIN_KEY        # 읽을 때 쓸 열쇠. 아무 문자열
+       대시보드: Cloudflare → Storage & Databases → KV → Create namespace
+                 이름을 WORDS로 하고, 목록에 뜨는 id를 복사한다
+       터미널  : npx wrangler kv namespace create WORDS
 
-     첫 줄이 뱉는 id를 아래 블록에 넣고 주석을 벗긴 뒤 다시 배포한다.
+     그 id를 아래 블록에 넣고 주석을 벗기면 끝이다. 이 저장소는 **기본 브랜치에
+     올라가면 Cloudflare가 알아서 다시 배포**하므로 배포 명령은 따로 없다.
      빈 id를 남겨 두면 배포가 통째로 막히므로 **주석인 채로 둔다.**
 
        "kv_namespaces": [
          { "binding": "WORDS", "id": "여기에-붙인다" }
        ],
 
-     읽기: /api/word?key=<ADMIN_KEY>  ·  또는 터미널에서
-       npx wrangler kv key list --binding WORDS --remote  */
+     ── 읽기 ──────────────────────────────────────────
+     대시보드에서 그냥 볼 수 있다: Storage & Databases → KV → WORDS → 항목 보기.
+     주소로 받고 싶으면 시크릿을 하나 넣는다 (선택):
+
+       대시보드: Workers → dada-portfolio → Settings → Variables and Secrets
+                 → Secret 추가, 이름 ADMIN_KEY
+       터미널  : npx wrangler secret put ADMIN_KEY
+
+     그러면 /api/word?key=<ADMIN_KEY> 로 최근 200개가 JSON으로 나온다.
+     시크릿은 wrangler.jsonc에 적히지 않으므로 다시 배포해도 지워지지 않는다.  */
 }

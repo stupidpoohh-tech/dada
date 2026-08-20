@@ -785,51 +785,51 @@ python3 tools/cut_crow.py      # assets/sprites/crow.png → cut/crow-side · cr
 하나뿐이다** — 나머지 주소는 예전 그대로 정적 에셋으로 나간다 (Workers 정적 에셋은
 파일이 있는 주소를 Worker에 물어보지 않는다. 없는 주소인 `/api/word`만 `worker.js`로 온다).
 
-### 붙이기 — 두 줄이면 끝난다
+### 켜기 — 필요한 것은 **네임스페이스 id 하나**
 
-```bash
-npx wrangler kv namespace create WORDS   # 나온 id를 wrangler.jsonc에 붙이고 주석을 벗긴다
-npx wrangler secret put ADMIN_KEY        # 읽을 때 쓸 열쇠. 아무 문자열이면 된다
-```
+이 저장소는 **기본 브랜치에 올라가면 Cloudflare가 알아서 다시 배포한다**
+(`git remote show origin`의 `HEAD branch`). 그래서 배포 명령은 따로 없고,
+터미널 없이 대시보드만으로도 켤 수 있다.
 
-**붙이기 전에도 사이트는 그대로 돈다.** KV 바인딩이 없으면 서버가 503과 함께
-「아직 받을 준비가 안 됐다」고 말하고, 화면은 그 말을 그대로 띄운다.
-`wrangler.jsonc`에 **빈 `id`를 남겨 두면 배포가 통째로 막히므로** 그 블록은 주석인 채로 뒀다.
+1. **KV 만들기** — Cloudflare 대시보드 → Storage & Databases → KV →
+   Create namespace → 이름 `WORDS`. 목록에 뜨는 **id를 복사한다.**
+   (터미널이면 `npx wrangler kv namespace create WORDS`)
+2. **id 붙이기** — `wrangler.jsonc`의 주석 안에 있는 블록을 꺼내 id를 넣는다.
+
+   ```jsonc
+   "kv_namespaces": [
+     { "binding": "WORDS", "id": "복사한-id" }
+   ],
+   ```
+
+   **빈 `id`를 남겨 두면 배포가 통째로 막히므로** 붙이기 전에는 주석인 채로 둔다.
+3. 기본 브랜치에 올리면 끝. 다시 배포되면 폼이 살아난다.
+
+붙이기 전에도 사이트는 그대로 돈다 — 서버가 503과 함께 「아직 받을 준비가 안 됐다」고
+말하고, 화면은 그 말을 그대로 띄운다.
 
 ### 읽기
 
+**대시보드에서 그냥 볼 수 있다** — Storage & Databases → KV → `WORDS` → 항목 보기.
+여기까지는 열쇠가 필요 없다.
+
+주소로 받고 싶으면 시크릿을 하나 넣는다 (선택).
+
 ```
-/api/word?key=<ADMIN_KEY>                          → 최근 200개 JSON
-npx wrangler kv key list --binding WORDS --remote  → 터미널에서 (열쇠 없이도 된다)
+대시보드: Workers → dada-portfolio → Settings → Variables and Secrets
+          → Secret 추가, 이름 ADMIN_KEY
+터미널  : npx wrangler secret put ADMIN_KEY
 ```
+
+그러면 `/api/word?key=<ADMIN_KEY>`로 최근 200개가 JSON으로 나온다.
+시크릿은 `wrangler.jsonc`에 적히지 않으므로 **다시 배포해도 지워지지 않는다.**
+터미널에서는 열쇠 없이도 볼 수 있다 — `npx wrangler kv key list --binding WORDS --remote`.
 
 키를 `w:<시각역순>`으로 만들어 **목록이 최신순으로 저절로 정렬된다** — KV의 `list`는
 키 사전순이라, 시각을 그대로 넣으면 오래된 것부터 나와 매번 뒤집어야 한다.
 
-`ADMIN_KEY`를 안 넣었으면 읽기는 **아예 막힌다.** 설정 안 된 자물쇠는 열린 자물쇠다.
-
-### 푸터에는 👋 하나, 적는 칸은 창 안에
-
-```
-다원하는 다원 👋        ← 푸터에 남는 것은 이것뿐
-   ↓ 누르면
-[ 한마디 * ] [ 이름 (선택) ] [ 답장 받을 곳 (선택) ]  [남기기]
-```
-
-처음에는 이 폼을 푸터에 그대로 펼쳐 뒀는데 **나가는 길에 마주치기엔 자리를 너무
-많이 먹었다.** 이름 옆의 손짓 하나면 「말을 걸 수 있다」는 뜻은 다 서고, 칸은
-창에서 보면 된다.
-
-**빠른 반응 버튼은 두지 않는다.** 한때 그림 셋(그냥 인사·좋았어요·할 말 있어요)을
-놓아 한 번에 보낼 수 있게 했는데, 눌러 봐야 「누가 왔다 갔다」밖에 안 남고
-남길 말이 있어서 창을 연 사람에게는 거쳐야 할 단계가 하나 더 생길 뿐이었다.
-창을 열면 곧장 적는 칸이다.
-
-창은 목록 모달과 **같은 틀(`.modal-backdrop`/`.modal`)을 쓴다.** 배경 덮개·Esc·
-바깥 누르기·포커스 가두기가 이미 거기 있어서, 새로 만들면 그걸 다시 흉내 내는
-셈이 된다. 창이 둘이 되면서 `trapFocus`는 `#modal` 고정에서 「지금 열려 있는 창」을
-찾는 쪽으로 바뀌었다 — 안 그러면 한마디 창을 열어 두고 탭을 누를 때 뒤의 지도로
-포커스가 새어 나간다.
+`ADMIN_KEY`를 안 넣었으면 **주소로 읽는 길은 아예 막힌다.** 설정 안 된 자물쇠는
+열린 자물쇠다.
 
 ### 정해 둔 것
 
