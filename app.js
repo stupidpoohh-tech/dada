@@ -57,6 +57,10 @@
     return n;
   };
   const pct = (v) => v + '%';
+  /** 방문 통계 한 줄. 마을은 URL이 바뀌지 않아 무엇을 봤는지가 자동으로는 안 남는다.
+   *  ga.js가 없거나(광고 차단·로컬) 꺼져 있으면 조용히 지나간다 — 부르는 자리에
+   *  조건문을 두지 않기 위한 감쌈이다. 보내는 목록은 ga.js 머리말에 모아 뒀다. */
+  const track = (name, params) => { if (window.dadaTrack) window.dadaTrack(name, params); };
   /** 만든 시기. 데이터는 정렬되게 `2026-05`로 두고, 보이는 곳에서만 짧게 쓴다. */
   const shortDate = (s) => s.slice(2).replace('-', '.');
   const monthLabel = (s) => (s ? `${s.slice(0, 4)}년 ${+s.slice(5, 7)}월` : '시기 미상');
@@ -302,6 +306,7 @@
       // 새 탭(⌘·중클릭)은 브라우저에 맡긴다
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
       e.preventDefault();
+      track('mailbox_open', { item: item.id });
       sendMail(a, mbox, item);
     });
     wrap.appendChild(a);
@@ -468,6 +473,14 @@
       a.target = '_blank';
       a.rel = 'noopener';
     }
+    // 어디서 눌렀는지까지 남긴다 — 같은 항목이라도 지도에서 온 것과 목록에서 온 것은
+    // 다른 이야기다. 책을 여는 아래 리스너보다 먼저 달아야 모달이 닫히기 전에 읽는다
+    a.addEventListener('click', () => track('item_click', {
+      item: item.id,
+      item_type: item.type,
+      from: !$('modal').hidden ? 'list' : (!$('picksPanel').hidden ? 'picks' : 'map'),
+    }));
+
     if (item.open === 'book') {
       const b = bookOf(item);
       a.href = '#' + (b ? b.hash : '');
@@ -592,6 +605,7 @@
   function openPanel(id, btn) {
     const d = data.districts.find((x) => x.id === id);
     const items = byDistrict[id] || [];
+    track('district_open', { district: id, items: items.length });
     const panel = $('panel');
     panel.textContent = '';
 
@@ -758,6 +772,8 @@
     $('bk').appendChild(leaf);
 
     bkPage = to;
+    // 끝장까지 넘긴 사람 — 열어만 본 것과 다 본 것을 가르는 유일한 신호다
+    if (bkPage === book.pages) track('book_end', { book: book.hash });
     bkPaint();
 
     const done = () => { leaf.remove(); bkBusy = false; };
@@ -815,6 +831,9 @@
       bkBusy = false;
     }
     const wasOpen = bookOpen();
+    // 쪽을 넘길 때는 해시를 replaceState로 갈아 끼우므로 여기까지 다시 오지 않는다.
+    // 그래서 이 자리는 "새로 열었다"와 "다른 책으로 갈아탔다"만 센다
+    if (!wasOpen || book !== b) track('book_open', { book: b.hash, pages: b.pages });
     book = b;
     buildStrip();
     if (!wasOpen) beforeBookFocus = document.activeElement;
@@ -924,6 +943,7 @@
       b.type = 'button';
       b.setAttribute('aria-pressed', String(key === 'all'));
       b.addEventListener('click', () => {
+        if (filter !== key) track('list_filter', { filter: key });
         filter = key;
         wrap.querySelectorAll('.chip').forEach((c) =>
           c.setAttribute('aria-pressed', String(c === b)));
@@ -948,8 +968,10 @@
       $('picksPanel').hidden = !open;
       $('picksBtn').setAttribute('aria-expanded', String(open));
     };
-    $('picksBtn').addEventListener('click', () =>
-      set($('picksPanel').hidden));
+    $('picksBtn').addEventListener('click', () => {
+      if ($('picksPanel').hidden) track('picks_open', {});
+      set($('picksPanel').hidden);
+    });
     $('closePicks').addEventListener('click', () => { set(false); $('picksBtn').focus(); });
     document.addEventListener('click', (e) => {
       if (!$('picksPanel').hidden
@@ -963,6 +985,7 @@
   let lastFocus = null;
 
   function openModal() {
+    track('list_open', {});
     lastFocus = document.activeElement;
     $('modal').hidden = false;
     syncHint();
@@ -1051,7 +1074,19 @@
     $('modal').addEventListener('click', (e) => {
       if (e.target === $('modal')) closeModal();
     });
-    $('search').addEventListener('input', (e) => { query = e.target.value; renderModalList(); });
+    // 검색은 글자마다 보내면 `아`·`아니`·`아니그`가 따로 쌓여 아무 말도 안 남는다.
+    // 손이 멎고 1.2초 뒤, 두 글자 이상일 때만 한 번 보낸다
+    let typed = null;
+    $('search').addEventListener('input', (e) => {
+      query = e.target.value;
+      renderModalList();
+      clearTimeout(typed);
+      const q = query.trim();
+      if (q.length < 2) return;
+      typed = setTimeout(() => track('list_search', {
+        search_term: q.slice(0, 100), results: visibleItems().length,
+      }), 1200);
+    });
 
     document.addEventListener('keydown', (e) => {
       if (bookOpen()) {

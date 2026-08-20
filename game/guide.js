@@ -36,6 +36,11 @@
 
   let data, stacks = [], at = 0, cards = [], zoomable = false;
 
+  /** 방문 통계 한 줄. 이 페이지도 챕터를 옮겨도 URL이 그대로라 자동으로는 안 남는다.
+   *  ga.js가 없거나(광고 차단·로컬) 꺼져 있으면 조용히 지나간다. */
+  const track = (name, params) => { if (window.dadaTrack) window.dadaTrack(name, params); };
+  let sawEnd = false;
+
   const pageOf = (n) => data.pages.find((p) => p.n === n) || { n, kind: 'game' };
 
   /* ── 카드 ──────────────────────────────────────── */
@@ -205,6 +210,9 @@
       stack.addEventListener('animationend', () =>
         stack.classList.remove('in-fwd', 'in-back'), { once: true });
     }
+    // 마지막 두 장은 챕터 바에 없다 — 끝까지 스크롤한 사람만 만나므로
+    // 여기 닿았다는 건 덱을 끝까지 봤다는 뜻이다. 오가며 겹쳐 세지 않게 한 번만
+    if (s.id === 'outro' && !sawEnd) { sawEnd = true; track('guide_end', {}); }
     syncZoomable();
     preload(idx);
   }
@@ -213,6 +221,7 @@
   function goStack(id, opts) {
     const i = indexOfStack(id);
     if (i < 0 || i === at) return;
+    track('guide_chapter', { chapter: id });
     mount(i, { dir: i > at ? 1 : -1, ...opts });
   }
 
@@ -352,6 +361,7 @@
   function openZoom(card) {
     const n = card.dataset.page;
     if (!n) return;
+    track('guide_zoom', { page: Number(n) });
     const img = card.querySelector('img');
     returnTo = card;
     const zi = $('zoomImg');

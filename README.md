@@ -14,6 +14,7 @@ sitemap.xml         (생성물)
 robots.txt          (생성물)
 styles.css
 app.js
+ga.js               방문 통계 — 측정 ID 한 줄과 도메인 가드. 아래 「방문 통계」
 services.json       수록 항목 단일 소스 — 여기만 고치면 지도와 모달이 함께 바뀐다
 assets/
   portfolio/art/    아트북 페이지 이미지 p01~p11 + 썸네일 t01~t11
@@ -23,7 +24,7 @@ assets/
   sprites/cut/      잘라낸 스프라이트 22개 — 실제로 쓰는 것
 tools/cut_sprites.py  시트에서 스프라이트를 잘라내고 배경을 투명 처리
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
-tests/smoke.mjs       회귀 테스트 72개 (npm test)
+tests/smoke.mjs       회귀 테스트 80개 (npm test)
 ```
 
 편집용 원본(원본 지도·스프라이트 시트)은 저장소에 두지 않는다 — 아래 「편집용 원본」 참고.
@@ -44,7 +45,7 @@ npm run serve &      # 8000번 포트로 띄운 뒤
 npm test
 ```
 
-`tests/smoke.mjs`의 72개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
+`tests/smoke.mjs`의 80개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
 만든 게 아니라 "또 이럴까 봐" 남긴 목록이니, 새 버그를 잡으면 여기에 한 줄 더한다.
 지금 지키고 있는 것 — 두 책이 서로의 설정을 물고 오지 않기, 목록 카드가 빈 해시를 물지 않기,
 캐릭터 판정이 흔들리지 않고 64px을 넘기, 여닫고 호버한 뒤에도 마을이 한 박자이기,
@@ -314,6 +315,97 @@ for i, p in enumerate(d):
 
 쪽수나 비율이 바뀌면 `services.json`의 `book.pages`·`book.ratio`를 함께 고친다.
 **한 장만 갈아끼울 때는 그 파일 두 개(`pNN.jpg`·`tNN.jpg`)만 덮어쓰면 된다** — 나머지는 안 건드려도 된다.
+
+## 방문 통계
+
+**이 마을은 URL이 바뀌지 않는다.** 구역을 열어도, 책을 넘겨도, 목록을 열어도 주소는
+`/` 그대로다. 그래서 자동으로 세어지는 페이지뷰 하나로는 **"몇 명이 왔다"까지만** 알고
+"무엇을 봤는가"는 한 줄도 안 남는다. 그건 커스텀 이벤트로 각자 자리에서 보낸다.
+
+### 켜는 법 — 세 걸음
+
+1. **측정 ID를 받는다.** [analytics.google.com](https://analytics.google.com) →
+   관리(왼쪽 아래 톱니) → 데이터 스트림 → 웹 스트림 추가 → 주소는
+   `https://dada-portfolio.stupidpoohh.workers.dev`. 만들면 오른쪽 위에
+   **측정 ID**가 나온다 (`G-`로 시작하는 열 자리 남짓).
+2. **`ga.js`의 `ID` 한 줄에 붙여 넣는다.** 이 저장소에서 고칠 곳은 그 한 줄뿐이다.
+
+   ```js
+   var ID = 'G-XXXXXXXXXX';
+   ```
+3. **커밋하고 배포한다.** 기본 브랜치에 올라가야 사이트에 나타난다 (「배포」 참고).
+   확인은 GA4 **보고서 → 실시간**에서 한다. 사이트를 열고 30초 안에 숫자가 오른다.
+
+측정 ID를 붙이기 전에도 코드는 그대로 얹혀 있어도 된다 — `ID`가 비어 있으면
+아무것도 하지 않는다.
+
+### 켜지는 곳은 배포된 도메인뿐이다
+
+`ga.js`의 `HOSTS`에 적은 도메인에서만 켜진다. 이유가 둘이다.
+
+- **회귀 테스트가 흔들린다.** `npm test`는 `networkidle`을 기다리는 검사가 여럿이라,
+  localhost에서 GA를 켜면 매번 바깥 스크립트를 받으러 나가느라 남의 서버 사정에 걸린다.
+- **내 손장난이 통계에 섞인다.** 고치면서 백 번 여닫은 것이 방문자 숫자에 들어가면
+  숫자가 거짓말을 한다.
+
+커스텀 도메인(`dada.town`)을 붙이면 `HOSTS`에 한 줄 더한다. **거기 없는 주소에서는
+`window.dadaTrack()`이 빈 함수로 서 있다** — 부르는 자리에 조건문을 두지 않기 위해서다.
+
+### 로컬에서 확인하기
+
+주소 끝에 **`?gadebug`**를 붙이면 실제로 보내는 대신 콘솔에 찍힌다.
+어느 자리에서 무엇이 나가는지 로컬에서 그대로 볼 수 있다.
+
+```
+http://localhost:8000/?gadebug         → [ga:off] district_open {district: school, items: 4}
+http://localhost:8000/game/?gadebug
+```
+
+### 보내는 이벤트
+
+| 이벤트 | 언제 | 함께 가는 값 |
+|---|---|---|
+| `district_open` | 구역을 열었다 | `district` · `items` |
+| `item_click` | 항목 카드를 눌렀다 | `item` · `item_type` · `from`(map·list·picks) |
+| `book_open` | 책을 열었다 | `book`(art·house) · `pages` |
+| `book_end` | 책을 끝까지 넘겼다 | `book` |
+| `mailbox_open` | 우편함을 눌렀다 | `item` |
+| `picks_open` | 추천 픽을 열었다 | — |
+| `list_open` | 목록을 열었다 | — |
+| `list_search` | 목록에서 검색했다 | `search_term` · `results` |
+| `list_filter` | 목록에서 종류를 골랐다 | `filter` |
+| `guide_chapter` | 안내서 챕터를 골랐다 | `chapter` |
+| `guide_zoom` | 안내서 면을 확대했다 | `page` |
+| `guide_end` | 안내서를 끝까지 봤다 | — |
+
+검색은 글자마다 보내지 않는다. `아` · `아니` · `아니그`가 따로 쌓이면 아무 말도 안 남으므로,
+**손이 멎고 1.2초 뒤 두 글자 이상일 때만** 한 번 보낸다.
+
+이벤트 이름은 GA4에서 하루 안에 저절로 잡히지만, **함께 보낸 값(`district`·`item` 같은
+매개변수)은 등록해야 보고서에 뜬다** — 관리 → 사용자 지정 정의 → 사용자 지정 측정기준
+만들기 → 범위 `이벤트`, 매개변수 이름을 표의 이름 그대로. 등록 전 데이터는 소급되지 않으니
+쓸 것부터 먼저 등록해 두는 편이 낫다. 등록 없이도 **실시간 → 이벤트 이름**에서는
+바로 보인다.
+
+### 붙는 자리는 세 곳이다
+
+`<script src="/ga.js" defer>` 한 줄이 `index.html` · `game/index.html` ·
+**`tools/build_list.py`의 템플릿**(→ `list.html`)에 들어 있다. 세 번째를 잊으면
+`/list.html`만 조용해진다 — 크롤러가 실제로 읽는 페이지라 오히려 아까운 자리다.
+`npm test`가 세 곳을 다 지킨다.
+
+### Cloudflare Web Analytics는 코드로 붙이지 않는다
+
+대시보드에서 켜면 **Cloudflare가 HTML 응답에 비콘을 직접 끼워 넣는다.** 저장소에서
+할 일이 없다. Cloudflare 대시보드 → Workers & Pages → `dada-portfolio` → Settings →
+**Web Analytics → Enable**. (또는 Analytics & Logs → Web Analytics에서 사이트를 고른다.)
+
+GA와 겹쳐도 상관없지만 **숫자는 서로 다르게 나온다.** Cloudflare 쪽이 대체로 크다 —
+쿠키를 심지 않아 광고 차단기에 덜 걸리기 때문이다. GA는 「무엇을 눌렀나」,
+Cloudflare는 「몇 명이 왔나」로 나눠 읽는 편이 낫다.
+
+**어느 쪽이든 숫자는 실제보다 적다.** 광고 차단기를 쓰는 방문자는 세어지지 않는다
+(`ga.js`라는 파일 이름도 차단 목록에 흔히 오른다). 통계는 하한선이지 인구조사가 아니다.
 
 ## 배포
 

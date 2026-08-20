@@ -516,6 +516,58 @@ head('게임 안내서');
   await p.close();
 }
 
+/* ── 11. 방문 통계 ────────────────────────────────────────
+   ga.js는 HOSTS에 적은 도메인에서만 켜진다. 이 가드가 풀리면 여기 검사들이
+   매번 바깥 스크립트를 받으러 나가느라 `networkidle`에 기대는 다른 검사들이
+   남의 서버 사정에 흔들리고, 내가 고치면서 여닫은 것이 통계에 섞인다.
+   마을은 URL이 바뀌지 않으므로 무엇을 봤는지는 커스텀 이벤트로만 남는다 —
+   그래서 세 페이지 전부에 붙어 있는지, 부르는 자리가 실제로 부르는지 본다. */
+head('방문 통계');
+{
+  const p = await desktop();
+  const sent = [];
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(600);
+
+  ok(await p.locator('script[src="/ga.js"]').count() === 1, '마을에 ga.js가 붙어 있다');
+  ok(await p.evaluate(() => typeof window.dadaTrack) === 'function',
+    'localhost에서도 자리는 있다 (부르는 쪽에 조건문을 두지 않는다)');
+  ok(await p.evaluate(() => [...document.scripts]
+       .some((s) => s.src.includes('googletagmanager'))) === false,
+    'localhost에서는 GA를 부르지 않는다');
+
+  // 부르는 자리가 실제로 부르는지 — 함수를 갈아 끼우고 눌러 본다
+  await p.evaluate(() => { window.dadaTrack = (n, q) => window.__ga.push([n, q]); });
+  await p.evaluate(() => { window.__ga = []; });
+  await p.click('.spot[data-district="school"]'); await p.waitForTimeout(400);
+  await p.click('#openList'); await p.waitForTimeout(300);
+  await p.click('#closeList'); await p.waitForTimeout(200);
+  await p.click('.mbox-spot'); await p.waitForTimeout(300);
+  sent.push(...await p.evaluate(() => window.__ga));
+  const names = sent.map(([n]) => n);
+  ok(names.includes('district_open') && names.includes('list_open')
+     && names.includes('mailbox_open'),
+    '구역·목록·우편함이 각자 신호를 보낸다', names.join(','));
+  const dis = sent.find(([n]) => n === 'district_open');
+  ok(dis && dis[1].district === 'school' && dis[1].items === 4,
+    '무엇을 열었는지가 함께 간다', JSON.stringify(dis));
+  await p.close();
+}
+{
+  const p = await desktop();
+  await p.goto(BASE + '/game/', { waitUntil: 'networkidle' });
+  ok(await p.locator('script[src="/ga.js"]').count() === 1, '안내서에도 ga.js가 붙어 있다');
+  await p.evaluate(() => { window.__ga = []; window.dadaTrack = (n, q) => window.__ga.push([n, q]); });
+  await p.click('.chip[data-chapter="ch3"]'); await p.waitForTimeout(400);
+  const g = await p.evaluate(() => window.__ga);
+  ok(g.some(([n, q]) => n === 'guide_chapter' && q.chapter === 'ch3'),
+    '안내서는 어느 챕터를 골랐는지 보낸다', JSON.stringify(g));
+  await p.goto(BASE + '/list.html', { waitUntil: 'domcontentloaded' });
+  ok(await p.locator('script[src="/ga.js"]').count() === 1,
+    '/list.html에도 붙어 있다 (build_list.py 템플릿)');
+  await p.close();
+}
+
 /* ── 마무리 ─────────────────────────────────────────────── */
 head('JS 오류');
 ok(errors.length === 0, '콘솔 오류 없음', errors.slice(0, 3).join(' / '));
