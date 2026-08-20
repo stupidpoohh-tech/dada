@@ -269,7 +269,6 @@
       "icon": "🖼",
       "status": "live",
       "needsReview": false,
-      "featured": true,
       "open": "book",
       "book": {
         "dir": "assets/portfolio/art/",
@@ -329,7 +328,7 @@
       "icon": "🤖",
       "status": "beta",
       "needsReview": false,
-      "featured": true
+      "featured": 3
     },
     {
       "id": "nangman-otter",
@@ -382,7 +381,7 @@
       "icon": "📅",
       "status": "live",
       "needsReview": false,
-      "featured": true
+      "featured": 4
     },
     {
       "id": "olrw",
@@ -409,7 +408,7 @@
       "icon": "🗺",
       "status": "live",
       "needsReview": false,
-      "featured": true
+      "featured": 1
     },
     {
       "id": "planner",
@@ -423,7 +422,8 @@
       "date": "2026-08",
       "icon": "🗒",
       "status": "live",
-      "needsReview": false
+      "needsReview": false,
+      "featured": 2
     },
     {
       "id": "house-theme",

@@ -1264,8 +1264,17 @@
 
   /* ── 추천 픽 ─────────────────────────────── */
 
+  /** 추천 픽 — 「이것부터 보세요」.
+   *
+   *  **순서는 `featured`에 적힌 숫자다** (1이 맨 위). 예전에는 `featured: true`만
+   *  보고 `items` 배열 순서대로 늘어놓았는데, 그 배열은 구역별로 묶여 있어서
+   *  **무엇을 먼저 보여줄지와 아무 상관이 없었다** — 순서를 바꾸려면 항목을 통째로
+   *  옮겨야 했고, 그러면 목록·`/list.html`의 묶음까지 같이 흐트러진다.
+   *
+   *  숫자가 겹치거나 빠져도 된다 — 같은 숫자끼리는 배열 순서를 지킨다(안정 정렬). */
   function initPicks() {
-    const featured = data.items.filter((i) => i.featured);
+    const featured = data.items.filter((i) => i.featured)
+      .sort((a, b) => (+a.featured || 0) - (+b.featured || 0));
     if (!featured.length) { $('picksBtn').hidden = true; return; }
 
     const body = $('picksBody');

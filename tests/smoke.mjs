@@ -366,6 +366,19 @@ head('데이터 단일 소스');
   // 보기 전환 토글은 없앴다 — 목록은 언제나 만든 순서다
   const toggles = await p.evaluate(() => document.querySelectorAll('.view-btn, #views').length);
   ok(toggles === 0, '보기 전환 토글이 없다');
+
+  /* 추천 픽 — **`featured` 숫자가 곧 순서다**(1이 맨 위). 예전에는 `items` 배열
+     순서를 따랐는데, 그 배열은 구역별로 묶여 있어 무엇을 먼저 보여줄지와 아무
+     상관이 없었다. 데이터에서 기대값을 만들어 견주므로 다음에 순서를 바꿔도
+     이 검사는 그대로 산다. */
+  await p.click('#closeList'); await p.waitForTimeout(300);
+  await p.click('#picksBtn'); await p.waitForTimeout(300);
+  const want = data.items.filter((i) => i.featured)
+    .sort((a, b) => (+a.featured || 0) - (+b.featured || 0)).map((i) => i.name);
+  const got = await p.evaluate(() =>
+    [...document.querySelectorAll('#picksBody .card-name')].map((n) => n.firstChild.textContent));
+  ok(got.length === want.length && got.every((n, i) => n === want[i]),
+    `추천 픽이 featured 숫자 순서대로 뜬다 (${got.length}개)`, got.join(' · '));
   await p.close();
 }
 
