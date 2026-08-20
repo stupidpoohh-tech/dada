@@ -60,6 +60,10 @@
    *  `bottom`은 담는 상자의 높이에 걸리므로 자기 높이를 몰라도 된다. 밑변이 먼저
    *  못 박히고 그림은 그 위로 자란다 — 「좌표는 밑변」이라는 이 마을의 규칙 그대로다. */
   const upTo = (y) => pct(100 - y);
+  /** 지도 위의 「문」 전부. 하나가 열리면 나머지의 aria-expanded를 내려야 하는데,
+   *  이 목록을 자리마다 따로 적어 두면 문이 늘 때 한 군데를 빠뜨린다 —
+   *  까마귀가 칼럼을 열게 되면서 실제로 빠질 뻔했다. 한 곳에 모아 둔다. */
+  const DOORS = '.spot, .me-spot, .note-spot, .horn-spot, .crow-spot';
   /** 방문 통계 한 줄. 마을은 URL이 바뀌지 않아 무엇을 봤는지가 자동으로는 안 남는다.
    *  ga.js가 없거나(광고 차단·로컬) 꺼져 있으면 조용히 지나간다 — 부르는 자리에
    *  조건문을 두지 않기 위한 감쌈이다. 보내는 목록은 ga.js 머리말에 모아 뒀다. */
@@ -254,7 +258,7 @@
     const song = d.song;
     const panel = $('panel');
     panel.textContent = '';
-    document.querySelectorAll('.spot, .me-spot, .note-spot, .horn-spot')
+    document.querySelectorAll(DOORS)
       .forEach((x) => x.setAttribute('aria-expanded', String(x === btn)));
 
     const head = el('div', 'panel-head');
@@ -382,7 +386,7 @@
     stopSong();        // 노래를 들으며 쪽지를 눌러도 조용히 멈춘다
     const panel = $('panel');
     panel.textContent = '';
-    document.querySelectorAll('.spot, .me-spot, .note-spot, .horn-spot')
+    document.querySelectorAll(DOORS)
       .forEach((x) => x.setAttribute('aria-expanded', String(x === btn)));
 
     const head = el('div', 'panel-head');
@@ -440,9 +444,13 @@
    *  까마귀는 자기 문서 하나만 연다. 마스코트가 자기 기록으로 데려가는 것이라
    *  문이 둘이어도 층위가 갈린다.
    *
-   *  **`item`이 없으면 문 없이 풍경으로만 선다.** 지금이 그 상태다 — PlayGrown 기록을
-   *  전시 세션으로 다시 짓는 동안(§5) 문서가 없으므로, 없는 곳을 가리키는 링크를
-   *  두지 않는다. 까마귀는 카페 앞에 그대로 있고 걸음도 그대로다.
+   *  문은 **셋 중 하나**로 열린다. `item`이 있으면 그 문서로 가는 링크(<a>)고,
+   *  없고 `column`만 있으면 그 글을 그 자리에서 펴 보이는 버튼이며, 둘 다 없으면
+   *  풍경으로만 선다 — 없는 곳을 가리키는 문은 만들지 않는다(확성기와 같은 규칙).
+   *
+   *  지금은 가운데다. PlayGrown 기록은 아직 준비 중이라 문서가 없고, 그 대신
+   *  **읽던 칼럼을 먼저 펴 둔다.** 눌렀는데 아무 일도 없는 것보다, 지금 손에 있는
+   *  것을 내어놓고 나머지는 준비 중이라고 말하는 편이 정직하다.
    *
    *  우편함과 다른 점은 그림이다. 우편함은 지도를 오려낸 복제본이지만 까마귀는
    *  지도에 없던 스프라이트라 `<img>` 세 장을 겹쳐 깐다 — 이 마을에는 프레임
@@ -457,12 +465,19 @@
     const item = data.items.find((x) => x.id === m.item);
     const frames = Object.entries(m.frames || {});
     if (!frames.length) return;
-    const open = item && item.url;          // 열 문서가 있을 때만 링크가 된다
+    const open = item && item.url;          // 열 문서가 있으면 링크가 된다
+    const col = !open && m.column;          // 없으면 칼럼이 그 자리를 대신한다
 
-    const a = el(open ? 'a' : 'span', 'crow-spot' + (open ? '' : ' scenery'));
+    const a = el(open ? 'a' : (col ? 'button' : 'span'),
+                 'crow-spot' + (open || col ? '' : ' scenery'));
     if (open) {
       a.href = item.url;
       a.setAttribute('aria-label', `${m.name} — ${item.name}`);
+    } else if (col) {
+      a.type = 'button';
+      a.setAttribute('aria-label', `${m.name} — ${m.column.title}`);
+      a.setAttribute('aria-expanded', 'false');
+      a.addEventListener('click', () => toggleColumn(a, m));
     } else {
       a.setAttribute('aria-hidden', 'true');   // 누를 수 없는 것을 읽어줄 이유가 없다
     }
@@ -484,6 +499,64 @@
       }));
     }
     wrap.appendChild(a);
+  }
+
+  /* ── 까마귀가 펴 보이는 칼럼 ────────────────
+   *  마스코트가 여는 문인데 가는 곳이 없다 — 노래(확성기)와 같이 **그 자리에서
+   *  펴 보이는** 문이다. 구역 패널을 그대로 쓰고 자리만 까마귀를 따라간다.
+   *
+   *  칼럼이 먼저 오고 「준비 중」은 맨 아래에 온다. 순서가 곧 말이다 — 지금 읽을 수
+   *  있는 것을 앞에 놓고, 아직 없는 것은 뒤에서 한 줄로 말한다. 열자마자 준비 중부터
+   *  보이면 눌러 봤자 헛일이었다는 뜻이 되는데, 여기에는 읽을 것이 실제로 있다. */
+  function toggleColumn(btn, m) {
+    if (openId === 'column') return closePanel();
+    openColumn(btn, m);
+  }
+
+  function openColumn(btn, m) {
+    const c = m.column;
+    stopSong();        // 노래를 들으며 까마귀를 눌러도 조용히 멈춘다
+    const panel = $('panel');
+    panel.textContent = '';
+    document.querySelectorAll(DOORS)
+      .forEach((x) => x.setAttribute('aria-expanded', String(x === btn)));
+
+    const head = el('div', 'panel-head');
+    head.appendChild(el('h2', 'panel-title', `${c.icon || '📰'} ${c.title}`));
+    if (c.label) head.appendChild(el('span', 'panel-label', c.label));
+    const close = el('button', 'icon-btn panel-close', '✕');
+    close.type = 'button';
+    close.setAttribute('aria-label', '닫기');
+    close.addEventListener('click', () => { closePanel(); btn.focus(); });
+    head.appendChild(close);
+    panel.appendChild(head);
+
+    const body = el('div', 'column');
+    (c.notes || []).forEach((line) => body.appendChild(el('p', 'column-note', line)));
+    if (c.quote) {
+      const q = el('blockquote', 'column-quote');
+      (c.quote.lines || []).forEach((line) => q.appendChild(el('p', null, line)));
+      if (c.quote.by) q.appendChild(el('cite', 'column-by', c.quote.by));
+      body.appendChild(q);
+    }
+    panel.appendChild(body);
+
+    if (c.soon) {
+      const e = el('div', 'empty');
+      e.appendChild(el('strong', null, '준비 중이에요'));
+      e.append(c.soon);
+      panel.appendChild(e);
+    }
+
+    track('column_open', { column: c.title });
+
+    $('panelWrap').hidden = false;
+    panel.scrollTop = 0;
+    openId = 'column';
+    lastSpot = btn;
+    placePanel({ liveBox: () => btn.getBoundingClientRect() });
+    panel.focus({ preventScroll: true });
+    $('hint').classList.add('gone');
   }
 
   /** 우편함 — 구역과 별개의 문. districts[].mailbox = { sprite, at, w, item }.
@@ -821,7 +894,7 @@
     const panel = $('panel');
     panel.textContent = '';
 
-    document.querySelectorAll('.spot, .me-spot, .note-spot, .horn-spot')
+    document.querySelectorAll(DOORS)
       .forEach((b) => b.setAttribute('aria-expanded', String(b === btn)));
 
     const head = el('div', 'panel-head');

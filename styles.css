@@ -385,6 +385,36 @@ button, input { font: inherit; color: inherit; }
 }
 .song-line { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--ink); }
 
+/* 까마귀가 펴 보이는 칼럼. 카드가 아니라 **읽는 글**이라 상자를 두르지 않는다 —
+   패널 안에서 카드와 나란히 놓일 일이 없으므로 글자만으로 충분하다.
+   각 문단 앞의 ✔는 원문의 표식이다. 글자로 넣지 않고 ::before로 세워야
+   복사할 때 따라붙지 않고, 두 줄로 넘어가도 본문이 표식 아래로 내려가지 않는다. */
+.column { padding: 2px 0 2px; }
+.column-note {
+  position: relative;
+  margin: 0 0 10px;
+  padding-left: 17px;
+  font-size: 13.5px; line-height: 1.7; color: var(--ink);
+}
+.column-note::before {
+  content: '✔';
+  position: absolute; left: 0; top: 0;
+  color: var(--accent); font-size: 12px; line-height: 1.9;
+}
+/* 인용은 원문에서도 색 배경으로 따로 떠 있다 — 요약(개조식)과 사람 말은 결이 다르다 */
+.column-quote {
+  margin: 14px 0 0;
+  padding: 12px 13px;
+  background: var(--surface-2);
+  border-radius: 12px;
+}
+.column-quote p { margin: 0; font-size: 13px; line-height: 1.72; color: var(--ink); }
+.column-quote p + p { margin-top: 9px; }
+.column-by {
+  display: block; margin-top: 9px;
+  font-size: 12px; font-style: normal; color: var(--sub);
+}
+
 /* ── 날아다니는 쪽지 ─────────────────────────
    새·구름은 풍경이고 이건 문이다. 그래서 넷을 다르게 뒀다 —
    길목마다 멈추는 걸음, 마을 박자를 타지 않는 펄럭임(0.55초),
@@ -497,9 +527,12 @@ button, input { font: inherit; color: inherit; }
   transform: translate(-50%, -50%);
   width: max(150%, 56px); height: max(170%, 56px);
 }
-/* 열 문서가 없는 동안은 풍경이다 — 누를 수 없는 것이 손가락을 부르면 안 된다 */
+/* 열 것이 아무것도 없을 때만 풍경이다 — 누를 수 없는 것이 손가락을 부르면 안 된다.
+   지금은 문서 대신 칼럼이 걸려 있어 문이다 (app.js의 makeMascot). */
 .crow-spot.scenery { pointer-events: none; cursor: default; }
 .crow-spot.scenery::after { content: none; }
+/* 칼럼을 여는 까마귀는 <button>이다 — 확성기와 같이 배경 없는 버튼으로 되돌린다 */
+button.crow-spot { background: none; border: 0; padding: 0; cursor: pointer; }
 .crow-figure {
   position: relative; display: block;
   transform-origin: 50% 100%;

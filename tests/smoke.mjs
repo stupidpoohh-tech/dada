@@ -570,9 +570,11 @@ head('게임 안내서');
 }
 
 /* ── 11. 카페 앞 까마귀 Croww ─────────────────────────────
-   PlayGrown 기록을 전시 세션으로 다시 짓는 동안(PLAN §5) 까마귀는 문 없이 풍경으로만
-   서 있다. 이 마을에는 프레임 애니메이션이 없어서 퍼덕임과 갸웃만 그림 세 장을
-   번갈아 쓰는데, 두 장이 겹쳐 보이거나 마을과 박자가 어긋나면 그 자리만 딴 세상이 된다. */
+   PlayGrown 기록은 아직 준비 중이라 갈 문서가 없다. 그렇다고 눌러도 아무 일이 없으면
+   문이 아니므로, **읽던 칼럼을 그 자리에서 펴 보이는 버튼**으로 세워 뒀다
+   (districts[].mascot.column). 칼럼이 먼저 오고 「준비 중」은 맨 아래에 온다.
+   이 마을에는 프레임 애니메이션이 없어서 퍼덕임과 갸웃만 그림 세 장을 번갈아 쓰는데,
+   두 장이 겹쳐 보이거나 마을과 박자가 어긋나면 그 자리만 딴 세상이 된다. */
 head('카페 앞 까마귀');
 {
   const p = await desktop();
@@ -582,14 +584,45 @@ head('카페 앞 까마귀');
   const crow = p.locator('.crow-spot');
   ok(await crow.count() === 1, '카페 앞에 까마귀가 한 마리 있다');
 
-  // 문서가 없는 동안은 누를 수 없어야 한다 — 없는 곳을 가리키는 링크를 두지 않는다
+  // 갈 문서는 없지만 펼 칼럼이 있으므로 진짜 버튼이어야 한다
   const idle = await p.evaluate(() => {
     const n = document.querySelector('.crow-spot');
     return { tag: n.tagName, href: n.getAttribute('href'),
-             pe: getComputedStyle(n).pointerEvents };
+             pe: getComputedStyle(n).pointerEvents,
+             cur: getComputedStyle(n).cursor };
   });
-  ok(idle.tag === 'SPAN' && !idle.href && idle.pe === 'none',
-    '열 문서가 없으면 문이 아니라 풍경이다', JSON.stringify(idle));
+  ok(idle.tag === 'BUTTON' && !idle.href && idle.pe === 'auto' && idle.cur === 'pointer',
+    '칼럼이 걸려 있으면 풍경이 아니라 문이다', JSON.stringify(idle));
+
+  await crow.click();
+  const col = await p.evaluate(() => {
+    const panel = document.getElementById('panel');
+    const notes = [...panel.querySelectorAll('.column-note')];
+    const soon = panel.querySelector('.empty');
+    const quote = panel.querySelector('.column-quote');
+    return {
+      shown: !document.getElementById('panelWrap').hidden,
+      title: panel.querySelector('.panel-title')?.textContent || '',
+      notes: notes.length,
+      quoted: !!quote && /Ship It Friday/.test(quote.textContent),
+      by: quote?.querySelector('.column-by')?.textContent || '',
+      soon: soon?.textContent || '',
+      // 순서가 곧 말이다 — 읽을 것이 먼저, 준비 중은 맨 아래
+      soonLast: !!soon && panel.lastElementChild === soon,
+      expanded: document.querySelector('.crow-spot').getAttribute('aria-expanded'),
+    };
+  });
+  ok(col.shown && /제3의 공간/.test(col.title), '까마귀를 누르면 칼럼이 열린다', col.title);
+  ok(col.notes === 4, '칼럼 본문 네 문단이 다 있다', String(col.notes));
+  ok(col.quoted && /이승은/.test(col.by), '인용과 말한 사람이 함께 온다', col.by);
+  ok(/준비 중/.test(col.soon), '준비 중이라는 말이 함께 있다', col.soon);
+  ok(col.soonLast, '칼럼이 먼저 오고 준비 중은 맨 아래다');
+  ok(col.expanded === 'true', '열려 있는 동안 까마귀가 그렇다고 말한다', col.expanded);
+
+  // 다시 누르면 닫힌다 — 확성기·쪽지와 같은 규칙
+  await crow.click();
+  ok(await p.evaluate(() => document.getElementById('panelWrap').hidden),
+    '다시 누르면 닫힌다');
 
   // 한 번에 한 장만 보여야 한다 — 두 장이 함께 뜨면 날개가 유령처럼 겹친다
   const frames = await p.evaluate(() => {
@@ -612,6 +645,9 @@ head('카페 앞 까마귀');
       return i.naturalWidth + 'x' + i.naturalHeight; }));
   ok(new Set(sizes).size === 1, '세 장이 같은 크기 캔버스다', sizes.join(' / '));
 
+  // 눌렀던 자리에 커서가 남아 있으면 다시 불러온 뒤에도 그 밑에 새 까마귀가 놓여
+  // :hover가 그대로 맞는다 — 퍼덕임(crow-hop)이 걸려 아래 박자 검사가 헛돈다
+  await p.mouse.move(0, 0);
   await p.reload({ waitUntil: 'networkidle' });
   await p.waitForTimeout(900);
 
