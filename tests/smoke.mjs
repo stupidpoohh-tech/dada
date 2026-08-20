@@ -493,6 +493,36 @@ head('게임 안내서');
   await p.click('.chip[data-chapter="ch1"]'); await p.waitForTimeout(400);
   ok(await p.locator('.card--gate').count() === 1, `문이 챕터마다 하나씩 (총 ${gates}개)`);
 
+  // 판권면 — 46면을 건드리지 않고 새로 놓는 한 장이다. 인용 서른몇 개의 출처가
+  // 여기 한 줄로 모인다. 이 카드에 dataset.page가 붙으면 47면이 되어 버린다.
+  // 맺음말 뭉치는 챕터 바에 없다 — 끝까지 온 사람만 만나는 자리라 해시로 들어간다.
+  // 쿼리를 하나 붙여야 같은 문서 안의 해시 이동이 아니라 실제로 다시 열린다
+  await p.goto(BASE + '/game/?end#outro', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(700);
+  const colo = await p.evaluate(() => {
+    const c = document.querySelector('.card--colophon');
+    return c && {
+      cards: document.querySelectorAll('.card').length,
+      pages: document.querySelectorAll('.card[data-page]').length,
+      last: document.querySelector('.card:last-child').className,
+      page: c.dataset.page || '',
+      text: c.textContent,
+    };
+  });
+  ok(!!colo && colo.cards === 3 && colo.pages === 2 && colo.last.includes('colophon'),
+    '맺음말 뒤에 판권면 한 장이 더 있다', JSON.stringify(colo));
+  ok(!!colo && !colo.page, '판권면은 원본 면이 아니다 (data-page 없음)');
+  ok(!!colo && colo.text.includes('Steam 상점 페이지의 공개 리뷰'),
+    '인용 출처가 한 줄로 밝혀져 있다');
+  // 표지의 2026.07.08과 마을 카드의 25.02가 여기서 나란히 만난다 — 둘 다 사실이다
+  ok(!!colo && colo.text.includes('Ver.3')
+     && colo.text.includes('2025.02') && colo.text.includes('2026.07.08'),
+    '판본과 두 날짜가 한 줄에 나란히 선다', colo && colo.text.replace(/\s+/g, ' '));
+
+  await p.goto(BASE + '/game/', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(600);
+  await p.click('.chip[data-chapter="ch1"]'); await p.waitForTimeout(400);
+
   // 간지는 스냅 대상이되 스티키가 아니어야 한다
   const pos = await p.evaluate(() => ({
     divider: getComputedStyle(document.querySelector('.card--divider')).position,

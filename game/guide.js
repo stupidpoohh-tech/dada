@@ -124,6 +124,36 @@
     return card;
   }
 
+  /** 판권면 — 46면을 한 장도 건드리지 않고 출처를 밝히는 자리.
+   *
+   *  인용한 리뷰가 서른몇 개인데 지금까지 출처 표시가 아예 없었다. 면마다 이름을
+   *  다시 붙이려면 2017·2022·2023년까지 흩어진 원본 리뷰를 되찾아야 하고
+   *  (스팀에는 그 길이 없다) 리뷰 상자가 커지면서 그 면들의 조판이 딸려 온다.
+   *  저작권법 §37은 출처를 「이용 상황에 따라 합리적이라고 인정되는 방법으로」
+   *  밝히라고 하므로, 개인 안내서의 짧은 인용 서른몇 개는 한 곳에 모아 밝힌다.
+   *
+   *  판본과 날짜도 여기서 한 줄로 만난다. 표지에 인쇄된 2026.07.08은 Ver.3을
+   *  뽑은 날이고 마을 카드의 25.02는 엮은 때다 — 둘 다 사실인데 따로 놓여 있어
+   *  읽는 사람에게만 어긋나 보였다. 나란히 쓰면 어긋남이 아니라 이력이 된다. */
+  function colophonCard() {
+    const c = data.colophon || {};
+    const m = data.meta;
+    const card = el('article', 'card card--colophon');
+    const box = el('div', 'colophon');
+    if (c.source) box.appendChild(el('p', 'colo-source', c.source));
+
+    const meta = el('div', 'colo-meta');
+    meta.appendChild(el('div', 'colo-title', m.title));
+    const stamp = [m.version, c.made && `${c.made} 엮음`, m.date && `${m.date} 펴냄`]
+      .filter(Boolean).join(' · ');
+    meta.appendChild(el('div', 'colo-line', stamp));
+    if (m.author) meta.appendChild(el('div', 'colo-line', m.author));
+    box.appendChild(meta);
+
+    card.appendChild(box);
+    return card;
+  }
+
   /* ── 뭉치 ──────────────────────────────────────── */
 
   /** 카드 뭉치 일곱을 정의한다. 그리기는 올릴 때 한다 (mount). */
@@ -170,8 +200,10 @@
     stacks.push({
       id: 'outro',
       pages: [data.meta.appendixPage, data.meta.endingPage],
+      // 판권면은 47번째 면이 아니라 46면 뒤에 새로 놓는 한 장이다 (colophonCard)
       draw: () => [imageCard(pageOf(data.meta.appendixPage)),
-                   imageCard(pageOf(data.meta.endingPage))],
+                   imageCard(pageOf(data.meta.endingPage)),
+                   colophonCard()],
     });
   }
 

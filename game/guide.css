@@ -149,7 +149,7 @@ html, body {
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .card--game, .card--cover, .card--toc,
-    .card--appendix, .card--ending, .card--gate {
+    .card--appendix, .card--ending, .card--gate, .card--colophon {
       animation: card-turn linear both;
       animation-timeline: view(block);
       animation-range: cover 0% cover 100%;
@@ -232,6 +232,27 @@ html, body {
 .gate-dots i { width: 5px; height: 5px; background: var(--line); display: block; }
 .gate-dots i.on { background: var(--ink); }
 .gate-dots .sep { width: 26px; height: 1px; background: var(--line); }
+
+/* ── 판권면 ──────────────────────────────────────────
+   문(門)에 이어 이미지가 아닌 두 번째 화면. 크롬이 색을 더하지 않는다는 규칙은
+   여기서도 같다 — 무채색 두 단계와 종이색 하나, 헤어라인 하나뿐이다.
+   덱을 닫는 말이라 문보다 더 조용해야 해서 글자를 한 단계 낮춰 쓴다. */
+.card--colophon { cursor: default; }
+.colophon {
+  display: grid; gap: 30px; justify-items: center; text-align: center;
+  padding: 0 28px; max-width: 32rem;
+}
+.colo-source {
+  font-size: 13px; line-height: 1.8; color: var(--ink); margin: 0;
+  word-break: keep-all;                  /* 한국어 어절 단위로 끊는다 */
+}
+.colo-meta {
+  display: grid; gap: 5px; justify-items: center;
+  font-size: 12px; line-height: 1.7; color: var(--mute);
+  padding-top: 26px; border-top: 1px solid var(--line); width: 100%;
+}
+.colo-title { color: var(--ink); font-weight: 600; }
+.colo-line { font-variant-numeric: tabular-nums; }
 
 .nojs { padding: calc(var(--bar-h) + 20px) 20px 20px; color: var(--mute); }
 
