@@ -123,13 +123,6 @@ button, input { font: inherit; color: inherit; }
 .map-img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 .layer { position: absolute; inset: 0; pointer-events: none; }
-/* 도로에 가지를 드리운 나무들. 지도를 한 장 더 깔고 나무만 오려내 자동차 위에
-   덮는다 — 차가 나무 뒤로 지나간다. 도로가 나무에 가려 있어 아무리 동선을
-   옮겨도 겹치는 자리가 있어서, 아예 앞뒤 순서를 만들어주는 쪽이 자연스럽다.
-   애니메이션이 없어 원본과 같은 방식으로 그려진다 — 이음매가 보이지 않는다 */
-.canopy img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-/* 구름과 새는 건물 위를 지나야 한다 — 아래 레이어에 두면 건물에 가린다 */
-.sky { z-index: 6; }
 
 /* 구역 버튼 — 클릭 영역은 블록 전체지만, 뾰옹 하는 건 그 안의 건물뿐.
    .pop은 따로 오려낸 건물 그림(assets/sprites/buildings.png,
@@ -398,7 +391,7 @@ button, input { font: inherit; color: inherit; }
      눌리는 물건이 된다 — 누르려다 안 눌리는 문은 문이 아니다. 위에 있는 것이 클릭을
      받는 건 원래 그래야 하는 일이고, 머무는 자리가 전부 빈 땅이라 오래 겹치지도 않는다. */
   pointer-events: auto;
-  z-index: 7;                       /* 새·구름(6)보다 위 — 문은 가려지면 안 된다 */
+  z-index: 7;                       /* 마을에서 가장 위 — 문은 가려지면 안 된다 */
   background: none; border: 0; padding: 0; cursor: pointer;
   line-height: 0;
   transform: translate(-50%, -50%);
@@ -548,23 +541,10 @@ button, input { font: inherit; color: inherit; }
   65%      { transform: translateY(-16%) scale(.97, 1.05); }
 }
 
-/* 움직이는 것들 */
-.car, .bird, .cloud, .folk { position: absolute; }
-.car img, .cloud img, .folk img { display: block; width: 100%; height: auto; }
-
-/* 자동차는 JS가 도로 구간을 따라 움직인다 (app.js CAR_ROUTES) */
-
-.cloud { opacity: .82; animation: drift linear infinite; }
-@keyframes drift { from { left: -18%; } to { left: 112%; } }
-
-/* 새: 바깥(.bird)이 경로 이동, 가운데(.bird-wave)가 위아래 물결, 안(img)이 날갯짓 */
-.bird { animation: fly linear infinite; }
-.bird-wave { animation: wave 3.4s ease-in-out infinite alternate; }
-.bird-flip { line-height: 0; }
-.bird.flip .bird-flip { transform: scaleX(-1); }  /* 스프라이트가 왼쪽을 보므로 우향 비행 시 뒤집기 */
-.bird img { display: block; width: 100%; height: auto; animation: flap .3s steps(2, end) infinite alternate; }
-@keyframes wave { from { transform: translateY(-30%); } to { transform: translateY(30%); } }
-@keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(.86); } }
+/* 지도 위에 얹는 것들. 구름·새·자동차가 떠다니던 자리인데, 마을에 문이 늘면서
+   전부 걷어냈다 (app.js 머리말) — 남은 것은 공원 사람들과 앉은 새뿐이다. */
+.folk { position: absolute; }
+.folk img { display: block; width: 100%; height: auto; }
 
 /* 공원 사람들 — 발 붙이고 미세하게 들썩.
    '사람들' 구역은 공원 땅이 아니라 사람들이 반응한다 */

@@ -725,7 +725,8 @@ head('지붕 위 확성기');
 }
 
 /* ── 13. 날아다니는 쪽지 ──────────────────────────────────
-   새·구름은 풍경이고 이건 문이다. 그 차이가 눈에 보여야 한다.
+   마을 위를 도는 유일한 것이다 — 구름·새·자동차를 걷어낸 뒤로 「지나가는 것」은
+   이것뿐이라, 움직이면 곧 눌러볼 것이라는 뜻이 된다.
    깨진 적 있음: 지도 위 가장 높이 뜬 채로 늘 잡히게 뒀더니 **건물 위를 지날 때
    그 건물의 클릭을 가로챘다** — 미술관을 누르려는데 쪽지가 먹었다.
    지금은 멈춰 선 동안만 잡히고, 머무는 자리는 전부 건물이 없는 빈 땅이다. */
@@ -740,14 +741,19 @@ head('날아다니는 쪽지');
   const how = await p.evaluate(() => {
     const n = document.querySelector('.note-spot');
     const g = (name) => document.getAnimations().find((a) => a.animationName === name);
+    // 지도 위 다른 문들(우편함 4 · "나" 5 · 확성기 3)보다 위여야 한다
+    const others = ['.mbox-spot', '.me-spot', '.horn-spot']
+      .map((s) => document.querySelector(s))
+      .filter(Boolean)
+      .map((e) => +getComputedStyle(e).zIndex || 0);
     return {
       z: +getComputedStyle(n).zIndex,
-      sky: +getComputedStyle(document.getElementById('sky')).zIndex,
+      under: Math.max(...others),
       flapDur: g('note-f-up') && g('note-f-up').effect.getTiming().duration,
       hit: parseFloat(getComputedStyle(n, '::after').width),
     };
   });
-  ok(how.z > how.sky, `새·구름보다 위에 뜬다 (쪽지 ${how.z} > 하늘 ${how.sky})`);
+  ok(how.z > how.under, `마을의 다른 문들보다 위에 뜬다 (쪽지 ${how.z} > ${how.under})`);
   ok(how.hit >= 44, `판정이 터치 기준을 넘는다 (${Math.round(how.hit)}px)`);
   // 마을은 2.4초 한 박자다. 쪽지는 그 박자를 타지 않는다 — 마을 위에 온 것이라서
   ok(how.flapDur > 0 && how.flapDur !== 2400,

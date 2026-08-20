@@ -4,32 +4,19 @@
 
   const S = 'assets/sprites/cut/';
 
-  // 지도 위를 움직이는 것들. 좌표는 지도 기준 %.
-  // 자동차 경로는 지도 픽셀을 스캔해 얻은 실측값이다 (도로 중심선 폴리라인).
-  // 위 도로는 구간별로 높이가 다르다. 지도 픽셀에서 아스팔트 띠를 훑어 얻은 중앙선:
-  // 미술관·한옥 앞 38.9~43.5(중앙 41.2), 학교·회사 사이 41.1~43.2(중앙 42.1),
-  // 카페 위 41.0~45.9(중앙 43.4). 나무에 걸리는 구간은 동선을 피하지 않고
-  // 나무를 앞으로 덮는다 (services.json의 canopy).
-  // path의 y는 차체 세로 중심. 스프라이트가 왼쪽을 보므로 우향일 때만 뒤집는다.
-  const TOP_ROAD = [[-10, 41.2], [30, 41.2], [38, 42.1], [48, 42.3], [54, 43.4], [70, 43.4], [76, 41.2], [108, 41.2]];
-  const CAR_ROUTES = [
-    // 위 도로: 두 대가 같은 차선을 반 바퀴 간격으로 순환 — 겹치지 않는다
-    { src: 'car-yellow.png', w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 15, dir: -1, start: 0.15 },
-    { src: 'car-blue.png',   w: 3.8, path: TOP_ROAD, mode: 'wrap', speed: 15, dir: -1, start: 0.65 },
-    // 아래 도로 가운데 구간(회사·카페 아래)만 왕복 — 양끝은 다리와 세모집이라 막혀 있다.
-    // 79.4보다 내려오면 길가에 선 캐릭터 머리를 스친다 (캐릭터 윗변 y≈81.2)
-    { src: 'car-red.png',    w: 3.8, path: [[40, 79.4], [64, 79.4]], mode: 'pingpong', speed: 10, dir: 1, pause: 0.7, start: 0.4 },
-  ];
-  const CLOUDS = [
-    { src: 'cloud-1.png', y: 4,  w: 11, dur: 150, delay: 0 },
-    { src: 'cloud-3.png', y: 12, w: 8,  dur: 200, delay: 60 },
-    { src: 'cloud-4.png', y: 2,  w: 12, dur: 240, delay: 130 },
-  ];
-  // 새: 사선으로 활강 + 위아래 물결. 우향이면 flip (스프라이트가 왼쪽을 봄)
-  const BIRDS = [
-    { src: 'bluebird-fly.png', from: [110, 8],  to: [-8, 33], w: 2.4, dur: 14, delay: 3 },
-    { src: 'sparrow-fly.png',  from: [-8, 31],  to: [108, 5], w: 2.2, dur: 17, delay: 10 },
-  ];
+  /* **떠다니는 풍경은 두지 않는다.** 한때 구름 셋이 하늘을 가로지르고, 새 둘이
+     사선으로 활강하고, 자동차 셋이 도로를 돌았다. 그때는 마을에 움직이는 것이
+     그것뿐이라 살아 있어 보였는데, 그 뒤로 까마귀·쪽지·확성기가 차례로 들어오면서
+     **눈이 쉴 자리가 없어졌다.** 셋을 걷어낸 이유는 하나씩이 나빠서가 아니라
+     전부 합쳐 놓으니 번잡해서다.
+
+     남은 움직임은 전부 **뜻이 있는 것**이다 — 건물은 눌러볼 수 있다는 신호로
+     숨쉬고, 사람들은 공원이 사람들 구역이라 들썩이고, 까마귀·쪽지·확성기는
+     저마다 문이다. 지나가기만 하는 것은 이제 없다.
+
+     자동차가 사라지면서 `canopy`(차가 나무 뒤로 지나가도록 나무만 오려 덮던
+     레이어)도 함께 걷었다 — 가릴 것이 없으면 지도를 한 장 더 까는 값만 남는다. */
+
   // 공원에 모여 있는 사람들. 8종 중 6명만 — 다 넣으면 붐빈다.
   // w는 지도 폭 기준 %. 높이가 아니라 폭으로 잡아야 지도와 같이 축소된다.
   // 분수 왼쪽 잔디에 5명을 바짝 모아 한 무리로 보이게. 다 같은 박자로 움직인다.
@@ -40,7 +27,9 @@
     { src: 'person-6.png', x: 17.5, y: 61.5, w: 3.00 },  // 산책로 위 (가운데)
     { src: 'person-7.png', x: 21.5, y: 57.5, w: 2.20 },  // 분수 오른쪽
   ];
-  // 잔디에 내려앉은 새 — 정적으로 얹어 마을을 채운다.
+  /* 잔디에 내려앉은 새 — 정적으로 얹어 마을을 채운다. **날아다니던 새와 달리
+     이 둘은 남긴다.** 걷어낸 것은 「새」가 아니라 「가로지르는 움직임」이라서다 —
+     앉은 새는 지도에 그려진 꽃·벤치와 같은 자리에 있는 그림일 뿐 움직이지 않는다. */
   const PERCHED = [
     { src: 'sparrow-side.png',   x: 52,   y: 30, w: 1.7 },
     { src: 'bluebird-front.png', x: 11,   y: 50, w: 1.4 },
@@ -91,50 +80,7 @@
   }
 
   function paintScenery() {
-    const sky = $('sky'), road = $('road'), folks = $('folks');
-
-    // 도로에 가지를 드리운 나무 — 지도를 한 장 더 깔고 그 나무만 오려 차 위에 덮는다.
-    // 레이어가 지도와 같은 크기라 %가 곧 지도 좌표다.
-    (data.canopy || []).forEach((poly) => {
-      const img = new Image();
-      img.src = 'assets/map/town-web.jpg';
-      img.alt = '';
-      img.style.clipPath =
-        'polygon(' + poly.map(([x, y]) => x + '% ' + y + '%').join(',') + ')';
-      $('canopy').appendChild(img);
-    });
-
-    CLOUDS.forEach((c) => sky.appendChild(sprite('cloud', c.src, {
-      top: pct(c.y), width: pct(c.w),
-      animationDuration: c.dur + 's', animationDelay: '-' + c.delay + 's',
-    })));
-
-    BIRDS.forEach((b, i) => {
-      const node = el('div', 'bird' + (b.to[0] > b.from[0] ? ' flip' : ''));
-      Object.assign(node.style, {
-        top: pct(b.from[1]), left: pct(b.from[0]), width: pct(b.w),
-        animationDuration: b.dur + 's', animationDelay: '-' + b.delay + 's',
-        animationName: 'fly' + i,
-      });
-      // 물결(.bird-wave) · 좌우반전(.bird-flip) · 날갯짓(img)이 서로 다른 요소를 써야
-      // transform이 겹쳐 덮어쓰지 않는다
-      const wave = el('div', 'bird-wave');
-      wave.style.animationDelay = '-' + (i * 1.3) + 's';
-      const flip = el('div', 'bird-flip');
-      const img = new Image();
-      img.src = S + b.src;
-      img.alt = '';
-      img.loading = 'lazy';
-      flip.appendChild(img);
-      wave.appendChild(flip);
-      node.appendChild(wave);
-      const rule = `@keyframes fly${i}{from{left:${b.from[0]}%;top:${b.from[1]}%}
-        to{left:${b.to[0]}%;top:${b.to[1]}%}}`;
-      document.styleSheets[0].insertRule(rule, document.styleSheets[0].cssRules.length);
-      sky.appendChild(node);
-    });
-
-    startCars(road);
+    const folks = $('folks');
 
     // 왼쪽 사람부터 오른쪽 사람까지 차례로 솟는다 — 파도타기.
     // 박자(2.4초)는 마을과 같고 시작만 조금씩 늦춘다. 배열이 이미 x 순서다.
@@ -146,59 +92,6 @@
     PERCHED.forEach((p) => folks.appendChild(sprite('folk', p.src, {
       left: pct(p.x), top: pct(p.y), width: pct(p.w), animation: 'none',
     })));
-  }
-
-  /** 자동차를 도로 폴리라인을 따라 움직인다. rAF는 탭이 안 보이면 멈추므로 배터리도 아낀다. */
-  function startCars(road) {
-    // path에서 x에 해당하는 도로 중심 y를 선형 보간
-    const yAt = (path, x) => {
-      if (x <= path[0][0]) return path[0][1];
-      for (let i = 1; i < path.length; i++) {
-        if (x <= path[i][0]) {
-          const [x0, y0] = path[i - 1], [x1, y1] = path[i];
-          return y0 + (y1 - y0) * ((x - x0) / (x1 - x0));
-        }
-      }
-      return path[path.length - 1][1];
-    };
-
-    const cars = CAR_ROUTES.map((r) => {
-      const node = el('div', 'car');
-      node.style.width = pct(r.w);
-      const img = new Image();
-      img.src = S + r.src;
-      img.alt = '';
-      node.appendChild(img);
-      road.appendChild(node);
-      const face = (dir) => { img.style.transform = dir > 0 ? 'scaleX(-1)' : ''; };
-      const x0 = r.path[0][0], x1 = r.path[r.path.length - 1][0];
-      // 차체 높이(지도 % 기준): 폭 × 이미지비율 × 지도 가로세로비
-      const hPct = r.w * (92 / 140) * (1792 / 1434);
-      face(r.dir);
-      return { ...r, node, face, x0, x1, hPct,
-               x: x0 + (r.start ?? Math.random()) * (x1 - x0), wait: 0 };
-    });
-
-    let prev = performance.now();
-    function tick(now) {
-      const dt = Math.min((now - prev) / 1000, 0.1);
-      prev = now;
-      cars.forEach((c) => {
-        if (c.wait > 0) { c.wait -= dt; return; }
-        c.x += c.dir * c.speed * dt;
-        if (c.mode === 'wrap') {
-          if (c.dir > 0 && c.x > c.x1) c.x = c.x0;
-          if (c.dir < 0 && c.x < c.x0) c.x = c.x1;
-        } else {
-          if (c.x > c.x1) { c.x = c.x1; c.dir = -1; c.wait = c.pause || 1; c.face(-1); }
-          if (c.x < c.x0) { c.x = c.x0; c.dir = 1; c.wait = c.pause || 1; c.face(1); }
-        }
-        c.node.style.left = c.x.toFixed(3) + '%';
-        c.node.style.top = (yAt(c.path, c.x) - c.hPct / 2).toFixed(3) + '%';
-      });
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
   }
 
   /* ── 구역 핫스팟 ─────────────────────────── */
