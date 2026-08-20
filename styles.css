@@ -897,7 +897,10 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
   width: 100%; box-sizing: border-box;
   background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: 10px;
-  padding: 9px 11px; font-size: 14px;   /* 16px 미만이면 iOS가 폼에 확대를 건다 — 14는 안전 */
+  /* **16px 아래로 내리지 않는다.** iOS 사파리는 글자가 16px보다 작은 칸에 커서가
+     들어가면 그 칸이 읽히도록 화면을 통째로 확대한다 — 펴자마자 커서를 넣어 주므로
+     팝업이 열리는 순간 마을이 확대돼 보였다. 위의 #search가 16px인 것도 같은 이유다. */
+  padding: 10px 12px; font-size: 16px;
   line-height: 1.55;
 }
 .say textarea { resize: vertical; min-height: 84px; }

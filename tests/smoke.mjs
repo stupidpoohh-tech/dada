@@ -987,6 +987,15 @@ head('개발자에게 한마디');
   ok(await p.locator('#sayOpen').getAttribute('aria-expanded') === 'true',
     '펴졌다는 것을 스크린리더도 안다');
 
+  /* **글자가 16px보다 작은 칸은 두지 않는다.** iOS 사파리는 그런 칸에 커서가
+     들어가면 읽히도록 화면을 통째로 확대한다 — 폼을 펴면 커서를 넣어 주므로
+     열리는 순간 마을이 확대돼 보였다. 목록의 검색칸까지 함께 지킨다. */
+  const small = await p.evaluate(() => [...document.querySelectorAll('input[type="text"], input[type="search"], textarea')]
+    .filter((n) => n.offsetParent !== null && parseFloat(getComputedStyle(n).fontSize) < 16)
+    .map((n) => n.id + ':' + getComputedStyle(n).fontSize));
+  ok(small.length === 0, '적는 칸의 글자가 16px 아래로 내려가지 않는다 (iOS 확대 방지)',
+    small.join(', '));
+
   // 봇 칸은 사람 눈에 보이면 안 된다 (보이면 사람이 채우고 그 글은 버려진다)
   const hp = await p.evaluate(() => {
     const r = document.getElementById('sayHp').getBoundingClientRect();
