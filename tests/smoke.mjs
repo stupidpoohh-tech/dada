@@ -972,26 +972,31 @@ head('캐시 어긋남');
 /* ── 15. 개발자에게 한마디 ────────────────────────────────
    서버(worker.js) 쪽은 tests/worker.mjs가 따로 본다. 여기서는 **화면이 서버의
    대답을 정직하게 옮기는지**만 본다 — 특히 실패했을 때 성공한 척하지 않는지.
-   조용히 고맙다고 하면 방문자는 남겼다고 믿고 나는 못 받는다. */
+   조용히 고맙다고 하면 방문자는 남겼다고 믿고 나는 못 받는다.
+
+   배치도 함께 지킨다. 처음에는 버튼으로 접어 두고 펴면 세 줄짜리 폼이 나왔는데,
+   나가는 길에 마주치기엔 너무 무거웠다 — 지금은 그림 셋이고 적는 칸은 「할 말
+   있어요」를 누른 사람에게만 열린다. */
 head('개발자에게 한마디');
 {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(500);
 
-  // 푸터는 나가는 길이다 — 기본은 접혀 있어야 한다
-  ok(await p.locator('#sayBox').getAttribute('hidden') !== null, '처음에는 접혀 있다');
-  await p.click('#sayOpen');
-  await p.waitForTimeout(250);
-  ok(await p.locator('#sayBox').getAttribute('hidden') === null, '누르면 펴진다');
-  ok(await p.locator('#sayOpen').getAttribute('aria-expanded') === 'true',
-    '펴졌다는 것을 스크린리더도 안다');
+  const shape = await p.evaluate(() => ({
+    picks: document.querySelectorAll('.say-pick').length,
+    kinds: [...document.querySelectorAll('.say-pick')].map((b) => b.dataset.kind).join(','),
+    formHidden: document.getElementById('sayForm').hidden,
+    rows: document.querySelectorAll('#sayForm textarea, #sayForm input[type="text"]').length,
+  }));
+  ok(shape.picks === 3 && shape.kinds === 'hi,good,idea', '그림 셋이 한 줄로 서 있다', shape.kinds);
+  ok(shape.formHidden, '적는 칸은 처음부터 열려 있지 않다');
 
   /* **글자가 16px보다 작은 칸은 두지 않는다.** iOS 사파리는 그런 칸에 커서가
-     들어가면 읽히도록 화면을 통째로 확대한다 — 폼을 펴면 커서를 넣어 주므로
-     열리는 순간 마을이 확대돼 보였다. 목록의 검색칸까지 함께 지킨다. */
+     들어가면 읽히도록 화면을 통째로 확대한다 — 「할 말 있어요」를 누르면 바로
+     커서를 넣어 주므로, 그때 마을이 확대돼 보였다. 목록의 검색칸까지 함께 지킨다. */
   const small = await p.evaluate(() => [...document.querySelectorAll('input[type="text"], input[type="search"], textarea')]
-    .filter((n) => n.offsetParent !== null && parseFloat(getComputedStyle(n).fontSize) < 16)
+    .filter((n) => parseFloat(getComputedStyle(n).fontSize) < 16)
     .map((n) => n.id + ':' + getComputedStyle(n).fontSize));
   ok(small.length === 0, '적는 칸의 글자가 16px 아래로 내려가지 않는다 (iOS 확대 방지)',
     small.join(', '));
@@ -999,9 +1004,42 @@ head('개발자에게 한마디');
   // 봇 칸은 사람 눈에 보이면 안 된다 (보이면 사람이 채우고 그 글은 버려진다)
   const hp = await p.evaluate(() => {
     const r = document.getElementById('sayHp').getBoundingClientRect();
-    return { onScreen: r.right > 0 && r.left < innerWidth };
+    return r.right > 0 && r.left < innerWidth;
   });
-  ok(!hp.onScreen, '봇만 보는 칸은 화면 밖에 있다');
+  ok(!hp, '봇만 보는 칸은 화면 밖에 있다');
+
+  /* 인사·좋았어요는 **한 번에 간다.** 적는 칸을 거치지 않는 것이 이 배치의 요점이다 */
+  let sent = null;
+  await p.route('**/api/word', async (route) => {
+    sent = JSON.parse(route.request().postData() || '{}');
+    await route.fulfill({ status: 200, contentType: 'application/json',
+                          body: JSON.stringify({ ok: true }) });
+  });
+  await p.click('.say-pick[data-kind="good"]');
+  await p.waitForTimeout(400);
+  const quick = await p.evaluate(() => ({
+    note: document.getElementById('sayNote').textContent,
+    good: document.getElementById('sayNote').classList.contains('say-good'),
+    gone: !document.getElementById('sayPicks') && !document.getElementById('sayForm'),
+  }));
+  ok(sent && sent.kind === 'good' && !sent.text, '그림만 눌러도 그대로 간다', JSON.stringify(sent));
+  ok(quick.good && quick.gone, '보내고 나면 그림이 사라지고 고맙다는 말만 남는다',
+    JSON.stringify(quick));
+
+  /* 「할 말 있어요」는 적는 칸을 편다 — 말이 있어야 뜻이 사는 하나다 */
+  await p.unroute('**/api/word');
+  await town(p);
+  await p.waitForTimeout(500);
+  await p.click('.say-pick[data-kind="idea"]');
+  await p.waitForTimeout(300);
+  const opened = await p.evaluate(() => ({
+    formShown: !document.getElementById('sayForm').hidden,
+    pressed: document.querySelector('.say-pick[data-kind="idea"]').getAttribute('aria-pressed'),
+    focused: document.activeElement.id,
+  }));
+  ok(opened.formShown && opened.pressed === 'true',
+    '「할 말 있어요」를 누르면 적는 칸이 열린다', JSON.stringify(opened));
+  ok(opened.focused === 'sayText', '열린 칸에 커서까지 들어간다', opened.focused);
 
   // 빈 채로 누르면 서버까지 가지 않는다
   let calls = 0;
@@ -1024,33 +1062,33 @@ head('개발자에게 한마디');
   const failed = await p.evaluate(() => ({
     note: document.getElementById('sayNote').textContent,
     bad: document.getElementById('sayNote').classList.contains('say-bad'),
-    formGone: !document.getElementById('sayForm'),
+    kept: !!document.getElementById('sayForm') && !!document.getElementById('sayPicks'),
+    typed: document.getElementById('sayText').value,
     btnBack: !document.getElementById('sayBtn').disabled,
   }));
   ok(/준비가 안 됐/.test(failed.note) && failed.bad,
     '못 받았으면 서버가 준 말을 그대로 띄운다', JSON.stringify(failed));
-  ok(!failed.formGone && failed.btnBack, '실패하면 적은 것과 버튼이 그대로 남는다',
-    JSON.stringify(failed));
+  ok(failed.kept && failed.typed === '마을 잘 봤어요' && failed.btnBack,
+    '실패하면 적은 것과 버튼이 그대로 남는다', JSON.stringify(failed));
 
-  // 성공하면 폼을 치우고 고맙다고만 한다 — 빈 칸을 다시 내밀면 안 갔나 싶어진다
+  // 다시 눌러 성공하면 그림도 칸도 치우고 고맙다고만 한다
   await p.unroute('**/api/word');
-  let sent = null;
+  sent = null;
   await p.route('**/api/word', async (route) => {
     sent = JSON.parse(route.request().postData() || '{}');
     await route.fulfill({ status: 200, contentType: 'application/json',
                           body: JSON.stringify({ ok: true }) });
   });
-  await p.fill('#sayName', '다원');
+  await p.fill('#sayReply', 'a@b.c');
   await p.click('#sayBtn');
   await p.waitForTimeout(400);
   const done = await p.evaluate(() => ({
-    note: document.getElementById('sayNote').textContent,
     good: document.getElementById('sayNote').classList.contains('say-good'),
-    formGone: !document.getElementById('sayForm'),
+    gone: !document.getElementById('sayForm') && !document.getElementById('sayPicks'),
   }));
-  ok(sent && sent.text === '마을 잘 봤어요' && sent.name === '다원',
-    '적은 것이 그대로 서버로 간다', JSON.stringify(sent));
-  ok(done.good && done.formGone, '남기면 폼이 사라지고 고맙다는 말만 남는다',
+  ok(sent && sent.kind === 'idea' && sent.text === '마을 잘 봤어요' && sent.reply === 'a@b.c',
+    '적은 것이 무엇을 눌렀는지와 함께 간다', JSON.stringify(sent));
+  ok(done.good && done.gone, '남기면 그림과 칸이 사라지고 고맙다는 말만 남는다',
     JSON.stringify(done));
 
   /* 위에서 **일부러** 503을 흉내 냈으므로 브라우저가 "Failed to load resource"를

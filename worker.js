@@ -9,6 +9,10 @@
  * 지도·그림·목록은 이 파일이 배포돼도 예전과 똑같은 길로 나간다. 없는 주소
  * (`/api/word`)만 여기로 온다.
  *
+ * ── 받는 것 ─────────────────────────────────
+ * 그림 버튼 셋(`kind`: hi · good · idea)과, 「할 말 있어요」에만 따라오는 글(`text`).
+ * **그림만 눌러도 한마디다** — 글이 없다고 빈손으로 보지 않는다.
+ *
  * ── 저장하는 곳 ─────────────────────────────
  * KV 하나(`WORDS`)에 한 줄씩 넣는다. 키는 `w:<시각역순>:<임의값>`이라
  * **목록이 최신순으로 저절로 정렬된다** — KV의 list는 키 사전순이므로,
@@ -32,6 +36,10 @@
  * 3. 도배 — 같은 IP에서 1분에 3번까지. KV 카운터 하나로 센다
  */
 
+/** 그림 버튼이 보내는 뜻. **여기 없는 값은 버린다** — 남이 아무 문자열이나
+ *  넣어 두면 나중에 세어 볼 때 목록이 지저분해진다. */
+const KINDS = ['hi', 'good', 'idea'];
+
 const MAX_NAME = 40;
 const MAX_TEXT = 1000;
 const RATE_MAX = 3;          // 1분에 몇 번까지
@@ -42,8 +50,13 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
 });
 
-/** 키를 최신순으로 만든다. KV list는 사전순이라, 남은 시간을 넣으면 최근 것이 앞에 온다. */
-const deskKey = (ms) => 'w:' + String(1e15 - ms).padStart(16, '0');
+/** 키를 최신순으로 만든다. KV list는 사전순이라, 남은 시간을 넣으면 최근 것이 앞에 온다.
+ *
+ *  **꼬리표는 진짜 임의값이어야 한다.** 처음에는 같은 `ms`를 36진수로 바꿔 붙였는데,
+ *  그건 앞머리와 같은 값에서 나온 것이라 아무것도 갈라 주지 못한다 — 1밀리초 안에
+ *  둘이 들어오면 키가 똑같아서 **먼저 온 말이 덮여 사라졌다.** 검사가 잡았다. */
+const deskKey = (ms) => 'w:' + String(1e15 - ms).padStart(16, '0')
+  + ':' + crypto.randomUUID().slice(0, 8);
 
 async function overRate(env, ip) {
   if (!ip) return false;
@@ -67,8 +80,12 @@ async function leaveWord(request, env) {
   // 봇은 사람 눈에 안 보이는 칸을 채운다. 거절하면 다른 방법을 찾으므로 받은 척한다
   if (typeof body.hp === 'string' && body.hp.trim()) return json({ ok: true });
 
+  const kind = KINDS.includes(body.kind) ? body.kind : '';
   const text = String(body.text || '').trim().slice(0, MAX_TEXT);
-  if (!text) return json({ ok: false, error: 'empty', message: '한마디를 적어 주세요.' }, 400);
+  // 그림만 눌러도 한마디다 — 글이 없다고 빈손으로 보지 않는다
+  if (!text && !kind) {
+    return json({ ok: false, error: 'empty', message: '한마디를 적어 주세요.' }, 400);
+  }
 
   const ip = request.headers.get('cf-connecting-ip') || '';
   if (await overRate(env, ip)) {
@@ -78,8 +95,9 @@ async function leaveWord(request, env) {
 
   const now = Date.now();
   const cf = request.cf || {};
-  await env.WORDS.put(deskKey(now) + ':' + now.toString(36), JSON.stringify({
+  await env.WORDS.put(deskKey(now), JSON.stringify({
     at: new Date(now).toISOString(),
+    kind,
     name: String(body.name || '').trim().slice(0, MAX_NAME),
     text,
     // 답장이 필요하면 쓰라고 받는다. 없으면 없는 대로 남는다

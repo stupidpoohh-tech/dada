@@ -1348,62 +1348,82 @@
    *  마을을 다 둘러본 자리(푸터)에서 한마디 남기고 갈 수 있게. 받는 쪽은
    *  `worker.js`의 `/api/word`다 — 이 마을에서 서버가 하는 유일한 일이다.
    *
-   *  **접어 둔다.** 푸터는 나가는 길이지 말을 걸어야 하는 곳이 아니라,
-   *  펴는 것은 남길 마음이 있는 사람의 손에 맡긴다.
+   *  **접어 두지 않고, 적는 칸을 먼저 내밀지도 않는다.** 처음에는 버튼 하나로
+   *  접어 두고 펴면 세 줄짜리 폼(말·이름·답장받을곳)이 나왔는데, 나가는 길에
+   *  마주치기엔 너무 무거웠다 — 남길 마음이 있어도 세 칸을 보면 접는다.
+   *  지금은 그림 셋뿐이고, 누르면 그대로 간다.
+   *
+   *  **「할 말 있어요」만 적는 칸을 편다.** 인사와 좋았다는 그림 하나로 뜻이
+   *  다 서지만, 할 말은 말이 있어야 뜻이 산다. 필요한 사람에게만 칸이 열리므로
+   *  기본 화면은 한 줄로 남는다.
    *
    *  **보내는 동안과 보낸 뒤를 눈에 보이게 한다.** 눌렀는데 아무 일도 안 일어나면
-   *  두 번 세 번 누르게 되고, 그러면 같은 말이 여러 줄 쌓인다 — 버튼을 잠그고
-   *  「보내는 중」이라고 말한 뒤 결과를 그 자리에 쓴다.
+   *  두 번 세 번 누르게 되고, 그러면 같은 말이 여러 줄 쌓인다 — 누르는 동안 그림을
+   *  잠그고 「보내는 중」이라고 말한 뒤 결과를 그 자리에 쓴다.
    *
    *  **실패를 성공처럼 보이게 하지 않는다.** KV가 아직 안 붙어 있으면 서버가
    *  503과 함께 그렇다고 말하고, 여기서는 그 말을 그대로 띄운다. 조용히
    *  고맙다고 하면 방문자는 남겼다고 믿고 나는 못 받는다 — 그게 제일 나쁘다. */
   function initSay() {
-    const openBtn = $('sayOpen'), box = $('sayBox'), form = $('sayForm');
-    if (!openBtn || !form) return;
-    const note = $('sayNote'), btn = $('sayBtn');
+    const picks = $('sayPicks'), form = $('sayForm'), note = $('sayNote');
+    if (!picks || !form) return;
+    const all = [...picks.querySelectorAll('.say-pick')];
+    let kind = '';
 
-    openBtn.addEventListener('click', () => {
-      const open = box.hidden;
-      box.hidden = !open;
-      openBtn.setAttribute('aria-expanded', String(open));
-      if (open) { $('sayText').focus(); track('say_open', {}); }
-    });
-
-    const say = (msg, kind) => {
+    const say = (msg, tone) => {
       note.textContent = msg;
-      note.className = 'say-note' + (kind ? ' say-' + kind : '');
+      note.className = 'say-note' + (tone ? ' say-' + tone : '');
     };
+    const lock = (on) => all.forEach((b) => { b.disabled = on; });
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const text = $('sayText').value.trim();
-      if (!text) { say('한마디를 적어 주세요.', 'bad'); $('sayText').focus(); return; }
-
-      btn.disabled = true;
+    /** 보내고, 결과를 그 자리에 쓴다. 성공하면 그림과 칸을 모두 치운다 —
+     *  빈 칸을 다시 내밀면 방금 남긴 것이 안 갔나 싶어진다. */
+    async function send(payload) {
       say('보내는 중…');
       try {
         const res = await fetch('/api/word', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            text, name: $('sayName').value, reply: $('sayReply').value, hp: $('sayHp').value,
-          }),
+          body: JSON.stringify({ hp: $('sayHp').value, ...payload }),
         });
         const out = await res.json().catch(() => ({}));
         if (res.ok && out.ok) {
-          // 남긴 뒤에는 폼을 치우고 고마웠다는 말만 남긴다 — 또 쓰라고 빈 칸을
-          // 다시 내밀면 방금 남긴 것이 안 갔나 싶어진다
+          track('say_sent', { kind: payload.kind });
+          picks.remove();
           form.remove();
           say('고맙습니다. 잘 받았어요.', 'good');
-          track('say_sent', {});
-        } else {
-          say(out.message || '지금은 남길 수가 없어요. 잠시 뒤에 다시 시도해 주세요.', 'bad');
-          btn.disabled = false;
+          return true;
         }
+        say(out.message || '지금은 남길 수가 없어요. 잠시 뒤에 다시 시도해 주세요.', 'bad');
       } catch (_) {
         // 네트워크가 끊겼거나 정적으로만 띄운 경우(로컬 python 서버 등)
         say('연결이 안 돼요. 잠시 뒤에 다시 시도해 주세요.', 'bad');
+      }
+      return false;
+    }
+
+    all.forEach((b) => b.addEventListener('click', async () => {
+      kind = b.dataset.kind;
+      all.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+
+      if (kind === 'idea') {          // 할 말은 말이 있어야 뜻이 산다
+        form.hidden = false;
+        say('');
+        $('sayText').focus();
+        return;
+      }
+      form.hidden = true;
+      lock(true);
+      if (!await send({ kind })) lock(false);
+    }));
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = $('sayText').value.trim();
+      if (!text) { say('한마디를 적어 주세요.', 'bad'); $('sayText').focus(); return; }
+      const btn = $('sayBtn');
+      btn.disabled = true;
+      if (!await send({ kind: kind || 'idea', text, reply: $('sayReply').value })) {
         btn.disabled = false;
       }
     });

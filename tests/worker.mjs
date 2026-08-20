@@ -94,13 +94,45 @@ head('읽기 잠금');
 head('빈 말 · 긴 말');
 {
   const env = { WORDS: fakeKV(), ADMIN_KEY: 'k' };
-  ok((await call(post({ text: '   ' }), env)).status === 400, '빈 말은 거절한다');
+  ok((await call(post({ text: '   ' }), env)).status === 400,
+    '글도 그림도 없으면 거절한다');
 
   await call(post({ text: '가'.repeat(3000), name: '나'.repeat(200) }), env);
   const res = await call(new Request('https://x/api/word?key=k'), env);
   const w = (await res.json()).words[0];
   ok(w.text.length === 1000, '긴 말은 1000자에서 자른다', String(w.text.length));
   ok(w.name.length === 40, '긴 이름은 40자에서 자른다', String(w.name.length));
+}
+
+/* ── 4-b. 그림만 눌러도 한마디다 ────────────────────────
+   버튼 셋(hi · good · idea)은 글 없이 뜻만 보낸다. 글이 없다고 빈손으로 보면
+   그림 버튼이 통째로 죽는다. 대신 목록에 없는 값은 버린다 — 아무 문자열이나
+   들어오면 나중에 세어 볼 때 지저분해진다. */
+head('그림만 눌렀을 때');
+{
+  const env = { WORDS: fakeKV(), ADMIN_KEY: 'k' };
+  for (const kind of ['hi', 'good', 'idea']) {
+    const res = await call(post({ kind }, { 'cf-connecting-ip': kind }), env);
+    if (res.status !== 200) ok(false, `${kind}만 눌러도 받는다`, String(res.status));
+  }
+  ok(true, '글 없이 그림만 눌러도 받는다 (hi · good · idea)');
+
+  // 셋이 같은 밀리초에 들어가므로 **그 안에서의 순서는 정해져 있지 않다** —
+  // 여기서는 무엇이 담겼는지만 본다. 진짜 최신순은 위 「최신순 정렬」이 시간 간격을
+  // 두고 확인한다
+  const got = (await (await call(new Request('https://x/api/word?key=k'), env)).json())
+    .words.map((w) => w.kind).sort();
+  ok(got.join(',') === 'good,hi,idea', '무엇을 눌렀는지 함께 담긴다', got.join(','));
+
+  // 목록에 없는 값은 뜻으로 치지 않는다 — 글도 없으면 빈손이다
+  const bogus = await call(post({ kind: '<script>' }, { 'cf-connecting-ip': 'z' }), env);
+  ok(bogus.status === 400, '모르는 값만 보내면 빈손으로 친다', String(bogus.status));
+
+  // 그래도 글이 있으면 받는다. 모르는 값만 버린다
+  const withText = { WORDS: fakeKV(), ADMIN_KEY: 'k' };
+  await call(post({ kind: '<script>', text: '안녕' }), withText);
+  const w = (await (await call(new Request('https://x/api/word?key=k'), withText)).json()).words[0];
+  ok(w.text === '안녕' && w.kind === '', '글은 살리고 모르는 값만 버린다', JSON.stringify(w.kind));
 }
 
 /* ── 5. 봇이 채우는 칸 ─────────────────────────────────

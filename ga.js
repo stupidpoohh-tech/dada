@@ -30,8 +30,7 @@
  *   bundle_open     날아다니는 쪽지를 눌렀다   app.js openBundle
  *   song_open       확성기로 집 테마송을 틀었다 app.js openSong
  *   column_open     까마귀가 편 칼럼을 열었다  app.js openColumn
- *   say_open        「개발자에게 한마디」를 폈다 app.js initSay
- *   say_sent        한마디를 실제로 남겼다     app.js initSay
+ *   say_sent        한마디를 남겼다           app.js initSay (kind: hi·good·idea)
  *   picks_open      추천 픽을 열었다          app.js initPicks
  *   list_open       목록을 열었다             app.js openModal
  *   list_search     목록에서 검색했다         app.js (입력이 멎은 뒤 한 번)
