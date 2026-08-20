@@ -646,7 +646,9 @@
   function card(item) {
     const a = el('a', 'card');
     a.href = item.url || item.route || '#';
-    if (item.type === 'app' || item.type === 'external') {
+    // 마을 밖으로 나가는 것은 새 탭으로 연다 — 영상도 그렇다(릴스·유튜브 모두
+    // 남의 집이라, 같은 탭으로 보내면 돌아올 마을이 없어진다)
+    if (item.type === 'app' || item.type === 'external' || item.type === 'video') {
       a.target = '_blank';
       a.rel = 'noopener';
     }

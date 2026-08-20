@@ -43,7 +43,7 @@ def month_label(s):
 
 
 def item_html(item):
-    ext = item['type'] in ('app', 'external')
+    ext = item['type'] in ('app', 'external', 'video')   # 영상도 남의 집이라 새 탭
     attrs = ' target="_blank" rel="noopener"' if ext else ''
     badges = [f'<span class="badge">{e(TYPE_LABEL.get(item["type"], item["type"]))}</span>']
     if item.get('status') in STATUS_LABEL:
@@ -81,7 +81,7 @@ for month, group in itertools.groupby(dated, key=lambda i: i['date']):
     lis = '\n'.join(
         '        <li><a href="{}"{}>{} {}</a></li>'.format(
             e(href(i)),
-            ' target="_blank" rel="noopener"' if i['type'] in ('app', 'external') else '',
+            ' target="_blank" rel="noopener"' if i['type'] in ('app', 'external', 'video') else '',
             e(i['icon']), e(i['name']))
         for i in group)
     blocks.append(f'      <h3 class="doc-sub">{e(month_label(month))}</h3>\n'
