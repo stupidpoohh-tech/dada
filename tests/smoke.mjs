@@ -664,7 +664,7 @@ head('날아다니는 쪽지');
       return new DOMMatrix(getComputedStyle(el).transform).a; };
     return { big: read(450), small: read(1350), dur: a.effect.getTiming().duration };
   });
-  ok(pulse && pulse.big > 1.04 && pulse.small < 0.96,
+  ok(pulse && pulse.big > 1.1 && pulse.small < 0.9,
     `파장처럼 커졌다 작아진다 (${pulse && pulse.big.toFixed(2)} ↔ ${pulse && pulse.small.toFixed(2)})`);
   ok(pulse && pulse.dur !== 2400, `뽀잉 박자가 마을과 다르다 (${pulse && pulse.dur}ms)`);
 

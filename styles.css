@@ -368,9 +368,9 @@ button, input { font: inherit; color: inherit; }
    같은 것으로 안 읽히게 한다. */
 @keyframes note-bob {
   0%, 100% { transform: translateY(-4%) scale(1); }
-  25%      { transform: translateY(1%)  scale(1.1); }
+  25%      { transform: translateY(1%)  scale(1.15); }
   50%      { transform: translateY(4%)  scale(1); }
-  75%      { transform: translateY(1%)  scale(.92); }
+  75%      { transform: translateY(1%)  scale(.85); }
 }
 
 /* **손을 대면 멈춘다.** 날아다니는 것을 눌러야 하므로 이게 없으면 조준이 안 된다.
