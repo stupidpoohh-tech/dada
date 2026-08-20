@@ -96,10 +96,10 @@ git show 86bfa0a:assets/map/town.jpg > assets/map/town.jpg
 ```json
 {
   "id": "grammar",
-  "name": "고교 영문법 65",
+  "name": "고등영어문법",
   "district": "school",
   "type": "app",
-  "url": "https://dada-grammar.pages.dev/",
+  "url": "https://engrammar.pages.dev/",
   "description": "고등 영문법을 개념정리와 퀴즈로",
   "date": "2026-05",
   "icon": "📘",
@@ -460,9 +460,16 @@ CSS 기본값은 `pointer-events: none`이라, 애니메이션이 어떤 이유�
 
 ### 아직 주소가 없는 항목
 
-묶음이 가리키는 `id`로 `items`에서 항목을 찾고, **없으면 「준비 중」 카드로 둔다.**
-누를 수 없는 카드다 — 없는 곳으로 가는 링크를 만들지 않기 위해서다(까마귀와 같은 규칙).
-`services.json`에 그 `id`로 항목이 생기는 순간 자동으로 진짜 카드가 된다.
+묶음이 가리키는 `id`로 `items`에서 항목을 찾는다. 셋 중 하나다.
+
+1. **`items`에 있으면** 그 항목 카드 — 목록과 `/list.html`에도 함께 실려 있는 것
+2. **묶음 쪽에만 주소가 적혀 있으면** 그것으로 카드를 만든다.
+   아직 **만든 시기(`date`)를 못 받아 `items`에 못 올린 것**이 여기 머문다.
+   주소는 살아 있으니 눌러서 갈 수는 있지만, 목록에는 아직 안 나온다
+3. **주소가 아예 없으면 「준비 중」** — 누를 수 없는 카드다.
+   없는 곳으로 가는 링크를 만들지 않기 위해서다(까마귀와 같은 규칙)
+
+`items`에 그 `id`로 항목이 생기는 순간 ①로 올라간다.
 
 ```json
 "floater": {

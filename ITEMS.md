@@ -24,7 +24,7 @@
 
 | 항목 | 타입 | URL |
 |---|---|---|
-| 고교 영문법 65 | 🖥 | dada-grammar.pages.dev |
+| 고등영어문법 | 🖥 | engrammar.pages.dev |
 | 받아쓰기 리스닝 | 🖥 | dada-listening.pages.dev |
 | 상하이여행중국어 | 🖥 | dada-chinese.pages.dev |
 | 매일 AI 한장 | 🖥 | everyday-ai-beta.vercel.app (beta) |

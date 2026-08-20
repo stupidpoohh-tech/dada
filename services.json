@@ -239,7 +239,14 @@
       "title": "매일 쓰는 것들",
       "items": [
         { "id": "calendar", "name": "\uce98\ub9b0\ub354", "icon": "\ud83d\uddd3" },
-        { "id": "planner", "name": "\ud50c\ub798\ub108", "icon": "\ud83d\uddd2" },
+        {
+          "id": "planner",
+          "name": "\ud074\ub9ac\uc5b4 \uc704\ud06c",
+          "icon": "\ud83d\uddd2",
+          "type": "app",
+          "url": "https://clear-week.pages.dev/",
+          "description": "\uc8fc\uac04 \uce98\ub9b0\ub354\uc5d0 \uc801\uace0, \uc9c0\uc6b0\ub294 \uacbd\ud5d8\uc744 \uadf8\ub300\ub85c"
+        },
         { "id": "tracker", "name": "\ud2b8\ub798\ucee4", "icon": "\ud83d\udcc8" }
       ]
     }
@@ -268,10 +275,10 @@
     {
       "id": "grammar",
       "no": 1,
-      "name": "고교 영문법 65",
+      "name": "고등영어문법",
       "district": "school",
       "type": "app",
-      "url": "https://dada-grammar.pages.dev/",
+      "url": "https://engrammar.pages.dev/",
       "description": "고등 영문법을 개념정리와 퀴즈로",
       "date": "2026-05",
       "icon": "📘",

@@ -410,7 +410,7 @@ head('크롤러 시점');
   await p.goto(BASE + '/list.html', { waitUntil: 'load' });
   const text = (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
   ok(text.length > 800, `JS 없이도 본문이 충분하다 (${text.length}자)`);
-  ok(/고교 영문법 65/.test(text) && /잔고캘린더/.test(text), 'JS 없이 항목 이름이 보인다');
+  ok(/고등영어문법/.test(text) && /잔고캘린더/.test(text), 'JS 없이 항목 이름이 보인다');
 
   const r = await p.goto(BASE + '/robots.txt', { waitUntil: 'load' });
   ok(r && r.ok() && (await r.text()).includes('Sitemap:'), 'robots.txt가 sitemap을 가리킨다');
@@ -697,11 +697,14 @@ head('날아다니는 쪽지');
     names: [...document.querySelectorAll('#panel .card-name')].map((n) => n.firstChild.textContent),
     held: getComputedStyle(document.querySelector('.note-spot')).animationPlayState,
   }));
-  ok(panel.cards === 3 && panel.names.join(',') === '캘린더,플래너,트래커',
-    '캘린더 · 플래너 · 트래커가 한 묶음으로 열린다', JSON.stringify(panel.names));
+  ok(panel.cards === 3 && panel.names.join(',') === '캘린더,클리어 위크,트래커',
+    '세 자리가 한 묶음으로 열린다', JSON.stringify(panel.names));
   ok(/paused/.test(panel.held), '열려 있는 동안 쪽지는 날아가지 않는다', panel.held);
-  // 주소가 아직 없는 항목은 링크가 아니어야 한다 — 죽은 링크를 만들지 않는다
-  ok(panel.links === 0, '주소 없는 항목은 누를 수 없다 (죽은 링크 아님)', String(panel.links));
+  // 주소가 있는 것만 링크가 된다. 없는 것은 누를 수 없어야 한다 — 죽은 링크를 만들지 않는다
+  const withUrl = await p.evaluate(async () => (await fetch('services.json').then((r) => r.json()))
+    .floater.bundle.items.filter((i) => i.url).length);
+  ok(panel.links === withUrl,
+    `주소가 있는 것만 링크가 된다 (${panel.links} / ${withUrl})`);
   await p.close();
 }
 

@@ -384,12 +384,16 @@
     head.appendChild(close);
     panel.appendChild(head);
 
-    // 묶음이 가리키는 id로 항목을 찾는다. 아직 없는 것은 「준비 중」으로 둔다 —
-    // 없는 곳으로 가는 링크를 만들지 않기 위해서다 (까마귀와 같은 규칙).
+    /* 묶음이 가리키는 id로 항목을 찾는다. 셋 중 하나다.
+     *  ① `items`에 있으면 그 항목 카드 — 목록·`/list`에도 함께 실려 있는 것
+     *  ② 묶음 쪽에만 주소가 적혀 있으면 그것으로 카드를 만든다.
+     *     아직 만든 시기를 못 받아 `items`에 못 올린 것이 여기 머문다
+     *  ③ 주소가 아예 없으면 「준비 중」 — 없는 곳으로 가는 링크를 만들지 않는다 */
     const grid = el('div', 'cards');
     b.items.forEach((entry) => {
       const item = data.items.find((x) => x.id === entry.id);
-      grid.appendChild(item && item.url ? card(item) : soonCard(entry));
+      const known = item && item.url ? item : (entry.url ? entry : null);
+      grid.appendChild(known ? card(known) : soonCard(entry));
     });
     panel.appendChild(grid);
 
