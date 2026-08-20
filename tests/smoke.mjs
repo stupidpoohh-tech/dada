@@ -338,8 +338,11 @@ head('데이터 단일 소스');
     const n = data.items.filter((i) => i.district === d.id).length;
     const label = await p.getAttribute(`button[data-district="${d.id}"]`, 'aria-label');
     const direct = d.direct && data.items.find((i) => i.id === d.direct);
+    // "나"는 작업물이 0개여도 프로필이 항상 뜬다 — "준비 중"이 아니다 (app.js와 같은 규칙)
     const want = direct ? `${d.name} — ${direct.name}`
-      : n ? `${d.name} — 작업물 ${n}개` : `${d.name} — 준비 중`;
+      : n ? `${d.name} — 작업물 ${n}개`
+      : d.character ? d.name
+      : `${d.name} — 준비 중`;
     if (label !== want) ok(false, `${d.name} 구역 라벨`, `${label} ≠ ${want}`);
   }
   ok(true, '구역 라벨이 전부 데이터와 맞다');

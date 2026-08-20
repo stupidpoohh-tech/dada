@@ -252,7 +252,9 @@
       "title": "매일 쓰는 것들",
       "items": [
         { "id": "calendar", "name": "\uce98\ub9b0\ub354", "icon": "\ud83d\uddd3", "date": "2026-05" },
-        { "id": "planner", "name": "\ud074\ub9ac\uc5b4 \uc704\ud06c", "icon": "\ud83d\uddd2" },
+        { "id": "planner", "name": "\ud074\ub9ac\uc5b4 \uc704\ud06c", "icon": "\ud83d\uddd2", "date": "2026-08",
+          "type": "app", "url": "https://clear-week.pages.dev/",
+          "description": "\uc8fc\uac04 \uce98\ub9b0\ub354\uc5d0 \uc801\uace0, \uc9c0\uc6b0\ub294 \uacbd\ud5d8\uc744 \uadf8\ub300\ub85c" },
         { "id": "tracker", "name": "\ud2b8\ub798\ucee4", "icon": "\ud83d\udcc8", "date": "2026-05" }
       ]
     }
@@ -410,20 +412,6 @@
       "status": "live",
       "needsReview": false,
       "featured": true
-    },
-    {
-      "id": "planner",
-      "no": 25,
-      "name": "클리어 위크",
-      "district": "me",
-      "group": "매일 쓰는 것들",
-      "type": "app",
-      "url": "https://clear-week.pages.dev/",
-      "description": "주간 캘린더에 적고, 지우는 경험을 그대로",
-      "date": "2026-08",
-      "icon": "🗒",
-      "status": "live",
-      "needsReview": false
     },
     {
       "id": "house-theme",

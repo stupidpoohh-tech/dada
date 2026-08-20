@@ -127,8 +127,12 @@
       // 바로 열리는 구역은 개수가 아니라 무엇이 열리는지를 말한다.
       // 세모집은 항목이 둘이지만 건물은 소개서만 열고, 안내서는 우편함이 연다
       const direct = d.direct && data.items.find((x) => x.id === d.direct);
+      // "나"는 작업물이 0개여도 프로필(경력·학력)이 항상 뜬다 — 다른 구역의
+      // "준비 중"과 같은 뜻이 아니므로 그 말을 붙이지 않는다
       btn.setAttribute('aria-label', direct ? `${d.name} — ${direct.name}`
-        : `${d.name}${count ? ` — 작업물 ${count}개` : ' — 준비 중'}`);
+        : count ? `${d.name} — 작업물 ${count}개`
+        : isMe ? d.name
+        : `${d.name} — 준비 중`);
 
       if (isMe) {
         btn.style.left = pct(d.character[0]);
