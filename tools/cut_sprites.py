@@ -191,10 +191,13 @@ def process(key, path, expected, names, size_spec):
 
 
 def build_map():
+    """편집 원본을 표시 폭(MAP_WIDTH)에 맞춘다. 좁으면 키우고 넓으면 줄인다 —
+    새 원본이 예전 것보다 좁게 올 수도 있어서(2026-08, 건물 없는 배경으로 교체)
+    한쪽 방향만 다루던 기존 코드로는 그 경우를 놓쳤다."""
     import os
     im = Image.open(MAP_SRC)
     w, h = im.size
-    if w > MAP_WIDTH:
+    if w != MAP_WIDTH:
         im = im.resize((MAP_WIDTH, round(h * MAP_WIDTH / w)), Image.LANCZOS)
     im.convert("RGB").save(MAP_OUT, quality=82, optimize=True, progressive=True)
     print(f"map      {im.size[0]}x{im.size[1]} {os.path.getsize(MAP_OUT) // 1024}KB "

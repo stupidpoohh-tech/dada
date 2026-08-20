@@ -1,150 +1,87 @@
 #!/usr/bin/env python3
-"""지도에서 건물 실루엣만 오려낸 마스크를 만든다.
+"""건물·우편함 시트에서 스프라이트를 오려낸다.
 
-건물이 상시로 뾰잉거릴 때 움직이는 범위를 사각형으로 잡으면, 학교처럼 지붕 위
-양옆에 나무가 걸치거나 미술관처럼 몸통이 상자에 잘리는 곳이 생긴다. 다각형을
-손으로 찍어도 계단처럼 어긋나는 자리가 남는다. 그래서 지도 픽셀을 직접 훑어
-건물만 남긴 마스크를 뽑는다.
+**이전 버전과 하는 일이 다르다.** 예전에는 건물이 배경 지도 한 장에 그대로
+그려져 있어서, 뾰옹거리게 하려면 지도를 한 번 더 깔고 그 자리만 마스크로
+오려내는 수밖에 없었다(`assets/map/mask-*.png`). 지금은 건물 없는 배경
+(`town-background.png`)과 건물만 따로 그린 시트(`buildings.png`)를 받으므로,
+그 시트에서 건물마다 한 장씩 잘라내면 끝이다 — 마스크도, 지도를 두 번 깔아
+겹치는 자리를 픽셀 단위로 맞추는 `syncPops()`도 더는 필요 없다.
 
-방법: 지정한 상자 안에서 잔디·나무·모래·도로 같은 '배경' 색을 표시하고,
-상자 테두리에서 배경을 따라 물을 채운다. 물이 닿지 못한 덩어리 중 가장 큰 것이
-건물이다. 잔가지 구멍은 메우고, 가장자리는 한 픽셀 넓혀 톱니를 줄인다.
+방법: 알파가 있는 픽셀을 연결 요소로 묶는다(`cut_sprites.py`의 도구를 그대로
+쓴다). **시트에 늘어놓은 순서가 곧 마을의 순서와 같다** — 위 줄은 마을 윗줄
+(미술관·학교·성균관), 아래 줄은 나머지(회사·카페·은행·세모집). 그래서 이름을
+따로 인식할 필요 없이 읽는 순서대로 배정한다.
 
     python3 tools/cut_buildings.py
 
-출력: assets/map/mask-<id>.png (지도 원본 크기, 흑백 — 흰 곳만 움직인다)
-      그리고 services.json에 넣을 building 상자를 찍어준다.
-"""
+원본 시트(assets/sprites/buildings.png · mailbox.png)는 다른 시트와 마찬가지로
+.gitignore에 있다. 출력은 assets/sprites/cut/building-<구역 id>.webp ·
+assets/sprites/cut/mailbox.webp.
 
+**webp로 뽑는다.** 부드러운 그러데이션이 많은 그림이라(AI로 그린 채색이지 납작한
+색면이 아니다) PNG로 뽑으면 건물 한 채에 150~270KB, 우편함 한 장에 260KB씩
+붙는다 — 이 여덟 장만으로 배포 전체 무게가 두 배 가까이 뛴다. 같은 그림을
+webp로 뽑으면 20~30KB대로 줄어든다(실측). 게임 안내서 슬라이드
+(`game/pages/*.webp`)에서 이미 쓰던 선택이라 이 저장소에 새로 들이는 형식은 아니다.
+"""
+import os
 import sys
-from collections import deque
 
 import numpy as np
 from PIL import Image
 
-MAP = 'assets/map/town-web.jpg'
-OUT = 'assets/map/mask-%s.png'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cut_sprites import components, merge_overlapping, reading_order
 
-# 상자는 건물이 확실히 들어가고 테두리는 배경(잔디·길)에 닿도록 넉넉히 잡는다.
-# [left, top, right, bottom] — 지도 기준 %
-BOXES = {
-    # 위쪽은 담장, 아래쪽은 가로등·계단을 빼려고 바짝 자른다. 아래를 자르는 건
-    # 안전하다 — 변형 기준점이 상자 밑변이라 거기서는 아무것도 움직이지 않는다.
-    'museum': [9.5, 4.2, 27.0, 21.6],
-    'school': [42.0, 1.2, 66.3, 24.8],
-}
+OUT = 'assets/sprites/cut'
 
+# 건물 시트에 늘어놓은 순서 — 위 줄(미술관·학교·성균관) 다음 아래 줄(회사·카페·은행·세모집).
+# 공원은 건물이 없는 구역이라 시트에도 없다.
+BUILDING_SRC = 'assets/sprites/buildings.png'
+BUILDING_NAMES = ['museum', 'school', 'seonggyungwan', 'company', 'cafe', 'bank', 'house']
 
-def is_background(rgb):
-    """잔디·나무·덤불·모래·도로·하늘이면 True. 건물 몸통이면 False."""
-    r, g, b = rgb[..., 0].astype(int), rgb[..., 1].astype(int), rgb[..., 2].astype(int)
-
-    green = (g > r + 8) & (g > b + 20) & (g > 90)              # 잔디·나무·덤불
-    # 누런 덤불 (담장 옆). g >= r - 25 조건이 없으면 학교의 주황 기와까지 먹는다
-    olive = (g >= b + 25) & (g > 90) & (r < 230) & (g >= r - 25)
-    sand = (r > 195) & (g > 175) & (b < 175) & (r - b > 45)     # 운동장 모래·흙길
-    # 아스팔트. b > g + 5가 없으면 미술관 유리벽(청록, b≈g)까지 도로로 본다
-    road = (b - r >= 14) & (b - r <= 55) & (r >= 130) & (r <= 210) & (b > g + 5)
-    pink = (r > 165) & (r - g >= 18) & (b + 8 >= g)             # 벚꽃 (그늘진 곳까지)
-    return green | olive | sand | road | pink
+MAILBOX_SRC = 'assets/sprites/mailbox.png'
 
 
-def flood_from_border(bg):
-    """상자 테두리에서 배경을 따라 채운다. 4방향이면 대각선 틈으로 새지 않는다."""
-    h, w = bg.shape
-    seen = np.zeros_like(bg)
-    q = deque()
-    for x in range(w):
-        for y in (0, h - 1):
-            if bg[y, x] and not seen[y, x]:
-                seen[y, x] = True
-                q.append((y, x))
-    for y in range(h):
-        for x in (0, w - 1):
-            if bg[y, x] and not seen[y, x]:
-                seen[y, x] = True
-                q.append((y, x))
-    while q:
-        y, x = q.popleft()
-        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < h and 0 <= nx < w and bg[ny, nx] and not seen[ny, nx]:
-                seen[ny, nx] = True
-                q.append((ny, nx))
-    return seen
+def cut(src, min_pixels=800):
+    """알파가 있는 픽셀을 연결 요소로 묶어 읽는 순서(위→아래, 왼쪽→오른쪽)로 돌려준다."""
+    im = Image.open(src).convert('RGBA')
+    alpha = np.array(im)[:, :, 3]
+    fg = alpha > 40   # 배경이 진짜 투명이라 색이 아니라 알파로 곧장 가른다
+    boxes = reading_order(merge_overlapping(components(fg, min_pixels=min_pixels)))
+    return im, boxes
 
 
-def largest_blob(mask):
-    """가장 큰 연결 덩어리만 남긴다 — 건물에서 떨어져 나온 부스러기를 턴다."""
-    h, w = mask.shape
-    label = np.zeros(mask.shape, dtype=np.int32)
-    best, best_n, cur = None, 0, 0
-    for sy in range(h):
-        for sx in range(w):
-            if not mask[sy, sx] or label[sy, sx]:
-                continue
-            cur += 1
-            n = 0
-            q = deque([(sy, sx)])
-            label[sy, sx] = cur
-            while q:
-                y, x = q.popleft()
-                n += 1
-                for dy in (-1, 0, 1):
-                    for dx in (-1, 0, 1):
-                        ny, nx = y + dy, x + dx
-                        if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not label[ny, nx]:
-                            label[ny, nx] = cur
-                            q.append((ny, nx))
-            if n > best_n:
-                best, best_n = cur, n
-    return (label == best) if best else mask
-
-
-def fill_holes(mask):
-    """건물 안쪽에 뚫린 구멍(창문 하이라이트 등)을 메운다."""
-    return ~flood_from_border(~mask)
-
-
-def dilate(mask, r=1):
-    """가장자리를 한 픽셀 넓혀 톱니를 줄인다. np.roll은 반대편으로 감기므로
-    (아래 줄이 맨 윗줄에 붙는다) 0으로 덧대고 잘라 쓴다."""
-    h, w = mask.shape
-    pad = np.zeros((h + 2 * r, w + 2 * r), dtype=bool)
-    pad[r:r + h, r:r + w] = mask
-    out = np.zeros_like(mask)
-    for dy in range(-r, r + 1):
-        for dx in range(-r, r + 1):
-            out |= pad[r + dy:r + dy + h, r + dx:r + dx + w]
-    return out
+def save_webp(im, box, path, quality=88):
+    x0, y0, x1, y1, _ = box
+    crop = im.crop((x0, y0, x1, y1))
+    crop.save(path, 'WEBP', quality=quality, alpha_quality=quality, method=6)
+    print(f'  {os.path.basename(path)}  {crop.size[0]}x{crop.size[1]}  '
+          f'{os.path.getsize(path) // 1024}KB')
 
 
 def main():
-    im = Image.open(MAP).convert('RGB')
-    W, H = im.size
-    arr = np.asarray(im)
+    ok = True
 
-    for name, (x0, y0, x1, y1) in BOXES.items():
-        px0, py0 = int(x0 / 100 * W), int(y0 / 100 * H)
-        px1, py1 = int(x1 / 100 * W), int(y1 / 100 * H)
-        sub = arr[py0:py1, px0:px1]
+    im, boxes = cut(BUILDING_SRC)
+    if len(boxes) != len(BUILDING_NAMES):
+        print(f'건물 {len(boxes)}개를 찾았다 (기대 {len(BUILDING_NAMES)}개). 시트를 확인한다.')
+        ok = False
+    else:
+        for name, box in zip(BUILDING_NAMES, boxes):
+            save_webp(im, box, f'{OUT}/building-{name}.webp')
+        print(f'건물 {len(BUILDING_NAMES)}채 — 읽는 순서 그대로 배정했다')
 
-        bg = is_background(sub)
-        outside = flood_from_border(bg)
-        blob = fill_holes(largest_blob(~outside))
-        blob = dilate(blob, 1)
+    im, boxes = cut(MAILBOX_SRC)
+    if len(boxes) != 1:
+        print(f'우편함 {len(boxes)}개를 찾았다 (기대 1개). 시트를 확인한다.')
+        ok = False
+    else:
+        save_webp(im, boxes[0], f'{OUT}/mailbox.webp')
 
-        ys, xs = np.nonzero(blob)
-        bx0, bx1 = (px0 + xs.min()) / W * 100, (px0 + xs.max() + 1) / W * 100
-        by0, by1 = (py0 + ys.min()) / H * 100, (py0 + ys.max() + 1) / H * 100
-
-        full = np.zeros((H, W), dtype=np.uint8)
-        full[py0:py1, px0:px1] = blob.astype(np.uint8) * 255
-        Image.fromarray(full, mode='L').save(OUT % name, optimize=True)
-
-        print(f'{name}: {OUT % name}  채운 픽셀 {int(blob.sum()):,}')
-        print(f'  "building": [{bx0:.2f}, {by0:.2f}, {bx1 - bx0:.2f}, {by1 - by0:.2f}]')
+    return 0 if ok else 1
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    raise SystemExit(main())

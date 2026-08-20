@@ -33,12 +33,12 @@
   // 공원에 모여 있는 사람들. 8종 중 6명만 — 다 넣으면 붐빈다.
   // w는 지도 폭 기준 %. 높이가 아니라 폭으로 잡아야 지도와 같이 축소된다.
   // 분수 왼쪽 잔디에 5명을 바짝 모아 한 무리로 보이게. 다 같은 박자로 움직인다.
+  // 다섯이었다가 셋으로 줄였다 — 요소가 늘면서 마을이 번잡해져 사람들 쪽을 덜어냈다.
+  // 줄어든 만큼 하나하나가 눈에 들어오도록 크기를 10%씩 키웠다.
   const FOLKS = [
-    { src: 'person-1.png', x: 13.0, y: 57.0, w: 2.05 },  // 분수 왼쪽
-    { src: 'person-2.png', x: 15.0, y: 60.0, w: 2.18 },  // 분수 아래 왼쪽
-    { src: 'person-6.png', x: 17.5, y: 61.5, w: 2.73 },  // 산책로 위 (가운데)
-    { src: 'person-4.png', x: 20.0, y: 59.4, w: 1.82 },  // 분수 아래 오른쪽
-    { src: 'person-7.png', x: 21.5, y: 57.5, w: 2.00 },  // 분수 오른쪽
+    { src: 'person-1.png', x: 13.0, y: 57.0, w: 2.26 },  // 분수 왼쪽
+    { src: 'person-6.png', x: 17.5, y: 61.5, w: 3.00 },  // 산책로 위 (가운데)
+    { src: 'person-7.png', x: 21.5, y: 57.5, w: 2.20 },  // 분수 오른쪽
   ];
   // 잔디에 내려앉은 새 — 정적으로 얹어 마을을 채운다.
   const PERCHED = [
@@ -66,7 +66,6 @@
   const monthLabel = (s) => (s ? `${s.slice(0, 4)}년 ${+s.slice(5, 7)}월` : '시기 미상');
 
   let data, byDistrict, openId = null, lastSpot = null;
-  const pops = [];
 
   /** 지도에 얹는 그림 한 장. **못 불러오면 스스로 사라진다.**
    *  브라우저는 깨진 <img>에 물음표 상자를 그리는데, 이 마을에서는 그게 지도 위에
@@ -233,25 +232,20 @@
         Object.assign(btn.style, { left: pct(x), top: pct(y), width: pct(w), height: pct(h) });
 
         if (d.building) {
-          // 블록이 아니라 건물만 뾰잉 — 지도의 건물 영역을 그대로 복제한다.
-          // 위치·크기는 syncPops()가 지도 픽셀로 맞춘다 (%로는 미세하게 어긋난다)
+          // 건물이 이제 지도의 일부가 아니라 따로 오려낸 그림이다(assets/sprites/buildings.png,
+          // tools/cut_buildings.py). "나"·확성기·까마귀와 같은 밑변 기준 좌표(at/w)라,
+          // 구역 상자(rect) 안에서 상대 위치로 환산해 심는다 — %끼리의 비율이라 창 크기가
+          // 바뀌어도 그대로 맞고, syncPops()처럼 지도 픽셀을 다시 재는 일도 필요 없다.
+          const b = d.building;
+          const [rx, ry, rw, rh] = d.rect;
           const pop = el('span', 'pop');
-          const pimg = new Image();
-          pimg.src = 'assets/map/town-web.jpg';
-          pimg.alt = '';
-          // 사각형으로는 건물만 도려낼 수 없는 곳이 있다 — 학교는 지붕 위 양옆에 나무가
-          // 걸리고, 미술관은 몸통이 상자 밖으로 나간다. mask가 있으면 실루엣만 움직인다.
-          // 마스크는 지도 원본 크기라 100% 100%로 깔면 그대로 맞는다
-          // (tools/cut_buildings.py로 뽑는다).
-          if (d.mask) {
-            const url = 'url(' + d.mask + ')';
-            pimg.style.webkitMaskImage = pimg.style.maskImage = url;
-            pimg.style.webkitMaskSize = pimg.style.maskSize = '100% 100%';
-            pimg.style.webkitMaskRepeat = pimg.style.maskRepeat = 'no-repeat';
-          }
-          pop.appendChild(pimg);
+          Object.assign(pop.style, {
+            left: pct((b.at[0] - rx) / rw * 100),
+            top: pct((b.at[1] - ry) / rh * 100),
+            width: pct(b.w / rw * 100),
+          });
+          pop.appendChild(pixel(S + b.src));
           btn.appendChild(pop);
-          pops.push({ pop, pimg, rect: d.rect, building: d.building });
         }
 
         if (d.mailbox) makeMailbox(wrap, d);
@@ -585,29 +579,25 @@
     wrap.appendChild(a);
   }
 
-  /** 우편함 — 구역과 별개의 문. districts[].mailbox = { box, item }.
+  /** 우편함 — 구역과 별개의 문. districts[].mailbox = { sprite, at, w, item }.
    *  건물은 자기 항목(direct)을 열고, 우편함은 자기 항목을 연다 — 물건마다 문이 하나씩.
    *  링크(<a>)로 만들어 JS가 없어도, 새 탭으로 열어도 동작한다.
-   *  겉의 링크는 가만히 있고 안의 복제본만 움직인다 ("나" 캐릭터와 같은 이유 —
+   *  건물과 같은 밑변 기준 좌표(at/w)라 "나"·확성기와 같은 방식으로 앉힌다.
+   *  겉의 링크는 가만히 있고 안의 그림(.mbox)만 움직인다 ("나" 캐릭터와 같은 이유 —
    *  버튼이 흔들리면 누를 자리도 같이 흔들린다). */
   function makeMailbox(wrap, d) {
     const item = data.items.find((x) => x.id === d.mailbox.item);
     if (!item || !item.url) return;
-    const [x, y, w, h] = d.mailbox.box;
+    const { at, w, sprite } = d.mailbox;
 
     const a = el('a', 'mbox-spot');
     a.href = item.url;
     a.setAttribute('aria-label', `우편함 — ${item.name}`);
-    Object.assign(a.style, { left: pct(x), top: pct(y), width: pct(w), height: pct(h) });
+    Object.assign(a.style, { left: pct(at[0]), top: pct(at[1]), width: pct(w) });
 
-    // 우편함 복제본 — 건물 복제본과 같은 원리라 위치·크기는 syncPops()가 함께 맞춘다
     const mbox = el('span', 'mbox');
-    const mimg = new Image();
-    mimg.src = 'assets/map/town-web.jpg';
-    mimg.alt = '';
-    mbox.appendChild(mimg);
+    mbox.appendChild(pixel(S + sprite));
     a.appendChild(mbox);
-    pops.push({ pop: mbox, pimg: mimg, rect: d.mailbox.box, building: d.mailbox.box });
 
     // 겉장을 미리 받아 두면 누르는 순간 바로 날아오른다
     const warm = () => { if (item.cover) new Image().src = item.cover; };
@@ -743,39 +733,6 @@
     });
   }
 
-  /** 건물 복제본을 지도 픽셀에 정확히 맞춘다. %로 계산하면 반올림이 누적돼
-   *  원본과 미세하게 어긋나 이중으로 보인다. 창 크기가 바뀌면 다시 부른다. */
-  function syncPops() {
-    // clientWidth/Height는 정수로 반올림돼 1px쯤 어긋난다 → 소수점을 살린 값을 쓴다
-    const base = $('mapImg').getBoundingClientRect();
-    const MW = base.width, MH = base.height;
-    if (!MW) return;
-    pops.forEach(({ pop, pimg, rect, building }) => {
-      const [x, y] = rect;
-      const [bx, by, bw, bh] = building;
-      pop.style.left = (bx - x) / 100 * MW + 'px';
-      pop.style.top = (by - y) / 100 * MH + 'px';
-      pop.style.width = bw / 100 * MW + 'px';
-      pop.style.height = bh / 100 * MH + 'px';
-      // 지도와 똑같은 크기로 깔고, 위치는 아래에서 실측으로 맞춘다
-      pimg.style.width = MW + 'px';
-      pimg.style.height = MH + 'px';
-    });
-    // 브라우저는 배치 좌표를 1/64px 격자로 내림한다. 건물 위치를 %로 계산해
-    // 밀면 그 오차가 남아 복제본과 원본의 리샘플링 위상이 어긋나고, 지도가
-    // 축소돼 그려지는 만큼 경계가 두 겹으로 보인다. 그래서 배치가 끝난 뒤
-    // 실제 좌표를 읽어 그 차이만큼 되돌린다 — 격자 위 값끼리의 차라 오차가 0이다.
-    // 잴 때는 뾰잉 변형을 잠깐 꺼야 한다. getBoundingClientRect는 transform이
-    // 적용된 크기를 주므로, 켜둔 채로 재면 애니메이션 위상만큼 어긋난 값이 나온다.
-    // 애니메이션은 인라인 스타일보다 우선하므로 !important로 눌러야 먹는다.
-    pops.forEach(({ pop }) => pop.style.setProperty('transform', 'none', 'important'));
-    pops.forEach(({ pop, pimg }) => {
-      const pr = pop.getBoundingClientRect();
-      pimg.style.left = (base.left - pr.left) + 'px';
-      pimg.style.top = (base.top - pr.top) + 'px';
-    });
-    pops.forEach(({ pop }) => pop.style.removeProperty('transform'));
-  }
 
   /* ── 카드 ────────────────────────────────── */
 
@@ -802,6 +759,24 @@
         if (!$('modal').hidden) closeModal();
         if (!$('picksPanel').hidden) $('picksPanel').hidden = true;
         openBook(b, 1);
+      });
+    }
+
+    /* 목록·모달의 카드에서도 집 테마송을 열 수 있다 — 지도 위 확성기와 같은 문으로
+       보낸다. 이 카드는 별도 페이지가 없으므로(노래는 지도 위에서만 재생된다),
+       확성기 버튼을 실제로 찾아 그 문을 그대로 두드린다 — flyBook이 「어느 건물에서
+       날아왔는지」 보여주는 것과 같은 이유로, 소리도 제자리(지붕 위)에서 나야 한다.
+       href는 `item.route`(`/#house-theme`)를 그대로 둔다 — JS 없이 눌러도 죽은
+       링크(`#`)가 아니라 최소한 마을로는 간다. 다만 그 해시로 자동재생을 걸지는
+       않는다 — 페이지 로드에 소리를 거는 건 여기서도 무례하다. */
+    if (item.open === 'song') {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!$('modal').hidden) closeModal();
+        if (!$('picksPanel').hidden) $('picksPanel').hidden = true;
+        const d = data.districts.find((x) => x.speaker && x.speaker.song);
+        const btn = document.querySelector('.horn-spot.horn-live');
+        if (d && btn) toggleSong(btn, d.speaker);
       });
     }
 
@@ -1379,9 +1354,7 @@
 
     paintScenery();
     makeSpots();
-    syncPops();
     syncIdle();
-    if (!$('mapImg').complete) $('mapImg').addEventListener('load', syncPops, { once: true });
     makeChips();
     renderModalList();
     initPicks();
@@ -1432,7 +1405,6 @@
     window.addEventListener('resize', () => {
       clearTimeout(t);
       t = setTimeout(() => {
-        syncPops();
         if (openId) placePanel(data.districts.find((x) => x.id === openId));
       }, 80);
     });

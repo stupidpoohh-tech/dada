@@ -132,8 +132,10 @@ button, input { font: inherit; color: inherit; }
 .sky { z-index: 6; }
 
 /* 구역 버튼 — 클릭 영역은 블록 전체지만, 뾰옹 하는 건 그 안의 건물뿐.
-   .pop이 지도의 건물 영역만 복제해 밑변 기준으로 튀어오른다.
-   (위치·크기·배경 좌표는 JS가 building 상자로 계산해 넣는다) */
+   .pop은 따로 오려낸 건물 그림(assets/sprites/buildings.png,
+   tools/cut_buildings.py)이다. 좌표는 밑변 기준(at/w)이라 JS가 구역 상자(rect)
+   안에서 상대 위치로 환산해 left/top/width만 넣는다 — 높이는 그림의 원래
+   비율대로 저절로 정해진다. */
 .spot {
   position: absolute;
   pointer-events: auto;
@@ -144,9 +146,8 @@ button, input { font: inherit; color: inherit; }
 }
 .pop {
   position: absolute;
-  overflow: hidden;
-  /* 배경이미지 대신 같은 <img>를 잘라 쓴다 — background-image는 리샘플링 방식이 달라
-     원본과 미세하게 어긋난다. 크기·위치는 syncPops()가 지도 픽셀로 맞춘다 */
+  display: block;
+  transform: translate(-50%, -100%);
   transform-origin: 50% 100%;
   pointer-events: none;
   /* 상시로 살짝 부풀었다 가라앉는다 — 여기가 눌러볼 수 있는 곳이라는 신호.
@@ -154,20 +155,17 @@ button, input { font: inherit; color: inherit; }
   animation: bldg-idle 2.4s ease-in-out infinite;
   transition: filter .18s ease;
 }
-/* 중요: 1보다 작게 줄이면 안 된다. 복제본이 자기 영역을 못 덮어 뒤의 원본이
-   드러나고, 학교 깃발처럼 경계에 걸친 것이 두 개로 보인다.
-   그래서 발밑을 축으로 '늘어나기만' 한다. */
 /* 한 바퀴에 두 번 뾰잉 — 위로 쭉 늘었다가 옆으로 퍼지며 눌린다.
    양 끝에 잠깐 멈춤(6%·94%)을 둬야 흐물거리지 않고 튀는 느낌이 난다.
    솟는 시점(25%·75%)은 사람들(folk-idle)과 같다 — 마을이 한 박자로 움직인다 */
 @keyframes bldg-idle {
-  0%, 6%    { transform: scale(1, 1); }
-  25%       { transform: scale(1.005, 1.08); }
-  44%, 56%  { transform: scale(1.055, 1.002); }
-  75%       { transform: scale(1.005, 1.08); }
-  94%, 100% { transform: scale(1, 1); }
+  0%, 6%    { transform: translate(-50%, -100%) scale(1, 1); }
+  25%       { transform: translate(-50%, -100%) scale(1.005, 1.08); }
+  44%, 56%  { transform: translate(-50%, -100%) scale(1.055, 1.002); }
+  75%       { transform: translate(-50%, -100%) scale(1.005, 1.08); }
+  94%, 100% { transform: translate(-50%, -100%) scale(1, 1); }
 }
-.pop > img { position: absolute; display: block; max-width: none; }
+.pop > img { display: block; width: 100%; height: auto; }
 
 /* 터치 기기에서는 :hover가 탭한 뒤에도 눌린 채 남는다. 그러면 이 규칙의
    animation:none 때문에 그 건물만 얼어붙었다가, 나중에 hover가 풀릴 때
@@ -175,13 +173,13 @@ button, input { font: inherit; color: inherit; }
 @media (hover: hover) {
   .spot:hover .pop {
     animation: none;
-    transform: scale(1.05);
+    transform: translate(-50%, -100%) scale(1.05);
     filter: drop-shadow(0 7px 10px rgba(31, 36, 28, .3)) brightness(1.04);
   }
 }
 .spot:focus-visible .pop {
   animation: none;
-  transform: scale(1.05);
+  transform: translate(-50%, -100%) scale(1.05);
   filter: drop-shadow(0 7px 10px rgba(31, 36, 28, .3)) brightness(1.04);
 }
 .spot[aria-expanded="true"] .pop {
@@ -190,20 +188,22 @@ button, input { font: inherit; color: inherit; }
 }
 /* 뾰옹: 납작하게 눌렸다가 위로 쭉 늘어나며 튀고 착지 */
 @keyframes boing {
-  0%   { transform: scale(1, 1); }
-  25%  { transform: scale(1.1, .88); }
-  55%  { transform: scale(.96, 1.14); }
-  78%  { transform: scale(1.05, .99); }
-  100% { transform: scale(1.06, 1.06); }
+  0%   { transform: translate(-50%, -100%) scale(1, 1); }
+  25%  { transform: translate(-50%, -100%) scale(1.1, .88); }
+  55%  { transform: translate(-50%, -100%) scale(.96, 1.14); }
+  78%  { transform: translate(-50%, -100%) scale(1.05, .99); }
+  100% { transform: translate(-50%, -100%) scale(1.06, 1.06); }
 }
 
 /* 우편함 — 구역과 별개의 문 (districts[].mailbox). 건물은 소개서를 열고
    우편함은 게임 안내서를 연다. 겉의 링크(.mbox-spot)는 가만히 있고 안의
-   복제본(.mbox)만 움직인다 — "나" 캐릭터와 같은 이유로, 누를 자리는 고정이어야 한다. */
+   그림(.mbox)만 움직인다 — "나" 캐릭터와 같은 이유로, 누를 자리는 고정이어야 한다.
+   좌표는 건물과 같은 밑변 기준(at/w)이라 "나"·확성기와 같은 방식으로 앉힌다. */
 .mbox-spot {
   position: absolute;
   pointer-events: auto;
   display: block;
+  transform: translate(-50%, -100%);
   z-index: 4;                      /* 세모집 구역 버튼 위 — 우편함 자리는 우편함이 받는다 */
   line-height: 0;
 }
@@ -216,20 +216,15 @@ button, input { font: inherit; color: inherit; }
   transform: translate(-50%, -50%);
 }
 .mbox {
-  position: absolute;
-  overflow: hidden;
+  display: block;
   transform-origin: 50% 100%;
   pointer-events: none;
   /* 건물과 같은 2.4초 박자를 타되 **좌우로 인사하듯 또잉또잉** 흔든다.
      건물은 다 같이 숨쉬고, 개별 요소는 저마다 다른 걸음을 갖는다 —
-     우편함은 흔들고, 까마귀는 퍼덕이고 갸웃하고, 쪽지는 뽀잉거린다.
-
-     **기울일 때 크기를 함께 키우는 이유**가 있다. 이건 지도를 오려낸 복제본이라
-     제자리에서 벗어나면 뒤에 있는 원본 우편함이 드러나 이중으로 보인다.
-     회전으로 밀려나는 만큼(높이 x sin7도) 덮으려면 가로로 그만큼 넉넉해야 한다. */
+     우편함은 흔들고, 까마귀는 퍼덕이고 갸웃하고, 쪽지는 뽀잉거린다. */
   animation: mbox-idle 2.4s ease-in-out infinite;
 }
-.mbox > img { position: absolute; display: block; max-width: none; }
+.mbox > img { display: block; width: 100%; height: auto; }
 @keyframes mbox-idle {
   0%, 12%   { transform: scale(1, 1)       rotate(0deg); }
   24%       { transform: scale(1.34, 1.14) rotate(-7deg); }
@@ -578,7 +573,7 @@ button, input { font: inherit; color: inherit; }
   transform-origin: 50% 100%;
   animation: folk-idle 2.4s ease-in-out infinite;
 }
-/* 다섯 명이 **왼쪽 사람부터 오른쪽 사람까지 차례로** 솟는다 — 파도타기다.
+/* 셋이 **왼쪽 사람부터 오른쪽 사람까지 차례로** 솟는다 — 파도타기다.
    박자는 마을과 같은 2.4초 그대로고 사람마다 조금씩 늦게 시작할 뿐이라
    (app.js가 x 순서대로 animation-delay를 준다) 마을의 리듬을 깨지 않는다.
    §9가 걷어낸 것은 **마을 전체**를 파도로 만든 것이었다 — 저건 건물이 눌린다는

@@ -55,13 +55,7 @@
         25,
         32
       ],
-      "building": [
-        11.05,
-        4.67,
-        14.51,
-        16.88
-      ],
-      "mask": "assets/map/mask-museum.png",
+      "building": { "src": "building-museum.webp", "at": [18.3, 21.5], "w": 14.5 },
       "direct": "art-portfolio"
     },
     {
@@ -75,13 +69,7 @@
         35,
         36
       ],
-      "building": [
-        42.97,
-        1.88,
-        22.21,
-        22.87
-      ],
-      "mask": "assets/map/mask-school.png"
+      "building": { "src": "building-school.webp", "at": [54.1, 24.8], "w": 22.2 }
     },
     {
       "id": "seonggyungwan",
@@ -94,12 +82,7 @@
         25,
         27
       ],
-      "building": [
-        78,
-        16,
-        12,
-        13
-      ]
+      "building": { "src": "building-seonggyungwan.webp", "at": [84, 29], "w": 12 }
     },
     {
       "id": "park",
@@ -124,12 +107,7 @@
         18,
         34
       ],
-      "building": [
-        36.5,
-        42,
-        13.5,
-        28.5
-      ]
+      "building": { "src": "building-company.webp", "at": [43.2, 70.5], "w": 13.5 }
     },
     {
       "id": "cafe",
@@ -142,12 +120,7 @@
         18,
         33
       ],
-      "building": [
-        55,
-        46.5,
-        13.5,
-        25.5
-      ],
+      "building": { "src": "building-cafe.webp", "at": [61.8, 72], "w": 13.5 },
       "mascot": {
         "name": "까마귀 Croww",
         "at": [65.2, 74.4],
@@ -170,12 +143,7 @@
         25,
         29
       ],
-      "building": [
-        77,
-        46,
-        14,
-        22
-      ]
+      "building": { "src": "building-bank.webp", "at": [84, 68], "w": 14 }
     },
     {
       "id": "house",
@@ -188,12 +156,7 @@
         24,
         26
       ],
-      "building": [
-        80,
-        78,
-        12,
-        14
-      ],
+      "building": { "src": "building-house.webp", "at": [86, 92], "w": 12 },
       "speaker": {
         "name": "집 테마송 확성기",
         "at": [83.8, 82.9],
@@ -242,15 +205,7 @@
           ]
         }
       },
-      "mailbox": {
-        "box": [
-          87.9,
-          94.35,
-          1.95,
-          3.15
-        ],
-        "item": "game-guide"
-      },
+      "mailbox": { "sprite": "mailbox.webp", "at": [88.9, 97.5], "w": 1.95, "item": "game-guide" },
       "direct": "house-catalog"
     },
     {
@@ -444,6 +399,20 @@
       "description": "주간 캘린더에 적고, 지우는 경험을 그대로",
       "date": "2026-08",
       "icon": "🗒",
+      "status": "live",
+      "needsReview": false
+    },
+    {
+      "id": "house-theme",
+      "no": 26,
+      "name": "집이 어떻게 세모 (집 테마송)",
+      "district": "house",
+      "type": "doc",
+      "open": "song",
+      "route": "/#house-theme",
+      "description": "세모집 지붕 위 확성기를 누르면 나오는 집 테마송. 가사도 함께 뜬다",
+      "date": "2025-05",
+      "icon": "📣",
       "status": "live",
       "needsReview": false
     },
