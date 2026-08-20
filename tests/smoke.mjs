@@ -388,7 +388,9 @@ head('/list 정적 페이지');
     '약력과 연락처도 HTML에 있다');
 
   // 모달의 「지어진 순서」와 같은 것을 크롤러·스크린리더도 읽을 수 있어야 한다
-  const timeline = src.slice(src.indexOf('id="g-time"'), src.indexOf('id="g-me"'));
+  // 끝 표시는 약력 섹션이다. 「나」 구역에도 항목이 생겨 g-me가 둘이 될 뻔했으므로
+  // 약력 쪽 id를 g-profile로 갈라 뒀다 (build_list.py)
+  const timeline = src.slice(src.indexOf('id="g-time"'), src.indexOf('id="g-profile"'));
   const noTime = data.items.filter((i) => !timeline.includes(i.name));
   ok(src.includes('id="g-time"') && noTime.length === 0,
     '만든 순서 섹션에 항목이 전부 있다', noTime.map((i) => i.id).join(', ') + ' 빠짐');
@@ -662,7 +664,8 @@ head('날아다니는 쪽지');
     if (!a) return null;
     const read = (t) => { a.pause(); a.currentTime = t;
       return new DOMMatrix(getComputedStyle(el).transform).a; };
-    return { big: read(450), small: read(1350), dur: a.effect.getTiming().duration };
+    const d = a.effect.getTiming().duration;
+    return { big: read(d * 0.25), small: read(d * 0.75), dur: d };
   });
   ok(pulse && pulse.big > 1.1 && pulse.small < 0.9,
     `파장처럼 커졌다 작아진다 (${pulse && pulse.big.toFixed(2)} ↔ ${pulse && pulse.small.toFixed(2)})`);
@@ -723,8 +726,11 @@ head('날아다니는 쪽지');
     '세 자리가 한 묶음으로 열린다', JSON.stringify(panel.names));
   ok(/paused/.test(panel.held), '열려 있는 동안 쪽지는 날아가지 않는다', panel.held);
   // 주소가 있는 것만 링크가 된다. 없는 것은 누를 수 없어야 한다 — 죽은 링크를 만들지 않는다
-  const withUrl = await p.evaluate(async () => (await fetch('services.json').then((r) => r.json()))
-    .floater.bundle.items.filter((i) => i.url).length);
+  const withUrl = await p.evaluate(async () => {
+    const d = await fetch('services.json').then((r) => r.json());
+    return d.floater.bundle.items.filter((e) =>
+      e.url || (d.items.find((i) => i.id === e.id) || {}).url).length;
+  });
   ok(panel.links === withUrl,
     `주소가 있는 것만 링크가 된다 (${panel.links} / ${withUrl})`);
   await p.close();

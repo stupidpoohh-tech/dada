@@ -137,8 +137,11 @@
 
     startCars(road);
 
-    FOLKS.forEach((f) => folks.appendChild(sprite('folk person', f.src, {
+    // 왼쪽 사람부터 오른쪽 사람까지 차례로 솟는다 — 파도타기.
+    // 박자(2.4초)는 마을과 같고 시작만 조금씩 늦춘다. 배열이 이미 x 순서다.
+    FOLKS.forEach((f, i) => folks.appendChild(sprite('folk person', f.src, {
       left: pct(f.x), top: pct(f.y), width: pct(f.w),
+      animationDelay: (i * 0.19).toFixed(2) + 's',
     })));
 
     PERCHED.forEach((p) => folks.appendChild(sprite('folk', p.src, {
@@ -398,11 +401,13 @@
     $('hint').classList.add('gone');
   }
 
-  /** 아직 주소가 없는 항목. 누를 수 없는 카드로 둔다 — 죽은 링크보다 낫다. */
+  /** 아직 주소가 없는 항목. 누를 수 없는 카드로 둔다 — 죽은 링크보다 낫다.
+   *  만든 시기는 알면 적는다 — 만들어는 뒀고 아직 안 걸었다는 뜻이 된다. */
   function soonCard(entry) {
     const box = el('div', 'card card--soon');
     box.appendChild(el('span', 'card-ico', entry.icon || '📦'));
     const body = el('div', 'card-body');
+    if (entry.date) body.appendChild(el('div', 'card-date', shortDate(entry.date)));
     const name = el('div', 'card-name');
     name.append(entry.name);
     name.appendChild(el('span', 'badge soon', '준비 중'));

@@ -146,8 +146,8 @@ page = f'''<!doctype html>
 {timeline}
     </section>
 
-    <section class="doc-group" aria-labelledby="g-me">
-      <h2 id="g-me">🙋 나</h2>
+    <section class="doc-group" aria-labelledby="g-profile">
+      <h2 id="g-profile">🙋 나 — 약력</h2>
       <article class="doc-item">
         <h3>{e(p['name'])}</h3>
         <p>{e(p['tagline'])}</p>
