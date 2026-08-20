@@ -13,3 +13,6 @@ node_modules
 # npm install이 만드는 잠금 파일. 이 저장소가 관리하는 코드가 아니라
 # 회귀 테스트를 돌릴 때 생기는 부산물이라 저장소에 두지 않는다.
 package-lock.json
+
+# 파이썬 도구가 남기는 것
+__pycache__

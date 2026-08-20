@@ -577,14 +577,20 @@ head('카페 앞 까마귀');
       document.getAnimations()
         .filter((a) => a.animationName && a.animationName.startsWith('crow'))
         .forEach((a) => { a.pause(); a.currentTime = 2400 * t; });
-      const o = (s) => +getComputedStyle(document.querySelector(s)).opacity;
-      return [o('.crow-rest'), o('.crow-fly')];
+      return ['.crow-rest', '.crow-flap', '.crow-tilt']
+        .map((s) => +getComputedStyle(document.querySelector(s)).opacity);
     };
-    return { rest: read(0.1), flap: read(0.46) };
+    return { rest: read(0.1), flap: read(0.46), tilt: read(0.83) };
   });
-  ok(frames.rest[0] === 1 && frames.rest[1] === 0
-     && frames.flap[0] === 0 && frames.flap[1] === 1,
-    '접은 날개와 편 날개가 한 번에 한 장씩만 보인다', JSON.stringify(frames));
+  ok(String(frames.rest) === '1,0,0' && String(frames.flap) === '0,1,0'
+     && String(frames.tilt) === '0,0,1',
+    '세 장이 한 번에 한 장씩만 보인다 (가만히 · 퍼덕 · 갸웃)', JSON.stringify(frames));
+
+  // 세 장이 같은 캔버스여야 갈아 끼울 때 새가 튀지 않는다
+  const sizes = await p.evaluate(() => ['.crow-rest', '.crow-flap', '.crow-tilt']
+    .map((s) => { const i = document.querySelector(s);
+      return i.naturalWidth + 'x' + i.naturalHeight; }));
+  ok(new Set(sizes).size === 1, '세 장이 같은 크기 캔버스다', sizes.join(' / '));
 
   await p.reload({ waitUntil: 'networkidle' });
   await p.waitForTimeout(900);
@@ -593,7 +599,7 @@ head('카페 앞 까마귀');
   const beat = await p.evaluate(() => {
     const g = (n) => document.getAnimations().filter((a) => a.animationName === n);
     const t = (n) => g(n).map((a) => (a.startTime == null ? null : Math.round(+a.startTime)));
-    return { crow: t('crow-idle'), frame: t('crow-frame'), folk: t('folk-idle')[0],
+    return { crow: t('crow-idle'), frame: t('crow-frame-flap'), folk: t('folk-idle')[0],
              dur: g('crow-idle').map((a) => a.effect.getTiming().duration) };
   });
   ok(beat.crow[0] === beat.folk && beat.frame[0] === beat.folk,

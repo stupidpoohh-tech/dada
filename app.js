@@ -281,27 +281,32 @@
    *  문이 둘이어도 층위가 갈린다.
    *
    *  우편함과 다른 점은 그림이다. 우편함은 지도를 오려낸 복제본이지만 까마귀는
-   *  지도에 없던 스프라이트라 `<img>` 두 장을 겹쳐 깐다 — 이 마을에는 프레임
-   *  애니메이션이 없어서(CSS transform만 쓴다) 날갯짓은 두 장을 번갈아 만든다.
+   *  지도에 없던 스프라이트라 `<img>` 세 장을 겹쳐 깐다 — 이 마을에는 프레임
+   *  애니메이션이 없어서(CSS transform만 쓴다) 퍼덕임과 갸웃은 장을 번갈아 만든다.
+   *  세 장은 같은 배율·같은 기준점의 한 캔버스라 갈아 끼워도 새가 튀지 않는다
+   *  (tools/cut_crow.py).
    *
    *  링크(<a>)라 JS가 없어도, 새 탭으로 열어도 동작한다. 움직이는 것은 안쪽
    *  그림뿐이고 링크 상자는 가만히 있는다 — 누를 자리는 고정이어야 한다. */
   function makeMascot(wrap, d) {
     const m = d.mascot;
     const item = data.items.find((x) => x.id === m.item);
-    if (!item || !item.url || !(m.frames || []).length) return;
+    const frames = Object.entries(m.frames || {});
+    if (!item || !item.url || !frames.length) return;
 
     const a = el('a', 'crow-spot');
     a.href = item.url;
     a.setAttribute('aria-label', `${m.name} — ${item.name}`);
     Object.assign(a.style, { left: pct(m.at[0]), top: pct(m.at[1]), width: pct(m.w) });
 
+    // 프레임은 이름이 곧 역할이다 (rest · flap · tilt). 그 이름이 그대로 클래스가 되고
+    // CSS가 언제 어느 장을 보일지 정한다 — 순서에 기대면 한 장만 늘어도 어긋난다
     const fig = el('span', 'crow-figure');
-    m.frames.forEach((src, i) => {
+    frames.forEach(([role, src]) => {
       const img = new Image();
       img.src = S + src;
       img.alt = '';
-      img.className = i ? 'crow-fly' : 'crow-rest';
+      img.className = 'crow-' + role;
       fig.appendChild(img);
     });
     a.appendChild(fig);
@@ -430,8 +435,8 @@
 
   /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
    *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
-  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle',
-                      'crow-idle', 'crow-frame'];
+  const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle', 'crow-idle',
+                      'crow-frame-rest', 'crow-frame-flap', 'crow-frame-tilt'];
 
   function syncIdle() {
     const anims = document.getAnimations().filter((a) =>

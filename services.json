@@ -150,9 +150,13 @@
       ],
       "mascot": {
         "name": "까마귀 Croww",
-        "at": [64.9, 74.4],
-        "w": 5.6,
-        "frames": ["crow-side.png", "crow-flap.png"],
+        "at": [65.2, 74.4],
+        "w": 6.6,
+        "frames": {
+          "rest": "crow-side.png",
+          "flap": "crow-fly.png",
+          "tilt": "crow-look.png"
+        },
         "item": "playgrown"
       }
     },

@@ -22,11 +22,11 @@ assets/
   portfolio/house/  세모집 카탈로그 p01~p06 + 썸네일 t01~t06
   map/town-web.jpg  실제로 쓰는 배경
   map/mask-*.png    건물 실루엣 마스크
-  sprites/cut/      잘라낸 스프라이트 22개 + 까마귀 2장 — 실제로 쓰는 것
+  sprites/cut/      잘라낸 스프라이트 22개 + 까마귀 3장 — 실제로 쓰는 것
   case/playgrown.css  케이스 스터디 전용 CSS (마을 규칙과 섞지 않는다)
 tools/cut_sprites.py  시트에서 스프라이트를 잘라내고 배경을 투명 처리
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
-tools/draw_crow.py    카페 앞 까마귀 Croww 스프라이트를 도형으로 짓는다
+tools/cut_crow.py     까마귀 시트를 프레임 세 장으로 자른다 (같은 캔버스·같은 기준점)
 tests/smoke.mjs       회귀 테스트 97개 (npm test)
 ```
 
@@ -436,9 +436,13 @@ PlayGrown의 마스코트다. 카페 건물을 누르면 팝오버가 항목 둘
 ```json
 "mascot": {
   "name": "까마귀 Croww",
-  "at": [64.9, 74.4],          // 발밑 좌표 (지도 % — "나" 캐릭터·사람들과 같은 규칙)
-  "w": 5.6,                    // 지도 폭 기준 %. "나" 캐릭터가 5.4다
-  "frames": ["crow-side.png", "crow-flap.png"],
+  "at": [65.2, 74.4],          // 발밑 좌표 (지도 % — "나" 캐릭터·사람들과 같은 규칙)
+  "w": 6.6,                    // 지도 폭 기준 %. 캔버스에 날개 자리가 있어 그림은 이보다 작다
+  "frames": {                  // 이름이 곧 역할이다. 순서가 아니라 이름으로 찾는다
+    "rest": "crow-side.png",
+    "flap": "crow-fly.png",
+    "tilt": "crow-look.png"
+  },
   "item": "playgrown"
 }
 ```
@@ -452,21 +456,32 @@ PlayGrown의 마스코트다. 카페 건물을 누르면 팝오버가 항목 둘
   건물은 두 번 숨쉬고 우편함은 한 번 크게 뛰고 **까마귀는 한 번 퍼덕이고 한 번 갸웃한다.**
   `crow-idle`·`crow-frame`은 `IDLE_ANIMS`에 들어 있어 마을 박자에 함께 맞춰진다 —
   빼먹으면 그 자리만 딴 박자로 논다
-- **날갯짓은 그림 두 장을 번갈아 만든다.** 이 마을에는 프레임 애니메이션이 없고
-  transform만 쓰는데, 날개가 실제로 올라가려면 그림이 두 장이어야 했다.
-  두 장을 겹쳐 두고 `steps(1)`로 갈아 끼우므로 사이가 섞이지 않는다
+- **퍼덕임과 갸웃은 그림 세 장을 번갈아 만든다.** 이 마을에는 프레임 애니메이션이 없고
+  transform만 쓰는데, 날개가 실제로 올라가려면 그림이 여러 장이어야 했다.
+  세 장을 겹쳐 두고 `steps(1)`로 갈아 끼우므로 사이가 섞이지 않는다.
+  기울임(`rotate`)은 거들기만 한다 — `crow-look`이 이미 고개를 들고 있어서,
+  여기서 많이 돌리면 갸웃이 아니라 넘어지는 것처럼 보인다
 
-스프라이트는 원본 시트가 레포에 없어 **도형으로 짓는다.** 다른 스프라이트처럼
-시트에서 잘라 오는 방식(`cut_sprites.py`)이 아니다.
+### 까마귀 시트 자르기
+
+`cut_sprites.py`를 그대로 못 쓴다. 그 스크립트는 스프라이트마다 자기 bounding box에
+맞춰 따로 축소하는데, **까마귀는 번갈아 보여주는 프레임이라 장끼리 눈금과 자리가
+어긋나면 안 된다.** 날개를 편 장은 상자가 더 크므로 각자 높이를 맞추면 몸통 크기가
+장마다 달라지고, 갈아 끼울 때 새가 커졌다 작아진다.
 
 ```
-pip install pillow
-python3 tools/draw_crow.py     # assets/sprites/cut/crow-side.png · crow-flap.png
+pip install pillow numpy
+python3 tools/cut_crow.py      # assets/sprites/crow.png → cut/crow-side · crow-fly · crow-look
 ```
 
-저해상도(38×30)로 그린 뒤 NEAREST로 3배 확대해 마을의 다른 새와 같은 눈금에 맞춘다.
-**그린 시트를 새로 받으면** 같은 이름의 두 장으로 갈아 끼우기만 하면 된다 —
-접은 날개 한 장, 편 날개 한 장. 크기·자리는 JSON이 잡으므로 코드는 안 건드린다.
+**기준점은 눈이다.** 처음엔 부리 끝에 맞췄는데 장마다 부리가 몸에서 나온 정도가 달라
+갈아 끼울 때 몸이 옆으로 미끄러졌다. 눈은 어느 장에서나 같은 것이라, 눈을 포개면
+머리가 제자리에 있고 나머지(날개 · 꼬리 · 자세)만 바뀐다. 온몸에서 유일하게 밝은
+크림색이라 색으로 바로 찾는다.
+
+시트에는 여섯 자세가 있고 마을에는 셋만 쓴다 (`cut/`은 「지금 쓰는 것」만 두는 자리다).
+앞모습·뒷모습을 쓸 일이 생기면 `cut_crow.py`의 `FRAMES`에 이름을 더한다.
+원본 시트(`assets/sprites/crow.png`)는 다른 시트와 마찬가지로 `.gitignore`에 있다.
 
 ## 케이스 스터디 (`/case/playgrown.html`)
 

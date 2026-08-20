@@ -319,9 +319,9 @@ button, input { font: inherit; color: inherit; }
    건물은 두 번 숨쉬고, 우편함은 한 번 크게 뛰고, 까마귀는 **한 번 퍼덕이고 한 번 갸웃한다.**
    같은 리듬 위의 다른 걸음이라 같은 요소로 안 읽힌다.
 
-   퍼덕임은 두 장을 번갈아 보여 만든다. 이 마을에는 프레임 애니메이션이 없어
-   (transform만 쓴다) 날개가 실제로 올라가려면 그림이 두 장이어야 했다.
-   steps(1)이라 두 장 사이가 섞이지 않고 딱 갈아 끼워진다. */
+   퍼덕임과 갸웃은 그림 세 장을 번갈아 보여 만든다. 이 마을에는 프레임 애니메이션이
+   없어(transform만 쓴다) 날개가 실제로 올라가려면 그림이 여러 장이어야 했다.
+   세 장은 같은 배율·같은 기준점의 한 캔버스다 (tools/cut_crow.py). */
 .crow-spot {
   position: absolute;
   pointer-events: auto;
@@ -330,7 +330,7 @@ button, input { font: inherit; color: inherit; }
   z-index: 4;
   line-height: 0;
 }
-/* 지도 폭의 5.6%라 폰에서 22px 남짓. 판정은 그림보다 넉넉하게 (터치 기준 44px) */
+/* 폰에서 그림은 24px 남짓. 판정은 그림보다 넉넉하게 (터치 기준 44px) */
 .crow-spot::after {
   content: '';
   position: absolute; left: 50%; top: 50%;
@@ -346,24 +346,33 @@ button, input { font: inherit; color: inherit; }
   display: block; width: 100%; height: auto;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .26));
 }
-/* 편 날개는 접은 날개 위에 정확히 겹쳐 놓고 필요한 순간에만 드러낸다 */
-.crow-figure .crow-fly { position: absolute; left: 0; top: 0; }
-.crow-rest, .crow-fly { animation: crow-frame 2.4s steps(1, end) infinite; }
+/* 세 장을 정확히 포개 놓고 필요한 순간에만 한 장씩 드러낸다.
+   같은 배율·같은 기준점의 한 캔버스라(tools/cut_crow.py) 갈아 끼워도 새가 안 튄다. */
+.crow-figure .crow-flap, .crow-figure .crow-tilt { position: absolute; left: 0; top: 0; }
+.crow-rest, .crow-flap, .crow-tilt { animation: 2.4s steps(1, end) infinite; }
 .crow-rest { animation-name: crow-frame-rest; }
-.crow-fly  { animation-name: crow-frame; }
+.crow-flap { animation-name: crow-frame-flap; }
+.crow-tilt { animation-name: crow-frame-tilt; }
 
-/* 40~52%에만 날개가 올라간다 — 한 바퀴에 한 번, 짧게 */
-@keyframes crow-frame      { 0%, 40% { opacity: 0; } 41%, 52% { opacity: 1; } 53%, 100% { opacity: 0; } }
-@keyframes crow-frame-rest { 0%, 40% { opacity: 1; } 41%, 52% { opacity: 0; } 53%, 100% { opacity: 1; } }
+/* 한 바퀴에 두 번 — 41~52%에 한 번 퍼덕이고, 76~90%에 한 번 갸웃한다.
+   나머지 시간은 가만히 앉아 있다. steps(1)이라 장 사이가 섞이지 않고 딱 갈린다. */
+@keyframes crow-frame-rest {
+  0%, 40%   { opacity: 1; } 41%, 52% { opacity: 0; }
+  53%, 75%  { opacity: 1; } 76%, 90% { opacity: 0; }
+  91%, 100% { opacity: 1; }
+}
+@keyframes crow-frame-flap { 0%, 40% { opacity: 0; } 41%, 52% { opacity: 1; } 53%, 100% { opacity: 0; } }
+@keyframes crow-frame-tilt { 0%, 75% { opacity: 0; } 76%, 90% { opacity: 1; } 91%, 100% { opacity: 0; } }
 
-/* 퍼덕일 때 살짝 뜨고, 한 바퀴 끝에 고개를 갸웃한다.
-   갸웃은 발밑을 축으로 도는 기울임이다 — 이 크기에서는 그게 갸웃으로 읽힌다 */
+/* 퍼덕일 때 살짝 뜨고, 갸웃할 때 조금 기운다.
+   갸웃은 그림(crow-look)이 이미 고개를 들고 있으므로 기울임은 거들기만 한다 —
+   여기서 많이 돌리면 갸웃이 아니라 넘어지는 것처럼 보인다. */
 @keyframes crow-idle {
   0%, 32%   { transform: translateY(0)    scale(1, 1)      rotate(0deg); }
-  44%       { transform: translateY(-14%) scale(1.03, .97) rotate(0deg); }
-  52%       { transform: translateY(-16%) scale(1.03, .97) rotate(0deg); }
-  62%, 68%  { transform: translateY(0)    scale(1, 1)      rotate(0deg); }
-  78%, 90%  { transform: translateY(0)    scale(1, 1)      rotate(-11deg); }
+  44%       { transform: translateY(-11%) scale(1.02, .98) rotate(0deg); }
+  52%       { transform: translateY(-13%) scale(1.02, .98) rotate(0deg); }
+  62%, 72%  { transform: translateY(0)    scale(1, 1)      rotate(0deg); }
+  80%, 88%  { transform: translateY(0)    scale(1, 1)      rotate(-7deg); }
   100%      { transform: translateY(0)    scale(1, 1)      rotate(0deg); }
 }
 /* 마우스가 있는 기기에서만 — 폰에서는 탭한 뒤 계속 퍼덕이게 된다 */
