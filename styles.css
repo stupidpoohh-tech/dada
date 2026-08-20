@@ -311,6 +311,79 @@ button, input { font: inherit; color: inherit; }
   86%      { transform: translateY(0)    scale(1.03, .96); }
 }
 
+/* ── 날아다니는 쪽지 ─────────────────────────
+   새·구름은 풍경이고 이건 문이다. 그래서 넷을 다르게 뒀다 —
+   길목마다 멈추는 걸음, 마을 박자를 타지 않는 펄럭임(0.55초),
+   무엇에도 가리지 않는 높이(z 7 > 하늘 6), 손을 대면 멈추는 비행.
+
+   비행 경로(@keyframes note-fly)는 services.json의 floater.path로 JS가 굽는다. */
+.note-spot {
+  position: absolute;
+  /* 기본값은 「안 잡힌다」다. 잡히는 것은 note-catch가 멈춰 선 동안만 열어 준다 —
+     날아가는 쪽지가 건물 위를 지날 때 그 건물의 클릭을 가로채면 안 되기 때문이다.
+     애니메이션이 어떤 이유로 안 붙어도 남의 클릭을 먹지 않는 쪽으로 넘어진다. */
+  pointer-events: none;
+  z-index: 7;                       /* 새·구름(6)보다 위 — 문은 가려지면 안 된다 */
+  background: none; border: 0; padding: 0; cursor: pointer;
+  line-height: 0;
+  transform: translate(-50%, -50%);
+  animation: note-fly linear infinite, note-catch steps(1, end) infinite;
+}
+/* 날아다니는 것을 눌러야 하므로 판정은 그림보다 넉넉하게 (터치 기준 44px) */
+.note-spot::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(120%, 56px); height: max(150%, 56px);
+}
+.note-fig {
+  display: block;
+  animation: note-bob 2.9s ease-in-out infinite alternate;
+}
+.note-zoom {
+  display: block; position: relative;
+  transition: transform .18s ease;
+}
+.note-fig img {
+  display: block; width: 100%; height: auto;
+  filter: drop-shadow(0 4px 5px rgba(31, 36, 28, .22));
+}
+/* 세 장을 포개 놓고 한 장씩 드러낸다 (까마귀와 같은 방법).
+   다만 박자가 다르다 — 마을은 2.4초 한 박자인데 펄럭임은 0.55초다.
+   마을의 일부가 아니라 마을 위에 온 것이라 굳이 맞추지 않는다. */
+.note-mid, .note-up { position: absolute; left: 0; top: 0; }
+.note-fig img + img { opacity: 0; }          /* 기본값은 「첫 장만」 */
+.note-down, .note-mid, .note-up { animation: .55s steps(1, end) infinite; }
+.note-down { animation-name: note-f-down; }
+.note-mid  { animation-name: note-f-mid; }
+.note-up   { animation-name: note-f-up; }
+@keyframes note-f-down { 0%, 24% { opacity: 1; } 25%, 100% { opacity: 0; } }
+@keyframes note-f-mid  { 0%, 24% { opacity: 0; } 25%, 49% { opacity: 1; }
+                         50%, 74% { opacity: 0; } 75%, 100% { opacity: 1; } }
+@keyframes note-f-up   { 0%, 49% { opacity: 0; } 50%, 74% { opacity: 1; } 75%, 100% { opacity: 0; } }
+
+/* 날개가 위아래로 뜨는 만큼 몸도 느리게 오르내린다 */
+@keyframes note-bob { from { transform: translateY(-6%); } to { transform: translateY(6%); } }
+
+/* **손을 대면 멈춘다.** 날아다니는 것을 눌러야 하므로 이게 없으면 조준이 안 된다.
+   멈추면서 살짝 커지는 것이 「잡혔다」는 신호가 된다. */
+@media (hover: hover) {
+  .note-spot:hover { animation-play-state: paused; }
+  .note-spot:hover .note-fig { animation-play-state: paused; }
+  .note-spot:hover .note-zoom { transform: scale(1.14); }
+}
+.note-spot:focus-visible { animation-play-state: paused; }
+.note-spot:focus-visible .note-fig { animation-play-state: paused; }
+.note-spot:focus-visible .note-zoom { transform: scale(1.14); }
+/* 팝업이 열려 있는 동안에도 멈춰 있어야 한다 — 열어 둔 채 날아가 버리면 안 된다 */
+.note-spot[aria-expanded="true"] { animation-play-state: paused; }
+.note-spot[aria-expanded="true"] .note-fig { animation-play-state: paused; }
+
+/* 아직 주소가 없는 항목 — 누를 수 없는 카드. 죽은 링크보다 낫다 */
+.card--soon { cursor: default; opacity: .78; }
+.card--soon .card-name { color: var(--sub); }
+.badge.soon { background: var(--surface-2); color: var(--sub); }
+
 /* ── 카페 앞 까마귀 Croww ────────────────────
    PlayGrown의 마스코트다. 우편함과 같은 「구역과 별개의 문」이라 링크(<a>)로 만들고,
    움직이는 것은 안쪽 그림(.crow-figure)뿐이다 — 누를 자리가 흔들리면 조준이 안 된다.

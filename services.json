@@ -216,6 +216,34 @@
       ]
     }
   ],
+  "floater": {
+    "name": "날아다니는 쪽지",
+    "label": "MEMO",
+    "icon": "\u2709\ufe0f",
+    "w": 6.2,
+    "dur": 52,
+    "path": [
+      { "at": [14, 80], "stop": true },
+      { "at": [7, 52] },
+      { "at": [19, 20] },
+      { "at": [42, 9] },
+      { "at": [67, 16] },
+      { "at": [89, 33] },
+      { "at": [66, 78], "stop": true },
+      { "at": [42, 78], "stop": true },
+      { "at": [26, 88], "stop": true },
+      { "at": [14, 80] }
+    ],
+    "frames": { "down": "note-down.png", "mid": "note-mid.png", "up": "note-up.png" },
+    "bundle": {
+      "title": "매일 쓰는 것들",
+      "items": [
+        { "id": "calendar", "name": "\uce98\ub9b0\ub354", "icon": "\ud83d\uddd3" },
+        { "id": "planner", "name": "\ud50c\ub798\ub108", "icon": "\ud83d\uddd2" },
+        { "id": "tracker", "name": "\ud2b8\ub798\ucee4", "icon": "\ud83d\udcc8" }
+      ]
+    }
+  },
   "items": [
     {
       "id": "art-portfolio",

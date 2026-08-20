@@ -27,6 +27,7 @@
  *   book_open       책을 열었다               app.js openBook
  *   book_end        책을 끝까지 넘겼다        app.js bkGo
  *   mailbox_open    우편함을 눌렀다           app.js makeMailbox
+ *   bundle_open     날아다니는 쪽지를 눌렀다   app.js openBundle
  *   picks_open      추천 픽을 열었다          app.js initPicks
  *   list_open       목록을 열었다             app.js openModal
  *   list_search     목록에서 검색했다         app.js (입력이 멎은 뒤 한 번)
@@ -48,7 +49,7 @@
      적고 **"which does not belong to Cloudflare websites"**를 골라 만든다.
      그러면 비콘 스니펫과 토큰이 나오고, 그 토큰만 여기 적으면 된다.
      비어 있으면 비콘을 부르지 않는다. */
-  var CF_TOKEN = '';
+  var CF_TOKEN = 'ed38c88f57cb4fbf9c126f8ba5e69be5';
 
   /* 통계를 켤 도메인. 커스텀 도메인(dada.town)을 붙이면 여기에 한 줄 더한다. */
   var HOSTS = [
@@ -91,7 +92,7 @@
      「무엇을 눌렀나」는 커스텀 이벤트가 있는 GA만 안다. 여기도 HOSTS 안에서만. */
   if (onHost && CF_TOKEN) {
     var b = document.createElement('script');
-    b.defer = true;
+    b.type = 'module';                 // Cloudflare가 주는 스니펫 그대로
     b.src = 'https://static.cloudflareinsights.com/beacon.min.js';
     b.setAttribute('data-cf-beacon', JSON.stringify({ token: CF_TOKEN }));
     document.head.appendChild(b);

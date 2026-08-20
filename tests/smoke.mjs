@@ -615,7 +615,97 @@ head('카페 앞 까마귀');
   await p.close();
 }
 
-/* ── 12. 캐시가 어긋나도 지도가 깨지지 않는다 ─────────────
+/* ── 12. 날아다니는 쪽지 ──────────────────────────────────
+   새·구름은 풍경이고 이건 문이다. 그 차이가 눈에 보여야 한다.
+   깨진 적 있음: 지도 위 가장 높이 뜬 채로 늘 잡히게 뒀더니 **건물 위를 지날 때
+   그 건물의 클릭을 가로챘다** — 미술관을 누르려는데 쪽지가 먹었다.
+   지금은 멈춰 선 동안만 잡히고, 머무는 자리는 전부 건물이 없는 빈 땅이다. */
+head('날아다니는 쪽지');
+{
+  const p = await desktop();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(900);
+
+  ok(await p.locator('.note-spot').count() === 1, '마을 위에 쪽지가 한 장 떠 있다');
+
+  const how = await p.evaluate(() => {
+    const n = document.querySelector('.note-spot');
+    const g = (name) => document.getAnimations().find((a) => a.animationName === name);
+    return {
+      z: +getComputedStyle(n).zIndex,
+      sky: +getComputedStyle(document.getElementById('sky')).zIndex,
+      flapDur: g('note-f-up') && g('note-f-up').effect.getTiming().duration,
+      hit: parseFloat(getComputedStyle(n, '::after').width),
+    };
+  });
+  ok(how.z > how.sky, `새·구름보다 위에 뜬다 (쪽지 ${how.z} > 하늘 ${how.sky})`);
+  ok(how.hit >= 44, `판정이 터치 기준을 넘는다 (${Math.round(how.hit)}px)`);
+  // 마을은 2.4초 한 박자다. 쪽지는 그 박자를 타지 않는다 — 마을 위에 온 것이라서
+  ok(how.flapDur > 0 && how.flapDur !== 2400,
+    `펄럭임이 마을 박자가 아니다 (${how.flapDur}ms)`);
+
+  // 길목마다 멈춘다 — 같은 좌표가 두 번 연속 찍혀 있으면 그 구간이 「머무름」이다
+  const rules = await p.evaluate(() => {
+    const out = {};
+    for (const s of document.styleSheets) {
+      for (const r of s.cssRules) {
+        if (r.name === 'note-fly' || r.name === 'note-catch') {
+          out[r.name] = [...r.cssRules].map((k) => ({
+            at: k.keyText, pos: k.style.left + ',' + k.style.top,
+            pe: k.style.pointerEvents,
+          }));
+        }
+      }
+    }
+    return out;
+  });
+  const same = rules['note-fly'].filter((k, i, a) => i && k.pos === a[i - 1].pos).length;
+  ok(same >= 3, `길목마다 멈춰 선다 (멈춤 ${same}곳)`);
+  // 잡히는 구간과 멈추는 구간의 개수가 같아야 한다 — 어긋나면 날면서 잡히거나 그 반대다
+  const grabs = rules['note-catch'].filter((k) => k.pe === 'auto').length;
+  ok(grabs === same, `멈춰 있는 동안만 잡힌다 (멈춤 ${same} · 잡힘 ${grabs})`);
+
+  // 멈춰 서는 자리는 전부 빈 땅이어야 한다 — 건물 위에서 멈추면 그 건물 클릭을 먹는다
+  const clash = await p.evaluate(async () => {
+    const data = await fetch('services.json').then((r) => r.json());
+    const rects = data.districts.filter((d) => d.rect).map((d) => d.rect);
+    // 폭은 지도 폭의 %, 높이는 지도 높이의 %다 — 그림 비율(174x120)에 지도 비율을 곱한다
+    const w = data.floater.w, h = w * (120 / 174) * (1792 / 1434);
+    return data.floater.path.filter((s) => s.stop).filter((s) => {
+      const a = { x: s.at[0] - w * 0.6, X: s.at[0] + w * 0.6,      // 판정 상자 120% x 150%
+                  y: s.at[1] - h * 0.75, Y: s.at[1] + h * 0.75 };
+      return rects.some(([rx, ry, rw, rh]) =>
+        a.x < rx + rw && rx < a.X && a.y < ry + rh && ry < a.Y);
+    }).map((s) => s.at.join(','));
+  });
+  ok(clash.length === 0, '멈춰 서는 자리가 구역 위에 없다', clash.join(' / '));
+
+  // 눌러 열면 묶음 팝업 — 셋이 한 자리에 온다. 멈춘 순간으로 시계를 돌려놓고 누른다
+  await p.evaluate(() => document.getAnimations()
+    .filter((a) => ['note-fly', 'note-catch', 'note-bob'].includes(a.animationName))
+    .forEach((a) => { a.pause(); a.currentTime = 0; }));
+  await p.waitForTimeout(150);
+  ok(await p.evaluate(() =>
+    getComputedStyle(document.querySelector('.note-spot')).pointerEvents) === 'auto',
+    '멈춰 서면 잡힌다');
+
+  await p.locator('.note-spot').click();
+  await p.waitForTimeout(500);
+  const panel = await p.evaluate(() => ({
+    cards: document.querySelectorAll('#panel .card').length,
+    links: document.querySelectorAll('#panel a.card').length,
+    names: [...document.querySelectorAll('#panel .card-name')].map((n) => n.firstChild.textContent),
+    held: getComputedStyle(document.querySelector('.note-spot')).animationPlayState,
+  }));
+  ok(panel.cards === 3 && panel.names.join(',') === '캘린더,플래너,트래커',
+    '캘린더 · 플래너 · 트래커가 한 묶음으로 열린다', JSON.stringify(panel.names));
+  ok(/paused/.test(panel.held), '열려 있는 동안 쪽지는 날아가지 않는다', panel.held);
+  // 주소가 아직 없는 항목은 링크가 아니어야 한다 — 죽은 링크를 만들지 않는다
+  ok(panel.links === 0, '주소 없는 항목은 누를 수 없다 (죽은 링크 아님)', String(panel.links));
+  await p.close();
+}
+
+/* ── 13. 캐시가 어긋나도 지도가 깨지지 않는다 ─────────────
    깨진 적 있음: services.json만 예전 것이 캐시에 남은 채 새 app.js를 만났다.
    프레임 역할 이름이 CSS와 어긋나 세 장이 한꺼번에 뜨고, 그중 사라진 파일 하나가
    404가 나면서 **카페 앞에 브라우저의 물음표 상자가 그대로 섰다.** */

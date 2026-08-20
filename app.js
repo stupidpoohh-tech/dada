@@ -279,6 +279,142 @@
       btn.addEventListener('click', () => toggle(d.id, btn));
       wrap.appendChild(btn);
     });
+
+    makeFloater(wrap);
+  }
+
+  /* ── 날아다니는 쪽지 ─────────────────────── */
+
+  /** 마을 위를 펄럭이며 도는 쪽지. 누르면 묶음 팝업이 열린다.
+   *
+   *  **새·구름과 다른 것으로 읽혀야 한다.** 저 둘은 풍경이라 눌러도 아무 일이 없는데,
+   *  이건 문이다. 그래서 네 가지를 다르게 뒀다.
+   *
+   *  1. **걸음이 다르다.** 새와 구름은 한 방향으로 일정하게 흐르지만 쪽지는
+   *     길목마다 **멈춰 선다.** 멈춤은 「기다리고 있다」로 읽힌다 — 흐르는 것과
+   *     기다리는 것은 눈에 확실히 다르다
+   *  2. **마을 박자를 타지 않는다.** 건물·사람·까마귀는 전부 2.4초 한 박자인데
+   *     쪽지의 펄럭임은 0.55초다. 마을의 일부가 아니라 마을 위에 온 것이라서다
+   *  3. **가장 위에 뜬다.** 새·구름(z 6)보다 위라 무엇에도 가리지 않는다
+   *  4. **손을 대면 멈춘다.** 호버·포커스에서 비행이 통째로 정지한다.
+   *     날아다니는 것을 눌러야 하므로 이게 없으면 조준이 안 된다
+   *
+   *  데이터는 `floater` 하나 — 경로도 박자도 그림도 전부 거기서 읽는다. */
+  function makeFloater(wrap) {
+    const m = data.floater;
+    if (!m || !(m.path || []).length) return;
+    const frames = Object.entries(m.frames || {});
+    if (!frames.length) return;
+
+    const btn = el('button', 'note-spot');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', `${m.name} — ${m.bundle.title}`);
+    btn.setAttribute('aria-expanded', 'false');
+    btn.style.width = pct(m.w);
+
+    // 오르내림(.note-fig)과 호버 확대(.note-zoom)를 다른 요소에 나눠 건다.
+    // 한 요소에 겹치면 애니메이션의 transform이 호버의 transform을 덮어쓴다 (새와 같은 이유)
+    const fig = el('span', 'note-fig');
+    const zoom = el('span', 'note-zoom');
+    frames.forEach(([role, src]) => {
+      const img = pixel(S + src);
+      img.className = 'note-' + role;
+      zoom.appendChild(img);
+    });
+    fig.appendChild(zoom);
+    btn.appendChild(fig);
+
+    /* 경로를 keyframes 두 벌로 굽는다.
+     *
+     *  ① note-fly — 어디를 지나는가. `stop: true`인 길목에서는 그 자리에 잠깐 머문다.
+     *     이 「멈춤」이 새·구름과 갈리는 가장 큰 신호다.
+     *  ② note-catch — **언제 잡히는가.** 멈춰 선 동안만 `pointer-events: auto`다.
+     *
+     *  ②가 없으면 실제로 깨진다. 날아가는 쪽지가 건물 위를 지날 때 그 건물의 클릭을
+     *  가로챈다 — 미술관을 누르려는데 쪽지가 먹는다. 지도 위 가장 높이 뜬 것이라
+     *  피할 방법이 없으므로, **멈춰 있을 때만 잡히게** 했다.
+     *  머무는 자리는 전부 건물이 없는 빈 땅이라(services.json의 path) 거기서는 겹치지 않는다.
+     *  키보드 포커스는 pointer-events와 무관하므로 탭으로는 언제든 닿는다. */
+    const pts = m.path;
+    const legs = pts.length - 1;
+    const DWELL = 0.45;                   // 한 구간에서 머무는 몫
+    const span = 100 / legs;
+    let fly = '', grab = '';
+    pts.forEach((w, i) => {
+      const at = i * span;
+      const here = `left:${w.at[0]}%;top:${w.at[1]}%`;
+      fly += `${at.toFixed(2)}%{${here}}`;
+      grab += `${at.toFixed(2)}%{pointer-events:${w.stop ? 'auto' : 'none'}}`;
+      if (w.stop && i < legs) {
+        const till = at + span * DWELL;
+        fly += `${till.toFixed(2)}%{${here}}`;
+        grab += `${till.toFixed(2)}%{pointer-events:none}`;
+      }
+    });
+    const sheet = document.styleSheets[0];
+    sheet.insertRule(`@keyframes note-fly{${fly}}`, sheet.cssRules.length);
+    sheet.insertRule(`@keyframes note-catch{${grab}}`, sheet.cssRules.length);
+    const dur = (m.dur || 40) + 's';
+    btn.style.animationDuration = dur + ', ' + dur;
+
+    btn.addEventListener('click', () => toggleBundle(btn));
+    wrap.appendChild(btn);
+  }
+
+  /** 쪽지가 여는 묶음 팝업. 구역 패널을 그대로 쓰되 자리는 쪽지를 따라간다. */
+  function toggleBundle(btn) {
+    if (openId === 'bundle') return closePanel();
+    openBundle(btn);
+  }
+
+  function openBundle(btn) {
+    const b = data.floater.bundle;
+    const panel = $('panel');
+    panel.textContent = '';
+    document.querySelectorAll('.spot, .me-spot, .note-spot')
+      .forEach((x) => x.setAttribute('aria-expanded', String(x === btn)));
+
+    const head = el('div', 'panel-head');
+    head.appendChild(el('h2', 'panel-title', `${data.floater.icon} ${b.title}`));
+    if (data.floater.label) head.appendChild(el('span', 'panel-label', data.floater.label));
+    const close = el('button', 'icon-btn panel-close', '✕');
+    close.type = 'button';
+    close.setAttribute('aria-label', '닫기');
+    close.addEventListener('click', () => { closePanel(); btn.focus(); });
+    head.appendChild(close);
+    panel.appendChild(head);
+
+    // 묶음이 가리키는 id로 항목을 찾는다. 아직 없는 것은 「준비 중」으로 둔다 —
+    // 없는 곳으로 가는 링크를 만들지 않기 위해서다 (까마귀와 같은 규칙).
+    const grid = el('div', 'cards');
+    b.items.forEach((entry) => {
+      const item = data.items.find((x) => x.id === entry.id);
+      grid.appendChild(item && item.url ? card(item) : soonCard(entry));
+    });
+    panel.appendChild(grid);
+
+    track('bundle_open', { bundle: b.title, items: b.items.length });
+
+    $('panelWrap').hidden = false;
+    panel.scrollTop = 0;
+    openId = 'bundle';
+    lastSpot = btn;
+    placePanel({ liveBox: () => btn.getBoundingClientRect() });
+    panel.focus({ preventScroll: true });
+    $('hint').classList.add('gone');
+  }
+
+  /** 아직 주소가 없는 항목. 누를 수 없는 카드로 둔다 — 죽은 링크보다 낫다. */
+  function soonCard(entry) {
+    const box = el('div', 'card card--soon');
+    box.appendChild(el('span', 'card-ico', entry.icon || '📦'));
+    const body = el('div', 'card-body');
+    const name = el('div', 'card-name');
+    name.append(entry.name);
+    name.appendChild(el('span', 'badge soon', '준비 중'));
+    body.appendChild(name);
+    box.appendChild(body);
+    return box;
   }
 
   /** 마스코트 — 구역과 별개의 문. districts[].mascot = { name, at, w, frames, item }.
@@ -615,7 +751,11 @@
     const maxLeft = stageBox.right - mapBox.left - w - PAD;
 
     // 구역 영역(px). 캐릭터는 발끝 기준이라 위로 키를 잡아준다.
-    const box = d.character
+    // 쪽지처럼 날아다니는 것은 지금 있는 자리를 재서 쓴다 (liveBox).
+    const box = d.liveBox ? (() => {
+      const r = d.liveBox(), mb = map.getBoundingClientRect();
+      return { x: r.left - mb.left, y: r.top - mb.top, w: r.width, h: r.height };
+    })() : d.character
       ? { x: d.character[0] / 100 * MW - MW * 0.027, y: d.character[1] / 100 * MH - MH * 0.11,
           w: MW * 0.054, h: MH * 0.11 }
       : { x: d.rect[0] / 100 * MW, y: d.rect[1] / 100 * MH,
