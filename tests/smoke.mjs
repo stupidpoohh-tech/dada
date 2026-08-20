@@ -334,8 +334,10 @@ head('데이터 단일 소스');
   const chip = await p.evaluate(() => document.querySelector('#chips .chip')?.textContent.trim());
   ok(chip === `전체 ${data.items.length}`, `전체 칩 개수가 맞다 (${chip})`);
 
+  // 쪽지가 이미 들고 있는 항목은 구역 패널에도 안 뜬다 (app.js의 byDistrict 필터와 같다)
+  const floaterIds = new Set((data.floater?.bundle?.items || []).map((e) => e.id));
   for (const d of data.districts) {
-    const n = data.items.filter((i) => i.district === d.id).length;
+    const n = data.items.filter((i) => i.district === d.id && !floaterIds.has(i.id)).length;
     const label = await p.getAttribute(`button[data-district="${d.id}"]`, 'aria-label');
     const direct = d.direct && data.items.find((i) => i.id === d.direct);
     // "나"는 작업물이 0개여도 프로필이 항상 뜬다 — "준비 중"이 아니다 (app.js와 같은 규칙)

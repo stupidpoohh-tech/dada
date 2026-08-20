@@ -1326,7 +1326,16 @@
 
     byDistrict = {};
     data.districts.forEach((d) => { byDistrict[d.id] = []; });
-    data.items.forEach((i) => { (byDistrict[i.district] ||= []).push(i); });
+    // 쪽지가 이미 들고 있는 항목은 구역 패널에서 다시 보여주지 않는다 — 같은 카드가
+    // 두 문(구역 패널·쪽지)에서 똑같이 뜨는 건 중복이다. 목록(list.html)·검색 모달은
+    // 이 필터를 안 거친다 — 거기는 지도 위 문과 상관없이 「만든 것 전부」를 보여주는
+    // 자리라, 클리어 위크도 그대로 나온다.
+    const floaterIds = new Set(
+      (data.floater && data.floater.bundle ? data.floater.bundle.items : []).map((e) => e.id));
+    data.items.forEach((i) => {
+      if (floaterIds.has(i.id)) return;
+      (byDistrict[i.district] ||= []).push(i);
+    });
 
     // 카드가 책 해시를 href로 쓰므로 무엇이든 그리기 전에 책부터 등록한다
     data.items.forEach((i) => {
