@@ -60,7 +60,7 @@
         35,
         36
       ],
-      "building": { "src": "building-school.webp", "at": [50.3, 24.3], "w": 18.6 }
+      "building": { "src": "building-school.webp", "at": [53.0, 23.8], "w": 18.6 }
     },
     {
       "id": "seonggyungwan",
@@ -111,7 +111,7 @@
         18,
         33
       ],
-      "building": { "src": "building-cafe.webp", "at": [59.7, 71.0], "w": 12.5 },
+      "building": { "src": "building-cafe.webp", "at": [59.7, 69.8], "w": 12.5 },
       "mascot": {
         "name": "까마귀 Croww",
         "at": [65.2, 74.4],
@@ -169,7 +169,7 @@
       "building": { "src": "building-house.webp", "at": [85.0, 91.4], "w": 10.2 },
       "speaker": {
         "name": "집 테마송 확성기",
-        "at": [91.8, 92.0],
+        "at": [94.5, 93.0],
         "w": 3.4,
         "sprite": "horn.png",
         "song": {

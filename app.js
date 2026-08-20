@@ -816,8 +816,7 @@
     const MW = map.clientWidth, MH = map.clientHeight;
     const PAD = 12, GAP = 14;
 
-    const w = Math.round(Math.min(360, MW * 0.46));
-    panel.style.width = w + 'px';
+    let w = Math.round(Math.min(360, MW * 0.46));
     panel.style.maxHeight = (MH - PAD * 2) + 'px';
 
     // 지도 바깥 여백까지 놓을 자리로 친다. 학교처럼 넓고 가운데 있는 건물은
@@ -853,6 +852,27 @@
     else if (leftOf >= minLeft && !onRight) left = leftOf;
     else if (onRight) left = Math.max(maxLeft, minLeft);
     else left = Math.min(Math.max(box.x + box.w / 2 - w / 2, minLeft), maxLeft);
+
+    /* **문 위에 내려앉지 않는다.** 확성기·쪽지·까마귀는 앵커가 곧 방금 누른 문이라,
+       패널이 그 위를 덮으면 눌렀던 자리가 손 밑에서 사라진다 — 다시 눌러 닫을 수도
+       없고, 무엇보다 소리를 내고 있는 확성기가 반쯤 잘려 보인다. 확성기를 마당
+       오른쪽으로 옮기자 그렇게 됐다 (옛 자리는 패널 왼쪽 끝을 3px 차이로 겨우
+       비껴 있었을 뿐이라, 이건 원래부터 아슬아슬했던 것이 넘어간 것이다).
+
+       무대(stage) 여백을 넘어 **창 끝까지** 밀고, 그래도 모자라면 **패널을 조금
+       좁혀서** 비켜 준다. 좁히는 데도 바닥을 둔다(280px) — 읽을 수 없을 만큼
+       좁아지면 비켜 준 보람이 없다. 셋 다 안 되는 아주 좁은 창에서는 할 수 있는
+       데까지만 민다. 그때도 ✕·Esc·바깥 누르기는 그대로 산다. */
+    if (d.liveBox) {
+      const clear = box.x + box.w + 8;
+      const edge = innerWidth - mapBox.left - 8;        // 창 오른쪽 끝 (지도 기준)
+      if (left < clear) {
+        if (clear + w <= edge) left = clear;
+        else if (edge - clear >= Math.max(280, w * 0.8)) { w = Math.round(edge - clear); left = clear; }
+        else left = Math.max(left, Math.min(clear, edge - w));
+      }
+    }
+    panel.style.width = w + 'px';
 
     const h = panel.offsetHeight;
     let top = box.y + box.h / 2 - h / 2;    // 건물과 세로 중심을 맞춘다

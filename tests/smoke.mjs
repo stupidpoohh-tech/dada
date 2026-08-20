@@ -755,6 +755,20 @@ head('마당의 확성기');
   ok(hides.cafe === 0 && hides.company === 0 && hides.school === 0,
     '노래 패널이 지도를 건너뛰어 가운데 구역을 덮지 않는다', JSON.stringify(hides));
 
+  /* **패널이 확성기 자신을 덮으면 안 된다.** 소리를 내고 있는 물건이 반쯤 잘려
+     보이고, 방금 누른 자리가 손 밑에서 사라져 다시 눌러 닫을 수도 없다.
+     확성기를 마당 오른쪽으로 옮기면서 실제로 그렇게 됐다 (그전에도 3px 차이로
+     겨우 비껴 있었을 뿐이다) — placePanel이 창 끝까지 밀고 그래도 모자라면
+     패널을 조금 좁혀서 비켜 준다. */
+  const onDoor = await p.evaluate(() => {
+    const pr = document.getElementById('panel').getBoundingClientRect();
+    const h = document.querySelector('.horn-spot').getBoundingClientRect();
+    return { 겹침: Math.round(Math.max(0, h.right - pr.left)), 패널폭: Math.round(pr.width) };
+  });
+  ok(onDoor.겹침 === 0, '패널이 확성기 자신을 덮지 않는다', JSON.stringify(onDoor));
+  ok(onDoor.패널폭 >= 280, '비켜 주느라 패널이 못 읽을 만큼 좁아지지 않는다',
+    String(onDoor.패널폭));
+
   // 다시 누르면(토글) 닫히고 멈춘다
   await p.click('.horn-spot');
   await p.waitForTimeout(300);
