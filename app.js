@@ -46,6 +46,20 @@
     return n;
   };
   const pct = (v) => v + '%';
+  /** 밑변 기준 y좌표(0=지도 위, 100=지도 아래)를 CSS `bottom` 값으로 바꾼다.
+   *
+   *  **`top` + `translate(-100%)`으로 앉히면 안 된다.** 그 -100%는 요소 「자기
+   *  높이」의 100%인데, 스프라이트 상자에는 높이가 없다 — 안의 <img>에 width·height
+   *  속성이 없어서 그림이 도착하기 전까지 비율을 모르기 때문이다. 그동안 높이는 0이고
+   *  -100%도 0이라, 건물·까마귀·확성기가 전부 「제 키만큼 아래」에 그려진다.
+   *  크롬은 그림이 온 뒤 퍼센트 변환을 다시 계산해 제자리로 돌려놓지만
+   *  **iOS 사파리는 그러지 않는다** — 폰에서만 마을이 통째로 아래로 흘러내렸고,
+   *  키가 가장 큰 세모집은 지도 밖으로 잘려 나갔다 (가로는 -50%가 인라인으로 넣은
+   *  width에 걸려 멀쩡했다. 세로만 어긋난 이유가 이것이다).
+   *
+   *  `bottom`은 담는 상자의 높이에 걸리므로 자기 높이를 몰라도 된다. 밑변이 먼저
+   *  못 박히고 그림은 그 위로 자란다 — 「좌표는 밑변」이라는 이 마을의 규칙 그대로다. */
+  const upTo = (y) => pct(100 - y);
   /** 방문 통계 한 줄. 마을은 URL이 바뀌지 않아 무엇을 봤는지가 자동으로는 안 남는다.
    *  ga.js가 없거나(광고 차단·로컬) 꺼져 있으면 조용히 지나간다 — 부르는 자리에
    *  조건문을 두지 않기 위한 감쌈이다. 보내는 목록은 ga.js 머리말에 모아 뒀다. */
@@ -85,12 +99,12 @@
     // 왼쪽 사람부터 오른쪽 사람까지 차례로 솟는다 — 파도타기.
     // 박자(2.4초)는 마을과 같고 시작만 조금씩 늦춘다. 배열이 이미 x 순서다.
     FOLKS.forEach((f, i) => folks.appendChild(sprite('folk person', f.src, {
-      left: pct(f.x), top: pct(f.y), width: pct(f.w),
+      left: pct(f.x), bottom: upTo(f.y), width: pct(f.w),
       animationDelay: (i * 0.19).toFixed(2) + 's',
     })));
 
     PERCHED.forEach((p) => folks.appendChild(sprite('folk', p.src, {
-      left: pct(p.x), top: pct(p.y), width: pct(p.w), animation: 'none',
+      left: pct(p.x), bottom: upTo(p.y), width: pct(p.w), animation: 'none',
     })));
   }
 
@@ -114,7 +128,7 @@
 
       if (isMe) {
         btn.style.left = pct(d.character[0]);
-        btn.style.top = pct(d.character[1]);
+        btn.style.bottom = upTo(d.character[1]);
         btn.style.width = '5.4%';
         // 흔들리는 것은 안쪽 그림뿐 — 버튼은 가만히 있어야 누를 자리가 고정된다
         const fig = el('span', 'me-figure');
@@ -134,7 +148,7 @@
           const pop = el('span', 'pop');
           Object.assign(pop.style, {
             left: pct((b.at[0] - rx) / rw * 100),
-            top: pct((b.at[1] - ry) / rh * 100),
+            bottom: upTo((b.at[1] - ry) / rh * 100),
             width: pct(b.w / rw * 100),
           });
           pop.appendChild(pixel(S + b.src));
@@ -191,7 +205,7 @@
     if (!s || !s.sprite) return;
     const song = s.song;
     const box = el(song ? 'button' : 'span', 'horn-spot' + (song ? ' horn-live' : ''));
-    Object.assign(box.style, { left: pct(s.at[0]), top: pct(s.at[1]), width: pct(s.w) });
+    Object.assign(box.style, { left: pct(s.at[0]), bottom: upTo(s.at[1]), width: pct(s.w) });
 
     const fig = el('span', 'horn-fig');
     const zoom = el('span', 'horn-zoom');    // 호버 확대를 idle 애니메이션과 다른 요소에 건다
@@ -452,7 +466,7 @@
     } else {
       a.setAttribute('aria-hidden', 'true');   // 누를 수 없는 것을 읽어줄 이유가 없다
     }
-    Object.assign(a.style, { left: pct(m.at[0]), top: pct(m.at[1]), width: pct(m.w) });
+    Object.assign(a.style, { left: pct(m.at[0]), bottom: upTo(m.at[1]), width: pct(m.w) });
 
     // 프레임은 이름이 곧 역할이다 (rest · flap · tilt). 그 이름이 그대로 클래스가 되고
     // CSS가 언제 어느 장을 보일지 정한다 — 순서에 기대면 한 장만 늘어도 어긋난다
@@ -486,7 +500,7 @@
     const a = el('a', 'mbox-spot');
     a.href = item.url;
     a.setAttribute('aria-label', `우편함 — ${item.name}`);
-    Object.assign(a.style, { left: pct(at[0]), top: pct(at[1]), width: pct(w) });
+    Object.assign(a.style, { left: pct(at[0]), bottom: upTo(at[1]), width: pct(w) });
 
     const mbox = el('span', 'mbox');
     mbox.appendChild(pixel(S + sprite));

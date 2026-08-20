@@ -137,10 +137,16 @@ button, input { font: inherit; color: inherit; }
   cursor: pointer;
   padding: 0;
 }
+/* **세로는 `bottom`으로 앉힌다 — `translateY(-100%)`이 아니다.** 그 -100%는 제
+   높이의 100%인데, 스프라이트 상자는 그림이 도착하기 전까지 높이가 0이다(안의
+   <img>에 width·height 속성이 없어 비율을 모른다). 그동안 -100%도 0이라 건물이
+   제 키만큼 아래에 그려지고, iOS 사파리는 그림이 온 뒤에도 그 값을 다시 계산하지
+   않아 **폰에서만 마을이 통째로 흘러내렸다** (자세한 것은 app.js의 `upTo`).
+   가로 -50%는 인라인 width에 걸리므로 그대로 둔다. */
 .pop {
   position: absolute;
   display: block;
-  transform: translate(-50%, -100%);
+  transform: translateX(-50%);
   transform-origin: 50% 100%;
   pointer-events: none;
   /* 상시로 살짝 부풀었다 가라앉는다 — 여기가 눌러볼 수 있는 곳이라는 신호.
@@ -152,11 +158,11 @@ button, input { font: inherit; color: inherit; }
    양 끝에 잠깐 멈춤(6%·94%)을 둬야 흐물거리지 않고 튀는 느낌이 난다.
    솟는 시점(25%·75%)은 사람들(folk-idle)과 같다 — 마을이 한 박자로 움직인다 */
 @keyframes bldg-idle {
-  0%, 6%    { transform: translate(-50%, -100%) scale(1, 1); }
-  25%       { transform: translate(-50%, -100%) scale(1.005, 1.08); }
-  44%, 56%  { transform: translate(-50%, -100%) scale(1.055, 1.002); }
-  75%       { transform: translate(-50%, -100%) scale(1.005, 1.08); }
-  94%, 100% { transform: translate(-50%, -100%) scale(1, 1); }
+  0%, 6%    { transform: translateX(-50%) scale(1, 1); }
+  25%       { transform: translateX(-50%) scale(1.005, 1.08); }
+  44%, 56%  { transform: translateX(-50%) scale(1.055, 1.002); }
+  75%       { transform: translateX(-50%) scale(1.005, 1.08); }
+  94%, 100% { transform: translateX(-50%) scale(1, 1); }
 }
 .pop > img { display: block; width: 100%; height: auto; }
 
@@ -166,13 +172,13 @@ button, input { font: inherit; color: inherit; }
 @media (hover: hover) {
   .spot:hover .pop {
     animation: none;
-    transform: translate(-50%, -100%) scale(1.05);
+    transform: translateX(-50%) scale(1.05);
     filter: drop-shadow(0 7px 10px rgba(31, 36, 28, .3)) brightness(1.04);
   }
 }
 .spot:focus-visible .pop {
   animation: none;
-  transform: translate(-50%, -100%) scale(1.05);
+  transform: translateX(-50%) scale(1.05);
   filter: drop-shadow(0 7px 10px rgba(31, 36, 28, .3)) brightness(1.04);
 }
 .spot[aria-expanded="true"] .pop {
@@ -181,11 +187,11 @@ button, input { font: inherit; color: inherit; }
 }
 /* 뾰옹: 납작하게 눌렸다가 위로 쭉 늘어나며 튀고 착지 */
 @keyframes boing {
-  0%   { transform: translate(-50%, -100%) scale(1, 1); }
-  25%  { transform: translate(-50%, -100%) scale(1.1, .88); }
-  55%  { transform: translate(-50%, -100%) scale(.96, 1.14); }
-  78%  { transform: translate(-50%, -100%) scale(1.05, .99); }
-  100% { transform: translate(-50%, -100%) scale(1.06, 1.06); }
+  0%   { transform: translateX(-50%) scale(1, 1); }
+  25%  { transform: translateX(-50%) scale(1.1, .88); }
+  55%  { transform: translateX(-50%) scale(.96, 1.14); }
+  78%  { transform: translateX(-50%) scale(1.05, .99); }
+  100% { transform: translateX(-50%) scale(1.06, 1.06); }
 }
 
 /* 우편함 — 구역과 별개의 문 (districts[].mailbox). 건물은 소개서를 열고
@@ -196,7 +202,7 @@ button, input { font: inherit; color: inherit; }
   position: absolute;
   pointer-events: auto;
   display: block;
-  transform: translate(-50%, -100%);
+  transform: translateX(-50%);
   z-index: 4;                      /* 세모집 구역 버튼 위 — 우편함 자리는 우편함이 받는다 */
   line-height: 0;
 }
@@ -262,7 +268,7 @@ button, input { font: inherit; color: inherit; }
 .me-spot {
   position: absolute;
   pointer-events: auto;
-  transform: translate(-50%, -100%);
+  transform: translateX(-50%);
   background: none; border: 0; padding: 0; cursor: pointer;
   line-height: 0;
   z-index: 5;                      /* 넓힌 판정이 옆 구역 상자에 먹히지 않게 */
@@ -319,7 +325,7 @@ button, input { font: inherit; color: inherit; }
 .horn-spot {
   position: absolute;
   pointer-events: none;             /* 노래가 없으면 끝까지 이 값이다 */
-  transform: translate(-50%, -100%);/* 좌표는 받침이 지붕에 닿는 자리 */
+  transform: translateX(-50%);/* 좌표는 받침이 지붕에 닿는 자리 */
   z-index: 3;
   line-height: 0;
 }
@@ -394,6 +400,11 @@ button, input { font: inherit; color: inherit; }
   z-index: 7;                       /* 마을에서 가장 위 — 문은 가려지면 안 된다 */
   background: none; border: 0; padding: 0; cursor: pointer;
   line-height: 0;
+  /* 쪽지만은 밑변이 아니라 가운데를 잡는다 — 날아다니는 것이라 발밑이 없다.
+     그래서 세로 -50%가 제 높이에 걸리는데, 그림이 오기 전에는 그 높이가 0이다
+     (건물이 폰에서 흘러내린 것과 같은 함정 — app.js의 `upTo`). 세 장이 모두
+     150×102라 비율을 미리 못 박아 두면 그림을 기다리지 않고도 높이가 선다. */
+  aspect-ratio: 150 / 102;
   transform: translate(-50%, -50%);
   animation: note-fly linear infinite;
 }
@@ -475,7 +486,7 @@ button, input { font: inherit; color: inherit; }
   position: absolute;
   pointer-events: auto;
   display: block;
-  transform: translate(-50%, -100%);   /* 좌표는 발밑이다 (사람들·"나"와 같은 규칙) */
+  transform: translateX(-50%);   /* 좌표는 발밑이다 (사람들·"나"와 같은 규칙) */
   z-index: 4;
   line-height: 0;
 }
@@ -549,7 +560,7 @@ button, input { font: inherit; color: inherit; }
 /* 공원 사람들 — 발 붙이고 미세하게 들썩.
    '사람들' 구역은 공원 땅이 아니라 사람들이 반응한다 */
 .folk {
-  transform: translate(-50%, -100%);
+  transform: translateX(-50%);
   transform-origin: 50% 100%;
   animation: folk-idle 2.4s ease-in-out infinite;
 }
@@ -560,10 +571,10 @@ button, input { font: inherit; color: inherit; }
    말을 하려던 표식이었고, 이건 한 무리가 함께 노는 장면이라 다른 이야기다.
    주인공보다는 잔잔하게 두어 시선이 캐릭터로 가게 한다 */
 @keyframes folk-idle {
-  0%, 100% { transform: translate(-50%, -100%) scale(1, 1) rotate(0deg); }
-  25%      { transform: translate(-50%, -118%) scale(.96, 1.07) rotate(-5deg); }
-  50%      { transform: translate(-50%, -100%) scale(1.07, .92) rotate(0deg); }
-  75%      { transform: translate(-50%, -118%) scale(.96, 1.07) rotate(5deg); }
+  0%, 100% { transform: translateX(-50%) scale(1, 1) rotate(0deg); }
+  25%      { transform: translateX(-50%) translateY(-18%) scale(.96, 1.07) rotate(-5deg); }
+  50%      { transform: translateX(-50%) scale(1.07, .92) rotate(0deg); }
+  75%      { transform: translateX(-50%) translateY(-18%) scale(.96, 1.07) rotate(5deg); }
 }
 .folk.person img { transform-origin: 50% 100%; transition: transform .18s ease, filter .18s ease; }
 .folks-hot .folk.person img {
