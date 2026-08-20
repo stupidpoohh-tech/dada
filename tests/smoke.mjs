@@ -956,7 +956,92 @@ head('캐시 어긋남');
   await p.close();
 }
 
-/* ── 13. 방문 통계 ────────────────────────────────────────
+/* ── 15. 개발자에게 한마디 ────────────────────────────────
+   서버(worker.js) 쪽은 tests/worker.mjs가 따로 본다. 여기서는 **화면이 서버의
+   대답을 정직하게 옮기는지**만 본다 — 특히 실패했을 때 성공한 척하지 않는지.
+   조용히 고맙다고 하면 방문자는 남겼다고 믿고 나는 못 받는다. */
+head('개발자에게 한마디');
+{
+  const p = await desktop();
+  await town(p);
+  await p.waitForTimeout(500);
+
+  // 푸터는 나가는 길이다 — 기본은 접혀 있어야 한다
+  ok(await p.locator('#sayBox').getAttribute('hidden') !== null, '처음에는 접혀 있다');
+  await p.click('#sayOpen');
+  await p.waitForTimeout(250);
+  ok(await p.locator('#sayBox').getAttribute('hidden') === null, '누르면 펴진다');
+  ok(await p.locator('#sayOpen').getAttribute('aria-expanded') === 'true',
+    '펴졌다는 것을 스크린리더도 안다');
+
+  // 봇 칸은 사람 눈에 보이면 안 된다 (보이면 사람이 채우고 그 글은 버려진다)
+  const hp = await p.evaluate(() => {
+    const r = document.getElementById('sayHp').getBoundingClientRect();
+    return { onScreen: r.right > 0 && r.left < innerWidth };
+  });
+  ok(!hp.onScreen, '봇만 보는 칸은 화면 밖에 있다');
+
+  // 빈 채로 누르면 서버까지 가지 않는다
+  let calls = 0;
+  await p.route('**/api/word', async (route) => { calls++; await route.abort(); });
+  await p.click('#sayBtn');
+  await p.waitForTimeout(250);
+  ok(calls === 0 && /적어/.test(await p.textContent('#sayNote')),
+    '빈 채로 누르면 보내지 않고 적어 달라고 한다', await p.textContent('#sayNote'));
+
+  /* **실패를 성공처럼 보이게 하지 않는다.** KV가 아직 안 붙었을 때 서버가 내주는
+     503을 그대로 흉내 내고, 화면이 그 말을 옮기는지 본다. */
+  await p.unroute('**/api/word');
+  await p.route('**/api/word', (route) => route.fulfill({
+    status: 503, contentType: 'application/json',
+    body: JSON.stringify({ ok: false, error: 'not_configured', message: '아직 받을 준비가 안 됐어요.' }),
+  }));
+  await p.fill('#sayText', '마을 잘 봤어요');
+  await p.click('#sayBtn');
+  await p.waitForTimeout(400);
+  const failed = await p.evaluate(() => ({
+    note: document.getElementById('sayNote').textContent,
+    bad: document.getElementById('sayNote').classList.contains('say-bad'),
+    formGone: !document.getElementById('sayForm'),
+    btnBack: !document.getElementById('sayBtn').disabled,
+  }));
+  ok(/준비가 안 됐/.test(failed.note) && failed.bad,
+    '못 받았으면 서버가 준 말을 그대로 띄운다', JSON.stringify(failed));
+  ok(!failed.formGone && failed.btnBack, '실패하면 적은 것과 버튼이 그대로 남는다',
+    JSON.stringify(failed));
+
+  // 성공하면 폼을 치우고 고맙다고만 한다 — 빈 칸을 다시 내밀면 안 갔나 싶어진다
+  await p.unroute('**/api/word');
+  let sent = null;
+  await p.route('**/api/word', async (route) => {
+    sent = JSON.parse(route.request().postData() || '{}');
+    await route.fulfill({ status: 200, contentType: 'application/json',
+                          body: JSON.stringify({ ok: true }) });
+  });
+  await p.fill('#sayName', '다원');
+  await p.click('#sayBtn');
+  await p.waitForTimeout(400);
+  const done = await p.evaluate(() => ({
+    note: document.getElementById('sayNote').textContent,
+    good: document.getElementById('sayNote').classList.contains('say-good'),
+    formGone: !document.getElementById('sayForm'),
+  }));
+  ok(sent && sent.text === '마을 잘 봤어요' && sent.name === '다원',
+    '적은 것이 그대로 서버로 간다', JSON.stringify(sent));
+  ok(done.good && done.formGone, '남기면 폼이 사라지고 고맙다는 말만 남는다',
+    JSON.stringify(done));
+
+  /* 위에서 **일부러** 503을 흉내 냈으므로 브라우저가 "Failed to load resource"를
+     콘솔에 한 줄 남긴다. 마지막의 「콘솔 오류 없음」은 그대로 엄격하게 두고,
+     내가 만든 이 한 줄만 걷어낸다 — 여기서 안 걷으면 검사를 통째로 느슨하게
+     만들어야 하고, 그러면 진짜 404가 섞여 들어와도 모른다. */
+  for (let i = errors.length - 1; i >= 0; i--) {
+    if (/api\/word/.test(errors[i]) || /status of 503/.test(errors[i])) errors.splice(i, 1);
+  }
+  await p.close();
+}
+
+/* ── 16. 방문 통계 ────────────────────────────────────────
    ga.js는 HOSTS에 적은 도메인에서만 켜진다. 이 가드가 풀리면 여기 검사들이
    매번 바깥 스크립트를 받으러 나가느라 `networkidle`에 기대는 다른 검사들이
    남의 서버 사정에 흔들리고, 내가 고치면서 여닫은 것이 통계에 섞인다.

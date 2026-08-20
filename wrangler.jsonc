@@ -1,5 +1,5 @@
 {
-  // 빌드 명령이 없는 정적 사이트다. 이 파일이 없으면 wrangler가 배포할 때마다
+  // 마을은 빌드 없는 정적 사이트다. 이 파일이 없으면 wrangler가 배포할 때마다
   // 설정을 스스로 만들며 자기 자신을 devDependency로 저장소에 설치하는데,
   // 그때 딸려오는 workerd 바이너리(144MB)가 에셋으로 업로드돼 25MB 제한에 걸렸다.
   // 올리지 않을 것은 .assetsignore에 적는다.
@@ -7,5 +7,30 @@
   "name": "dada-portfolio",
   "compatibility_date": "2026-08-15",
   "observability": { "enabled": true },
-  "assets": { "directory": "." }
+
+  // 「개발자에게 한마디」를 받는 코드 (worker.js). **지도·그림·목록은 여전히
+  // Worker를 거치지 않는다** — Workers 정적 에셋은 파일이 있는 주소를 곧바로
+  // 내주고, 없는 주소(`/api/word`)만 Worker로 보낸다.
+  "main": "worker.js",
+  "assets": { "directory": ".", "binding": "ASSETS" },
+
+  /* ── 남긴 말을 담을 KV ────────────────────────────────
+     **아직 안 붙어 있다.** 붙이기 전까지 폼은 「받을 준비가 안 됐다」고 말하고
+     마을의 나머지는 그대로 돈다 — 조용히 성공한 척하면 방문자는 남겼다고 믿고
+     나는 못 받으므로, 그 편이 낫다.
+
+     붙이는 법 (두 줄이면 끝난다):
+
+       npx wrangler kv namespace create WORDS
+       npx wrangler secret put ADMIN_KEY        # 읽을 때 쓸 열쇠. 아무 문자열
+
+     첫 줄이 뱉는 id를 아래 블록에 넣고 주석을 벗긴 뒤 다시 배포한다.
+     빈 id를 남겨 두면 배포가 통째로 막히므로 **주석인 채로 둔다.**
+
+       "kv_namespaces": [
+         { "binding": "WORDS", "id": "여기에-붙인다" }
+       ],
+
+     읽기: /api/word?key=<ADMIN_KEY>  ·  또는 터미널에서
+       npx wrangler kv key list --binding WORDS --remote  */
 }

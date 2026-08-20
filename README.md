@@ -29,7 +29,9 @@ tools/cut_buildings.py 건물·우편함 시트에서 건물마다 한 장씩 �
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
 tools/cut_crow.py     까마귀 시트를 프레임 세 장으로 자른다 (같은 캔버스·같은 기준점)
 tools/cut_note.py     쪽지 시트를 프레임 세 장으로 자른다 (종이를 기준점으로 맞춘다)
-tests/smoke.mjs       회귀 테스트 122개 (npm test)
+worker.js             「개발자에게 한마디」를 받는 서버. 이 마을에서 코드가 도는 유일한 곳
+tests/smoke.mjs       브라우저 회귀 테스트 (npm run test:browser)
+tests/worker.mjs      worker.js 검사 — 모듈을 그대로 불러 부른다 (npm run test:worker)
 ```
 
 편집용 원본(원본 지도·스프라이트 시트)은 저장소에 두지 않는다 — 아래 「편집용 원본」 참고.
@@ -47,10 +49,14 @@ python3 -m http.server 8000
 ```
 npm install          # 처음 한 번 (playwright)
 npm run serve &      # 8000번 포트로 띄운 뒤
-npm test
+npm test             # worker.mjs + smoke.mjs
 ```
 
-`tests/smoke.mjs`의 122개 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
+두 벌이다. `tests/worker.mjs`는 **브라우저도 wrangler도 없이** `worker.js`를 모듈로
+그대로 불러 `fetch()`를 부른다(KV는 `Map` 하나로 흉내 낸다) — 서버가 있어도 검사는
+여전히 `npm install` 한 번이면 돈다. `npm run test:worker` / `test:browser`로 따로도 돈다.
+
+`tests/smoke.mjs`의 검사는 **전부 실제로 한 번씩 깨졌던 것**이다. 커버리지를 채우려고
 만든 게 아니라 "또 이럴까 봐" 남긴 목록이니, 새 버그를 잡으면 여기에 한 줄 더한다.
 지금 지키고 있는 것 — 두 책이 서로의 설정을 물고 오지 않기, 목록 카드가 빈 해시를 물지 않기,
 캐릭터 판정이 흔들리지 않고 64px을 넘기, 여닫고 호버한 뒤에도 마을이 한 박자이기,
@@ -764,10 +770,54 @@ python3 tools/cut_crow.py      # assets/sprites/crow.png → cut/crow-side · cr
   격자를 그리면 항목 수가 열 수의 배수가 아닐 때 **빈 자리에 선 색이 그대로 드러나
   회색 띠가 생긴다.** 타일이 13개였을 때 실제로 그랬다
 
+## 개발자에게 한마디 (`/api/word`)
+
+푸터에서 방문자가 한마디 남기고 갈 수 있다. **이 마을에서 서버가 하는 일은 이것
+하나뿐이다** — 나머지 주소는 예전 그대로 정적 에셋으로 나간다 (Workers 정적 에셋은
+파일이 있는 주소를 Worker에 물어보지 않는다. 없는 주소인 `/api/word`만 `worker.js`로 온다).
+
+### 붙이기 — 두 줄이면 끝난다
+
+```bash
+npx wrangler kv namespace create WORDS   # 나온 id를 wrangler.jsonc에 붙이고 주석을 벗긴다
+npx wrangler secret put ADMIN_KEY        # 읽을 때 쓸 열쇠. 아무 문자열이면 된다
+```
+
+**붙이기 전에도 사이트는 그대로 돈다.** KV 바인딩이 없으면 서버가 503과 함께
+「아직 받을 준비가 안 됐다」고 말하고, 화면은 그 말을 그대로 띄운다.
+`wrangler.jsonc`에 **빈 `id`를 남겨 두면 배포가 통째로 막히므로** 그 블록은 주석인 채로 뒀다.
+
+### 읽기
+
+```
+/api/word?key=<ADMIN_KEY>                          → 최근 200개 JSON
+npx wrangler kv key list --binding WORDS --remote  → 터미널에서 (열쇠 없이도 된다)
+```
+
+키를 `w:<시각역순>`으로 만들어 **목록이 최신순으로 저절로 정렬된다** — KV의 `list`는
+키 사전순이라, 시각을 그대로 넣으면 오래된 것부터 나와 매번 뒤집어야 한다.
+
+`ADMIN_KEY`를 안 넣었으면 읽기는 **아예 막힌다.** 설정 안 된 자물쇠는 열린 자물쇠다.
+
+### 정해 둔 것
+
+- **실패를 성공처럼 보이게 하지 않는다.** 조용히 고맙다고 하면 방문자는 남겼다고 믿고
+  나는 못 받는다 — 그게 제일 나쁘다. 못 받으면 못 받았다고 말한다
+- **길다고 버리지 않는다.** 말 1000자 · 이름 40자에서 **자른다.** 길게 쓴 사람의 글을
+  통째로 버리는 것보다 낫다
+- **봇에게는 받은 척한다.** 사람 눈에 안 보이는 칸(`hp`)이 채워져 있으면 200을 주고
+  버린다. 거절하면 봇이 다른 방법을 찾는다
+- **도배는 IP당 1분에 3번까지.** KV 카운터 하나로 세고, 창이 지나면 저절로 사라진다
+- **푸터에서는 접혀 있다.** 나가는 길이지 말을 걸어야 하는 곳이 아니다
+- **남기고 나면 폼을 치운다.** 빈 칸을 다시 내밀면 방금 남긴 것이 안 갔나 싶어진다.
+  이때 알림 문구(`#sayNote`)는 **폼 바깥**에 있어야 한다 — 안에 뒀다가 폼과 함께
+  사라져 고맙다는 말이 안 뜬 적이 있다
+
 ## 배포
 
-Cloudflare Workers 정적 에셋. 빌드 명령 없이 **저장소 루트를 통째로 올린다**
+Cloudflare Workers. 빌드 명령 없이 **저장소 루트를 통째로 올린다**
 (`wrangler.jsonc`의 `assets.directory: "."`, 배포 명령은 `npx wrangler deploy`).
+`main`으로 `worker.js`가 함께 올라가지만 하는 일은 위의 `/api/word` 하나뿐이다.
 
 **게시되는 것은 저장소의 기본 브랜치다.** 다른 브랜치에 올린 작업은 아무리 커밋해도
 사이트에 나타나지 않는다 — "고쳤는데 왜 그대로지?" 싶으면 여기부터 확인한다.

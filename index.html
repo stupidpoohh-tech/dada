@@ -83,6 +83,45 @@
 </main>
 
 <footer class="site-footer">
+  <!-- 개발자에게 한마디 — 마을을 다 둘러본 자리에서 한마디 남기고 갈 수 있게.
+       접혀 있다가 눌러야 펴진다: 푸터는 나가는 길이지 말 걸어야 하는 곳이 아니다. -->
+  <section class="say" aria-labelledby="sayTitle">
+    <button type="button" class="say-open" id="sayOpen" aria-expanded="false" aria-controls="sayBox">
+      <span aria-hidden="true">✏️</span> 개발자에게 한마디
+    </button>
+    <div class="say-box" id="sayBox" hidden>
+      <h2 class="say-title" id="sayTitle">개발자에게 한마디</h2>
+      <p class="say-lead">마을을 둘러본 소감이든, 고칠 곳이든, 아무 말이든 좋아요.</p>
+      <form id="sayForm" novalidate>
+        <label class="say-label" for="sayText">한마디 <span aria-hidden="true">*</span></label>
+        <textarea id="sayText" name="text" rows="4" maxlength="1000" required
+                  placeholder="여기에 적어 주세요"></textarea>
+        <div class="say-row">
+          <div>
+            <label class="say-label" for="sayName">이름 <span class="say-opt">(선택)</span></label>
+            <input type="text" id="sayName" name="name" maxlength="40" autocomplete="nickname">
+          </div>
+          <div>
+            <label class="say-label" for="sayReply">답장 받을 곳 <span class="say-opt">(선택)</span></label>
+            <input type="text" id="sayReply" name="reply" maxlength="120"
+                   autocomplete="email" placeholder="이메일·인스타 등">
+          </div>
+        </div>
+        <!-- 사람 눈에는 안 보이는 칸. 봇이 채우면 조용히 받은 척하고 버린다 -->
+        <div class="say-hp" aria-hidden="true">
+          <label for="sayHp">이 칸은 비워 두세요</label>
+          <input type="text" id="sayHp" name="hp" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="say-send">
+          <button type="submit" class="say-btn" id="sayBtn">남기기</button>
+        </div>
+      </form>
+      <!-- 폼 **바깥**이다. 다 남기고 나면 폼을 통째로 치우는데, 안에 두면
+           고맙다는 말도 같이 사라진다 (실제로 그렇게 만들었다가 잡았다) -->
+      <p class="say-note" id="sayNote" role="status" aria-live="polite"></p>
+    </div>
+  </section>
+
   <p class="foot-name" id="footName"></p>
   <p class="foot-contact" id="footContact"></p>
 </footer>

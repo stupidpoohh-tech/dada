@@ -14,6 +14,9 @@ node_modules
 # 개발용 — 방문자에게 줄 것이 아니다
 tests
 tools
+# 「한마디」를 받는 서버 코드. wrangler가 main으로 따로 올리므로 에셋으로는 안 올린다
+# (에셋으로도 올라가면 소스가 /worker.js로 그대로 읽힌다)
+worker.js
 package.json
 package-lock.json
 bun.lock

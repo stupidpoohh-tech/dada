@@ -1335,6 +1335,71 @@
     }, true);
   }
 
+  /* ── 개발자에게 한마디 ─────────────────────
+   *  마을을 다 둘러본 자리(푸터)에서 한마디 남기고 갈 수 있게. 받는 쪽은
+   *  `worker.js`의 `/api/word`다 — 이 마을에서 서버가 하는 유일한 일이다.
+   *
+   *  **접어 둔다.** 푸터는 나가는 길이지 말을 걸어야 하는 곳이 아니라,
+   *  펴는 것은 남길 마음이 있는 사람의 손에 맡긴다.
+   *
+   *  **보내는 동안과 보낸 뒤를 눈에 보이게 한다.** 눌렀는데 아무 일도 안 일어나면
+   *  두 번 세 번 누르게 되고, 그러면 같은 말이 여러 줄 쌓인다 — 버튼을 잠그고
+   *  「보내는 중」이라고 말한 뒤 결과를 그 자리에 쓴다.
+   *
+   *  **실패를 성공처럼 보이게 하지 않는다.** KV가 아직 안 붙어 있으면 서버가
+   *  503과 함께 그렇다고 말하고, 여기서는 그 말을 그대로 띄운다. 조용히
+   *  고맙다고 하면 방문자는 남겼다고 믿고 나는 못 받는다 — 그게 제일 나쁘다. */
+  function initSay() {
+    const openBtn = $('sayOpen'), box = $('sayBox'), form = $('sayForm');
+    if (!openBtn || !form) return;
+    const note = $('sayNote'), btn = $('sayBtn');
+
+    openBtn.addEventListener('click', () => {
+      const open = box.hidden;
+      box.hidden = !open;
+      openBtn.setAttribute('aria-expanded', String(open));
+      if (open) { $('sayText').focus(); track('say_open', {}); }
+    });
+
+    const say = (msg, kind) => {
+      note.textContent = msg;
+      note.className = 'say-note' + (kind ? ' say-' + kind : '');
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = $('sayText').value.trim();
+      if (!text) { say('한마디를 적어 주세요.', 'bad'); $('sayText').focus(); return; }
+
+      btn.disabled = true;
+      say('보내는 중…');
+      try {
+        const res = await fetch('/api/word', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            text, name: $('sayName').value, reply: $('sayReply').value, hp: $('sayHp').value,
+          }),
+        });
+        const out = await res.json().catch(() => ({}));
+        if (res.ok && out.ok) {
+          // 남긴 뒤에는 폼을 치우고 고마웠다는 말만 남긴다 — 또 쓰라고 빈 칸을
+          // 다시 내밀면 방금 남긴 것이 안 갔나 싶어진다
+          form.remove();
+          say('고맙습니다. 잘 받았어요.', 'good');
+          track('say_sent', {});
+        } else {
+          say(out.message || '지금은 남길 수가 없어요. 잠시 뒤에 다시 시도해 주세요.', 'bad');
+          btn.disabled = false;
+        }
+      } catch (_) {
+        // 네트워크가 끊겼거나 정적으로만 띄운 경우(로컬 python 서버 등)
+        say('연결이 안 돼요. 잠시 뒤에 다시 시도해 주세요.', 'bad');
+        btn.disabled = false;
+      }
+    });
+  }
+
   /* ── 시작 ────────────────────────────────── */
 
   async function init() {
@@ -1388,6 +1453,8 @@
     const a = el('a', null, data.profile.email);
     a.href = 'mailto:' + data.profile.email;
     fc.appendChild(a);
+
+    initSay();
 
     $('openList').addEventListener('click', openModal);
     $('closeList').addEventListener('click', closeModal);
