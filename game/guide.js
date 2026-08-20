@@ -536,7 +536,8 @@
     cards.forEach((c) => c.classList.toggle('card--zoomable', zoomable && !!c.dataset.page));
   }
 
-  fetch('data.json')
+  // 캐시를 다시 확인한다 — 챕터 구성이 여기서 오므로 guide.js와 짝이 맞아야 한다
+  fetch('data.json', { cache: 'no-cache' })
     .then((r) => r.json())
     .then((json) => {
       data = json;

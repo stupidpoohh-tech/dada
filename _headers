@@ -1,0 +1,24 @@
+# Cloudflare Workers 정적 에셋의 응답 헤더.
+#
+# 화면을 그리는 데이터(services.json · game/data.json)와 그것을 읽는 코드(app.js ·
+# guide.js)는 **짝이 맞아야 한다.** 둘이 따로 캐시되면 예전 데이터가 새 코드를 만나
+# 화면이 어긋난다 — 실제로 카페 앞에 물음표 상자가 선 적이 있다 (사라진 스프라이트
+# 이름이 남은 예전 services.json이 캐시에 있었다).
+#
+# no-cache는 「쓰지 마라」가 아니라 「쓰기 전에 반드시 물어봐라」다.
+# 바뀐 게 없으면 304로 끝나므로 값은 거의 안 든다. 그림과 지도는 그대로 캐시된다.
+
+/services.json
+  Cache-Control: no-cache
+
+/game/data.json
+  Cache-Control: no-cache
+
+/app.js
+  Cache-Control: no-cache
+
+/game/guide.js
+  Cache-Control: no-cache
+
+/ga.js
+  Cache-Control: no-cache

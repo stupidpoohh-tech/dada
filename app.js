@@ -68,14 +68,24 @@
   let data, byDistrict, openId = null, lastSpot = null;
   const pops = [];
 
+  /** 지도에 얹는 그림 한 장. **못 불러오면 스스로 사라진다.**
+   *  브라우저는 깨진 <img>에 물음표 상자를 그리는데, 이 마을에서는 그게 지도 위에
+   *  그대로 뜬다 — 없는 그림보다 나쁘다. 실제로 그런 적이 있다: services.json만
+   *  예전 것이 캐시에 남아 사라진 파일 이름을 가리키자 카페 앞에 물음표가 섰다. */
+  function pixel(src, alt = '') {
+    const img = new Image();
+    img.src = src;
+    img.alt = alt;
+    img.addEventListener('error', () => img.remove(), { once: true });
+    return img;
+  }
+
   /* ── 지도 위 장식 ───────────────────────── */
 
   function sprite(cls, src, styles) {
     const box = el('div', cls);
     Object.assign(box.style, styles);
-    const img = new Image();
-    img.src = S + src;
-    img.alt = '';
+    const img = pixel(S + src);
     img.loading = 'lazy';
     box.appendChild(img);
     return box;
@@ -213,10 +223,7 @@
         btn.style.width = '5.4%';
         // 흔들리는 것은 안쪽 그림뿐 — 버튼은 가만히 있어야 누를 자리가 고정된다
         const fig = el('span', 'me-figure');
-        const img = new Image();
-        img.src = S + 'me.png';
-        img.alt = '';
-        fig.appendChild(img);
+        fig.appendChild(pixel(S + 'me.png'));
         btn.appendChild(fig);
       } else {
         const [x, y, w, h] = d.rect;
@@ -312,9 +319,7 @@
     // CSS가 언제 어느 장을 보일지 정한다 — 순서에 기대면 한 장만 늘어도 어긋난다
     const fig = el('span', 'crow-figure');
     frames.forEach(([role, src]) => {
-      const img = new Image();
-      img.src = S + src;
-      img.alt = '';
+      const img = pixel(S + src);
       img.className = 'crow-' + role;
       fig.appendChild(img);
     });
@@ -1085,7 +1090,11 @@
   /* ── 시작 ────────────────────────────────── */
 
   async function init() {
-    data = await (await fetch('services.json')).json();
+    // **캐시를 반드시 다시 확인한다.** 이 파일은 화면을 그리는 데이터라 app.js와
+    // 짝이 맞아야 하는데, 둘이 따로 캐시되면 예전 데이터가 새 코드를 만난다.
+    // 실제로 그래서 카페 앞에 물음표 상자가 섰다 (사라진 파일 이름이 남아 있었다).
+    // 바뀐 게 없으면 304로 끝나므로 값은 거의 안 든다.
+    data = await (await fetch('services.json', { cache: 'no-cache' })).json();
 
     byDistrict = {};
     data.districts.forEach((d) => { byDistrict[d.id] = []; });

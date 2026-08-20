@@ -615,7 +615,52 @@ head('카페 앞 까마귀');
   await p.close();
 }
 
-/* ── 12. 방문 통계 ────────────────────────────────────────
+/* ── 12. 캐시가 어긋나도 지도가 깨지지 않는다 ─────────────
+   깨진 적 있음: services.json만 예전 것이 캐시에 남은 채 새 app.js를 만났다.
+   프레임 역할 이름이 CSS와 어긋나 세 장이 한꺼번에 뜨고, 그중 사라진 파일 하나가
+   404가 나면서 **카페 앞에 브라우저의 물음표 상자가 그대로 섰다.** */
+head('캐시 어긋남');
+{
+  const p = await desktop();
+
+  // 데이터는 캐시를 반드시 다시 확인해야 한다 — 코드와 짝이 맞아야 하는 파일이다
+  // 브라우저가 실제로 보내는 값은 `max-age=0`이다 (fetch의 cache: 'no-cache'가 그렇게 나간다).
+  // 어느 쪽이든 「쓰기 전에 물어본다」는 뜻이고, 그게 없으면 예전 데이터가 조용히 쓰인다.
+  const asked = [];
+  p.on('request', async (r) => {
+    if (/services\.json/.test(r.url())) asked.push((await r.allHeaders())['cache-control'] || '');
+  });
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(900);
+  ok(asked.length === 1 && /no-cache|max-age=0/.test(asked[0]),
+    'services.json은 캐시를 다시 확인하고 쓴다', JSON.stringify(asked));
+
+  // 애니메이션이 안 붙어도 겹쳐 보이지 않는다 (기본값이 「첫 장만」이어야 한다)
+  const stacked = await p.evaluate(() => {
+    document.querySelectorAll('.crow-figure img')
+      .forEach((i) => { i.style.animation = 'none'; });
+    return [...document.querySelectorAll('.crow-figure img')]
+      .map((i) => +getComputedStyle(i).opacity);
+  });
+  ok(stacked[0] === 1 && stacked.slice(1).every((o) => o === 0),
+    '애니메이션이 없어도 프레임은 한 장만 보인다', JSON.stringify(stacked));
+  await p.close();
+}
+{
+  // 그림 하나가 사라져도 지도에 물음표를 그리지 않는다.
+  // 일부러 끊는 것이라 이 페이지는 콘솔 오류 수집에서 뺀다 (watch를 안 건다)
+  const p = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await p.route('**/assets/sprites/cut/crow-side.png', (r) => r.abort());
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(900);
+  const left = await p.evaluate(() =>
+    [...document.querySelectorAll('.crow-figure img')].map((i) => i.className));
+  ok(!left.includes('crow-rest') && left.length === 2,
+    '못 불러온 스프라이트는 스스로 사라진다', JSON.stringify(left));
+  await p.close();
+}
+
+/* ── 13. 방문 통계 ────────────────────────────────────────
    ga.js는 HOSTS에 적은 도메인에서만 켜진다. 이 가드가 풀리면 여기 검사들이
    매번 바깥 스크립트를 받으러 나가느라 `networkidle`에 기대는 다른 검사들이
    남의 서버 사정에 흔들리고, 내가 고치면서 여닫은 것이 통계에 섞인다.
