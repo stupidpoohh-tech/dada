@@ -26,7 +26,7 @@ assets/
 tools/cut_sprites.py  시트에서 스프라이트를 잘라내고 배경을 투명 처리
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
 tools/cut_crow.py     까마귀 시트를 프레임 세 장으로 자른다 (같은 캔버스·같은 기준점)
-tools/draw_note.py    날개 달린 쪽지 스프라이트 (임시 그림 — 시트가 오면 갈아 끼운다)
+tools/cut_note.py     쪽지 시트를 프레임 세 장으로 자른다 (종이를 기준점으로 맞춘다)
 tests/smoke.mjs       회귀 테스트 108개 (npm test)
 ```
 
@@ -473,7 +473,7 @@ CSS 기본값은 `pointer-events: none`이라, 애니메이션이 어떤 이유�
 
 ```json
 "floater": {
-  "w": 6.2,                       // 지도 폭 기준 %
+  "w": 7,                         // 지도 폭 기준 %
   "dur": 52,                      // 한 바퀴 도는 데 걸리는 초
   "path": [
     { "at": [14, 80], "stop": true },   // stop이 붙은 길목에서만 멈추고, 멈춘 동안만 잡힌다
@@ -484,9 +484,24 @@ CSS 기본값은 `pointer-events: none`이라, 애니메이션이 어떤 이유�
 }
 ```
 
-**그림은 아직 임시다.** 받은 시트가 없어 도형으로 지었다(`tools/draw_note.py`).
-시트가 오면 `cut_crow.py`와 같은 방식으로 잘라 같은 이름 세 장으로 갈아 끼우면 된다 —
-크기 · 자리 · 박자는 전부 JSON과 CSS가 잡으므로 코드는 안 건드린다.
+### 쪽지 시트 자르기
+
+```
+pip install pillow numpy
+python3 tools/cut_note.py     # assets/sprites/note.png → cut/note-down · note-mid · note-up
+```
+
+`cut_crow.py`와 같은 이유로 `cut_sprites.py`를 그대로 못 쓴다 — 번갈아 보여주는
+프레임은 **장끼리 눈금과 자리가 어긋나면 안 되는데**, 날개를 크게 편 장은 상자가 더 커서
+각자 높이를 맞추면 쪽지가 장마다 커졌다 작아진다.
+
+**기준점은 종이다.** 날개는 장마다 자리가 크게 바뀌지만 종이는 거의 그대로다.
+종이만 골라내는 방법은 색이다 — **종이는 크림색이라 R이 B보다 확실히 높고,
+날개는 흰색이라 그렇지 않다.** `R - B`로 갈린다.
+
+시트에는 여섯 자세가 있고 마을에는 셋만 쓴다. 어느 자세를 쓸지는 `cut_note.py`의
+`FRAMES`에서 고른다 — 지금은 날개가 **아래 → 옆으로 크게 → 위**로 훑는 세 장이다.
+원본 시트(`assets/sprites/note.png`)는 다른 시트와 마찬가지로 `.gitignore`에 있다.
 
 ## 카페 앞 까마귀 Croww
 

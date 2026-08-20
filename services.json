@@ -220,7 +220,7 @@
     "name": "날아다니는 쪽지",
     "label": "MEMO",
     "icon": "\u2709\ufe0f",
-    "w": 6.2,
+    "w": 7,
     "dur": 52,
     "path": [
       { "at": [14, 80], "stop": true },
