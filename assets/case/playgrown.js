@@ -89,7 +89,14 @@ if (track && panels.length > 1) {
 
   let at = -1;
 
+  /* **마지막 화면에서 한 번 더 넘기면 문서가 닫히고 마을로 돌아간다.**
+     끝에 닿았는데 아무 일도 안 일어나면 「여기서 뭘 해야 하나」가 남는다 —
+     읽던 사람이 스스로 뒤로 가기를 찾아야 했다. 마지막 장의 「다시 돌아온다」가
+     그 문의 표시이고, 한 번 더 미는 동작이 그 문을 여는 것이다. */
+  const home = () => { location.href = '/'; };
+
   function go(i, opt = {}) {
+    if (i >= panels.length) return home();
     const to = Math.max(0, Math.min(panels.length - 1, i));
     if (to === at && !opt.force) return;
     at = to;
@@ -107,7 +114,11 @@ if (track && panels.length > 1) {
     });
     count.textContent = `${at + 1} / ${panels.length}`;
     prev.disabled = at === 0;
-    next.disabled = at === panels.length - 1;
+    /* 마지막에서도 오른쪽은 살아 있다 — 다만 가는 곳이 다음 화면이 아니라 마을이다 */
+    const last = at === panels.length - 1;
+    next.disabled = false;
+    next.classList.toggle('vw-arrow--out', last);
+    next.setAttribute('aria-label', last ? '문서를 닫고 마을로' : '다음 화면');
     /* 넘어간 화면은 맨 위에서 시작한다. 안 되돌리면 앞 화면을 굴려 놓은 만큼
        다음 화면도 중간부터 보인다 */
     panels[at].scrollTop = 0;

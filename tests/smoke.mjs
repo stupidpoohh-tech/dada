@@ -1290,6 +1290,10 @@ if (head('케이스 스터디 — 일력')) {
   const p = await desktop();
   await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
   ok(await p.locator('.days .day').count() === 18, '낱장이 열여덟 장이다');
+  /* **여섯 칸 세 줄로 못 박았다.** 폭에 따라 칸 수가 늘고 줄던 때는 폰에서
+     아홉 줄로 늘어져 한 화면에 안 들어왔다 */
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector('.days'))
+    .gridTemplateColumns.split(' ').length) === 6, '여섯 칸이다');
   /* 열일곱 장은 준비고 마지막 한 장이 그날이다. 이 표시가 빠지면 일력이
      그냥 할 일 목록이 된다 */
   ok(await p.locator('.days .day:last-child.day--pilot').count() === 1,
@@ -1369,6 +1373,31 @@ if (head('케이스 스터디 — 노트는 정적')) {
     const f = getComputedStyle(document.querySelector('.note')).fontFamily;
     return /mono/i.test(f);
   }), '노트는 고정폭이다');
+  /* 영화 끝나고 나오는 그 한 줄. 교훈에 붙어 버리면 넷째 교훈으로 읽힌다 */
+  ok((await p.textContent('.sting')).includes('다시 돌아온다'),
+    '마지막에 쿠키 문구가 있다');
+  ok(await p.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.sting')).marginTop) >= 40),
+    '쿠키 문구는 교훈에서 멀찍이 떨어져 있다');
+  await p.close();
+}
+
+if (head('케이스 스터디 — 마지막에서 나간다')) {
+  /* **끝에 닿았는데 아무 일도 안 일어나면 「여기서 뭘 해야 하나」가 남는다.**
+     한 번 더 미는 동작이 문서를 닫고 마을로 데려간다 */
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(500);
+  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[8].click());
+  await p.waitForTimeout(600);
+  ok((await p.textContent('.vw-count')).startsWith('9 /'), '마지막 화면이다');
+  ok(!await p.evaluate(() => document.querySelector('.vw-arrow--next').disabled),
+    '마지막에서도 오른쪽 단추는 살아 있다');
+  ok(await p.evaluate(() => document.querySelector('.vw-arrow--next').classList.contains('vw-arrow--out')),
+    '「다음」이 아니라 「나가기」로 보인다');
+  await p.evaluate(() => document.querySelector('.vw-arrow--next').click());
+  await p.waitForLoadState('domcontentloaded');
+  await p.waitForTimeout(400);
+  ok(new URL(p.url()).pathname === '/', '한 번 더 넘기면 마을로 돌아간다', p.url());
   await p.close();
 }
 

@@ -195,59 +195,74 @@
 }
 
 /* ── 3 · 일력 ───────────────────────────────────────────────────
-   일력은 한 장씩 뜯는 물건이라 열여덟 장을 한눈에 늘어놓는다. 세로로 이어 붙이면
-   그냥 긴 목록이 되는데, 격자에 깔면 **기간이 부피로 보인다.**
+   일력은 한 장씩 뜯는 물건이라 열여덟 장을 한눈에 늘어놓는다.
+
+   **여섯 칸 세 줄로 못 박는다** (2026-08-22). 원래는 폭에 따라 칸 수가 알아서
+   늘고 줄었는데, 폰에서 두 칸이 되니 열여덟 장이 아홉 줄로 늘어져 **한 화면에
+   안 들어왔다** — 넘기는 화면에서 그 절만 굴려야 했다. 6×3은 어느 폭에서나
+   3주 남짓한 기간의 「모양」이 그대로 유지된다는 뜻이기도 하다.
+
+   **글자 크기는 칸을 따라간다.** 여섯 칸을 못 박으면 폰에서 칸이 60px까지
+   작아지는데, 글자를 고정으로 두면 칸 밖으로 삐져나온다. `cqw`는 칸 폭의 1%라
+   칸이 줄면 글자도 같이 준다 — 작아서 안 읽히는 것은 두 손가락으로 벌려 본다.
    그림은 한 장도 안 쓴다 — 집게도 톱니도 전부 규칙이다 */
 
 .days {
   list-style: none; margin: 0; padding: 0;
-  display: grid; gap: 26px 14px;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: clamp(10px, 2.4vw, 26px) clamp(4px, 1.2vw, 14px);
 }
 
 .day {
-  position: relative; padding-top: 11px;
+  position: relative;
+  /* 아래 cqw가 이 칸의 폭을 기준으로 잡힌다. **다만 이 상자 자신은 그 단위를
+     못 쓴다** — 컨테이너는 자기 자신에게 질문하지 않아서, 여기 `padding-top: 7cqw`를
+     주면 바깥(뷰포트)을 기준으로 잡혀 데스크톱에서 집게와 낱장 사이가 100px씩
+     벌어졌다. 집게 자리는 자식인 .day-sheet의 margin으로 낸다 */
+  container-type: inline-size;
   filter: drop-shadow(0 5px 12px rgba(17, 17, 17, .12));
 }
 /* 검은 집게와 리벳 둘. 낱장 위에 얹혀야 하므로 잘리는 .day-sheet 바깥에 둔다 */
 .day-clip {
-  position: absolute; z-index: 2; left: 16%; right: 16%; top: 0; height: 15px;
+  position: absolute; z-index: 2; left: 16%; right: 16%; top: 0; height: 9.5cqw;
   border-radius: 2px; background: var(--pg-clip, #111111);
   background-image:
-    radial-gradient(circle 2.6px at 28% 50%, #8C8C8C 98%, #0000 100%),
-    radial-gradient(circle 2.6px at 72% 50%, #8C8C8C 98%, #0000 100%);
+    radial-gradient(circle 1.7cqw at 28% 50%, #8C8C8C 98%, #0000 100%),
+    radial-gradient(circle 1.7cqw at 72% 50%, #8C8C8C 98%, #0000 100%);
 }
 
 .day-sheet {
-  /* 뜯긴 윗변. px로 판다 — %로 주면 칸 높이에 따라 톱니 크기가 제각각이 된다 */
+  /* 뜯긴 윗변. 칸 폭을 따라가야 칸이 작아져도 톱니가 그대로 톱니로 읽힌다 */
   clip-path: polygon(
-    0 6px, 8% 1px, 16% 5px, 24% 0, 32% 4px, 40% 2px, 48% 6px, 56% 1px,
-    64% 5px, 72% 2px, 80% 6px, 88% 0, 96% 4px, 100% 2px, 100% 100%, 0 100%
+    0 4cqw, 8% 0.6cqw, 16% 3.2cqw, 24% 0, 32% 2.6cqw, 40% 1.3cqw, 48% 3.8cqw, 56% 0.6cqw,
+    64% 3.2cqw, 72% 1.3cqw, 80% 3.8cqw, 88% 0, 96% 2.6cqw, 100% 1.3cqw, 100% 100%, 0 100%
   );
   background: #FBF9F4;
-  padding: 16px 12px 14px;
-  min-height: 118px;
+  margin-top: 7cqw;                 /* 집게가 걸릴 자리 (위 설명) */
+  padding: 10cqw 6cqw 8cqw;
 }
 
 .day-head {
-  display: flex; align-items: baseline; justify-content: center; gap: 6px;
-  margin: 0 0 4px; color: var(--pg-black);
+  display: flex; align-items: baseline; justify-content: center; gap: 4cqw;
+  margin: 0 0 2cqw; color: var(--pg-black);
 }
 .day-mon, .day-dow {
-  flex: none; font-size: 12px; font-weight: 700; line-height: 1.1;
+  flex: none; font-weight: 700; line-height: 1.1;
+  font-size: clamp(6px, 7.7cqw, 12px);
   display: grid; justify-items: center;
 }
 .day-mon i, .day-dow i {
-  font-style: normal; font-size: 7.5px; font-weight: 800;
-  letter-spacing: .06em; color: var(--faint);
+  font-style: normal; font-weight: 800; letter-spacing: .06em; color: var(--faint);
+  font-size: clamp(4.5px, 4.8cqw, 7.5px);
 }
 .day-num {
-  font-size: 42px; font-weight: 800; line-height: .95;
+  font-size: clamp(15px, 27cqw, 42px); font-weight: 800; line-height: .95;
   letter-spacing: -.03em; font-variant-numeric: tabular-nums;
 }
 .day-do {
-  margin: 0; padding-top: 9px; border-top: 1px solid var(--pg-line);
-  font-size: 11.5px; line-height: 1.55; color: var(--sub); text-align: center;
+  margin: 0; padding-top: 5cqw; border-top: 1px solid var(--pg-line);
+  font-size: clamp(5.5px, 7.4cqw, 11.5px); line-height: 1.5;
+  color: var(--sub); text-align: center; word-break: keep-all;
 }
 
 /* 열여덟째 날만 다르다. 앞의 열일곱 장이 준비고 이 한 장이 그날이다 */
@@ -262,10 +277,16 @@
    누르면 그때 youtube-nocookie로 바꿔 끼운다 (playgrown.js).
    JS가 없으면 이 카드는 그냥 유튜브로 가는 링크다 */
 
-.film { margin: 0; display: grid; justify-items: center; gap: 12px; }
+.film {
+  margin: 0; display: grid; justify-items: center; gap: 12px;
+  /* **높이부터 정하고 폭을 거기서 뽑는다.** 폭을 먼저 정하면 9:16이라 높이가
+     그 1.8배가 되는데, 폰에서는 그것만으로 화면을 넘겨서 절 안을 굴려야 했다.
+     화면 높이의 절반 남짓으로 못 박으면 표제·설명과 함께 한 화면에 들어온다 */
+  --film-h: min(46dvh, 460px);
+}
 .film-card {
   position: relative; display: grid; align-content: end; gap: 10px;
-  width: min(300px, 78vw); aspect-ratio: 9 / 16;
+  height: var(--film-h); width: calc(var(--film-h) * 9 / 16); max-width: 76vw;
   padding: 20px; border-radius: 16px;
   /* **여기는 토큰을 쓰지 않는다.** 이 카드는 「검은 물건」이라 방이 어두워졌다고
      같이 밝아지면 안 된다 — 암전한 방에서 카드가 크림색으로 뒤집혀 흰 글자가
@@ -303,7 +324,7 @@
 }
 /* 바꿔 끼운 유튜브 틀. 카드와 같은 자리·같은 크기라 눌러도 화면이 안 튄다 */
 .film-frame {
-  width: min(300px, 78vw); aspect-ratio: 9 / 16;
+  height: var(--film-h); width: calc(var(--film-h) * 9 / 16); max-width: 76vw;
   border: 0; border-radius: 16px; box-shadow: var(--pg-lift);
 }
 .film figcaption { font-size: 12.5px; color: var(--faint); }
@@ -320,6 +341,15 @@
 }
 .note-list { margin: 0; padding-left: 22px; }
 .note-list li { margin: 0 0 10px; }
+
+/* 영화 끝나고 불 켜지기 전에 한 줄 더 나오는 그것. **멀찍이 떨어뜨리는 것이
+   전부다** — 붙여 두면 넷째 교훈으로 읽힌다. 여기가 문서의 마지막 글자이고,
+   한 번 더 넘기면 마을로 나간다 */
+.sting {
+  margin: clamp(48px, 9vh, 96px) 0 0; text-align: center;
+  font-size: 13px; font-weight: 700; letter-spacing: .12em;
+  color: var(--pg-red);
+}
 
 
 /* ── 1 · 2 · 4 · 받은 그대로 한 장 ──────────────────────────────────
@@ -413,16 +443,8 @@
   .plan-pin i { width: 20px; height: 20px; font-size: 11px; }
 }
 
-@media (max-width: 760px) {
-  /* 일력은 폰에서 두 줄. 한 줄로 세우면 열여덟 장이 그냥 긴 목록이 되어
-     「기간이 부피로 보인다」는 이 절의 뜻이 사라진다 */
-  .days { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 22px 10px; }
-  .day-num { font-size: 34px; }
-  .day-sheet { min-height: 104px; padding: 13px 9px 12px; }
-}
-
 @media (max-width: 420px) {
-  .days { grid-template-columns: 1fr 1fr; }
+  .sting { font-size: 12px; letter-spacing: .1em; }
 }
 
 
@@ -485,6 +507,10 @@
 .vw-arrow--next { right: 16px; }
 /* 끝에서는 흐려질 뿐 사라지지 않는다 — 단추가 사라지면 화면이 덜컥 움직인다 */
 .vw-arrow[disabled] { opacity: .2; cursor: default; }
+/* 마지막 화면의 오른쪽은 「다음」이 아니라 「나가기」다. 같은 모양으로 두면
+   또 한 장이 있는 줄 알고 누른다 */
+.vw-arrow--out { background: var(--pg-red); }
+.vw-arrow--out:hover { background: #C8301F; }
 
 .vw-pager {
   position: fixed; z-index: 30; left: 50%; bottom: 20px; transform: translateX(-50%);
@@ -523,6 +549,9 @@
   .vw-arrow { top: auto; bottom: 18px; transform: none; width: 40px; height: 40px; }
   .vw-arrow--prev { left: 12px; }
   .vw-arrow--next { right: 12px; }
-  .viewer .vw-panel { padding: 84px 0 92px; }
+  .viewer .vw-panel { padding: 78px 0 86px; }
+  /* 폰은 세로가 짧다. 영상을 데스크톱과 같은 비율로 두면 표제와 설명까지 합쳐
+     화면을 넘겨서, 그 절만 굴려야 한다 */
+  .film { --film-h: min(36dvh, 460px); }
   .vw-pager { max-width: calc(100vw - 116px); }
 }
