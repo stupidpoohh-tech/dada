@@ -7,7 +7,7 @@
  * `<dialog>`를 쓰는 이유는 **초점과 Esc를 브라우저가 대신 처리해 주기 때문**이다.
  * div로 만들면 초점 가두기와 Esc 닫기와 배경 스크롤 막기를 손으로 다시 짜야 한다.
  */
-const links = document.querySelectorAll('.tile-zoom');
+const links = document.querySelectorAll('.zoom-link');
 if (links.length && window.HTMLDialogElement) {
   const box = document.createElement('dialog');
   box.className = 'lightbox';

@@ -66,8 +66,10 @@
   </section>
 
   <!-- ── 리서치 ───────────────────────────────────────────────────
-       찢어 붙인 노트지 한 장. 종이는 CSS이고 글은 글이다 — 통이미지로 만들면
-       이 문서를 스크롤 페이지로 정한 이유(검색엔진·스크린리더가 읽는다)가 사라진다 -->
+       **받은 그대로 한 장.** 처음에는 종이를 CSS로 다시 그리고 글을 마크업으로
+       쳤는데, 쓰는 사람이 「편집 없이 그대로」를 골랐다(2026-08-21).
+       글이 그림 안으로 들어갔으므로 **alt에 내용을 그대로 옮겨 적는다** —
+       눈으로 안 보는 사람에게는 그 글이 유일한 통로다 -->
   <section class="vw-panel room room--desk" aria-labelledby="r-research">
     <div class="room-head">
       <p class="room-no">리서치</p>
@@ -76,39 +78,25 @@
     </div>
 
     <div class="stage">
-      <div class="memo">
-        <span class="memo-tape" aria-hidden="true"></span>
-        <div class="memo-sheet">
-          <p class="memo-note">근 1~2년 사이, 미국에서는 틱톡을 중심으로 ‘제3의 공간’이라는 개념이 화두에 오름.
-            여기서 제1의 공간은 ‘집’, 제2의 공간은 ‘직장’을 의미함. 제3의 공간은 집도 직장도 아니지만,
-            누구나 편하게 들러 사람들과 어울릴 수 있는 공간을 뜻함. 예를 들면 동아리방이나 경로당 같은 곳임.</p>
-          <p class="memo-note">현대 사회에서 제3의 공간이 사라지고 있다는 인식이 확산되면서, 필요성을 강조하는 목소리가 커지고 있음.</p>
-          <p class="memo-note">이에 따라, 요즘 미국에서는 Z세대가 직접 제3의 공간을 조성하는 ‘커뮤니티 사업’이 주목받는 중.
-            일례로 뉴욕 쪽에선 ‘VERCI’라는 소셜 클럽이 유명함.</p>
-          <p class="memo-note">이런 소셜 클럽은 지정된 공간을 중심으로, 코워킹(Coworking)부터 다양한 사교 활동까지
-            함께하는 점이 특징임. 별다른 목적 없이 들러 대화를 나누거나 쉬다 가는 사람들도 많을 만큼,
-            자유롭고 편안한 분위기가 형성돼 있음.</p>
-
-          <blockquote class="memo-quote">
-            <p><strong>실제로 뉴욕에선 친구들끼리 기획하는 홈파티나, 스킬 쉐어 워크숍이 많아지는 추세예요.</strong>
-              예술·공예 기반의 창작 커뮤니티(Creative Collective)도 늘고 있고요.
-              저는 지인을 통해 ‘VERCI’라는 소셜 클럽을 소개받았는데요.</p>
-            <p>이곳에서 특히 인기가 많은 활동은 ‘금요일 마무리하기(Ship It Friday)’예요.
-              각자 이번 주에 한 일을 2분 동안 공유하는 시간인데요. 아주 작은 시도나 실패한 경험까지도
-              환영하는 분위기라 서로에게 큰 힘이 돼요. 모든 활동은 자유롭게 참여할 수 있고,
-              원하면 정기 프로그램을 기획할 수도 있어요.</p>
-            <!-- 인터뷰이는 사람이다. 실명·나이는 이 문서가 하려는 일과 상관이 없으므로
-                 「누구의 경험인지」만 남기고 지운다 (PLAN.md 「공개 전 정리」) -->
-            <cite class="memo-by">— 직접 인터뷰. 미국에서 대학과 직장을 겪은 20대 프리랜서</cite>
-          </blockquote>
-        </div>
-      </div>
+      <figure class="board">
+        <a class="zoom-link" href="/assets/case/playgrown/column.jpg" data-cap="리서치 메모 원본 — 제3의 공간">
+          <img src="/assets/case/playgrown/column.jpg" width="1510" height="1041"
+               alt="리서치 메모 원본. 찢어 붙인 노트지에 네 가지가 적혀 있다 — 미국에서 틱톡을 중심으로 ‘제3의 공간’(집도 직장도 아니지만 누구나 편하게 들러 어울리는 공간)이 화두에 올랐고, 그것이 사라지고 있다는 인식이 퍼지면서 Z세대가 직접 커뮤니티 사업을 벌이는 중이며, 뉴욕의 소셜 클럽 VERCI가 그 예다. 아래 인용 상자에는 미국에서 대학과 직장을 겪은 20대 프리랜서의 인터뷰가 실려 있다 — 홈파티와 스킬 쉐어 워크숍이 늘고 있고, VERCI에서 인기 있는 활동은 각자 그 주에 한 일을 2분씩 나누는 ‘금요일 마무리하기(Ship It Friday)’라는 내용이다." loading="lazy" decoding="async">
+        </a>
+        <figcaption>눌러서 크게 보기</figcaption>
+      </figure>
     </div>
+
+    <!-- 이름줄을 덮은 만큼을 여기서 갚는다. 누가 한 말인지는 남아야 하고,
+         그 사람이 누구인지는 안 남아야 한다 -->
+    <p class="room-note">인용은 <strong>직접 인터뷰</strong>입니다 —
+      미국에서 대학과 직장을 겪은 20대 프리랜서.
+      원본에 있던 이름과 나이는 덮었습니다. 제 것이 아니라 <strong>남의 개인정보</strong>라서요.</p>
   </section>
 
   <!-- ── 포지셔닝 ─────────────────────────────────────────────────
-       표로 그리면 여덟 줄짜리 목록이 되는데, 이 그림이 말하려는 것은 값이 아니라
-       거리다. 그래서 자리로 그린다 -->
+       받은 그대로 한 장. 자리(거리)가 곧 내용이라 alt에도 어느 쪽에 무엇이
+       놓였는지를 방향으로 적는다 -->
   <section class="vw-panel room room--board" aria-labelledby="r-position">
     <div class="room-head">
       <p class="room-no">포지셔닝</p>
@@ -117,54 +105,15 @@
         두 축을 그어 보니 가운데가 비어 있었습니다.</p>
     </div>
 
-    <div class="stage pos">
-      <div class="pos-wrap">
-        <p class="pos-axis pos-axis--t">편안함 / 휴식 중심</p>
-        <p class="pos-axis pos-axis--l">개인 / 단기</p>
-        <p class="pos-axis pos-axis--r">사교 / 그룹</p>
-
-        <div class="pos-field">
-          <!-- 바큇살은 장식이다. 읽는 내용은 아래 원 하나하나에 글자로 들어 있다 -->
-          <svg class="pos-spokes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <g stroke="#111" stroke-opacity=".16" stroke-width=".35" stroke-dasharray="1.4 1.8">
-              <line x1="50" y1="50" x2="50" y2="14"></line>
-              <line x1="50" y1="50" x2="78" y2="26"></line>
-              <line x1="50" y1="50" x2="86" y2="50"></line>
-              <line x1="50" y1="50" x2="78" y2="74"></line>
-              <line x1="50" y1="50" x2="50" y2="86"></line>
-              <line x1="50" y1="50" x2="22" y2="74"></line>
-              <line x1="50" y1="50" x2="14" y2="50"></line>
-              <line x1="50" y1="50" x2="22" y2="26"></line>
-            </g>
-          </svg>
-
-          <p class="pos-core"><span>어른들의<br>키즈카페</span></p>
-
-          <ul class="pos-ring">
-            <li style="--x:50%;--y:13%;--tint:rgba(214,190,150,.20)"><b>아지트카페</b><span>편안한 공간에서 머무는 느낌</span></li>
-            <li style="--x:78%;--y:25%;--tint:rgba(120,120,180,.16)"><b>넷플연가</b><span>영화·드라마 감상에 집중하는 공간</span></li>
-            <li style="--x:87%;--y:50%;--tint:rgba(120,150,200,.16)"><b>소모임</b><span>함께 모여 이야기하고 교류하는 공간</span></li>
-            <li style="--x:78%;--y:75%;--tint:rgba(214,190,150,.20)"><b>키즈카페</b><span>아이 중심의 놀이 공간</span></li>
-            <li style="--x:50%;--y:87%;--tint:rgba(120,150,200,.16)"><b>F45</b><span>운동과 건강에 초점을 둔 공간</span></li>
-            <li style="--x:22%;--y:75%;--tint:rgba(150,180,140,.16)"><b>놀숲 · 벌툰 · 스몸</b><span>아이들이 뛰어놀며 즐기는 공간</span></li>
-            <li style="--x:13%;--y:50%;--tint:rgba(170,150,130,.16)"><b>뜨개모임</b><span>취미 중심의 정적인 모임 공간</span></li>
-            <li style="--x:22%;--y:25%;--tint:rgba(214,190,150,.20)"><b>원데이클래스</b><span>배우고 경험하는 목적형 공간</span></li>
-          </ul>
-        </div>
-
-        <p class="pos-axis pos-axis--b">활동성 / 건강 중심</p>
-      </div>
-
-      <ul class="pos-legend">
-        <li style="--tint:rgba(230,59,46,.28)"><i></i>핵심 포지션 영역</li>
-        <li style="--tint:rgba(17,17,17,.10)"><i></i>주변 카테고리 영역</li>
-      </ul>
+    <div class="stage">
+      <figure class="board">
+        <a class="zoom-link" href="/assets/case/playgrown/positioning.jpg" data-cap="포지셔닝 보드 원본">
+          <img src="/assets/case/playgrown/positioning.jpg" width="1536" height="1024"
+               alt="포지셔닝 보드 원본. 가운데 빨간 원에 ‘어른들의 키즈카페’가 놓이고, 가로축은 개인·단기에서 사교·그룹으로, 세로축은 편안함·휴식 중심에서 활동성·건강 중심으로 그어져 있다. 둘레에는 여덟 카테고리가 놓였다 — 위쪽에 아지트카페, 오른쪽 위 넷플연가, 오른쪽 소모임, 오른쪽 아래 키즈카페, 아래 F45, 왼쪽 아래 놀숲·벌툰·스몸, 왼쪽 뜨개모임, 왼쪽 위 원데이클래스." loading="lazy" decoding="async">
+        </a>
+        <figcaption>눌러서 크게 보기</figcaption>
+      </figure>
     </div>
-
-    <p class="room-note">가로축은 <strong>혼자 오느냐 어울리러 오느냐</strong>, 세로축은
-      <strong>쉬러 오느냐 움직이러 오느냐</strong>입니다. 여덟 카테고리가 네 방향으로 흩어지는데
-      가운데가 남았습니다 — <strong>어울리면서 몸을 쓰는, 어른을 위한 자리</strong>.
-      PlayGrown은 그 자리를 겨냥한 이름입니다.</p>
   </section>
 
 
@@ -388,8 +337,7 @@
   </section>
 
   <!-- ── 브랜드 ───────────────────────────────────────────────────
-       그림인 것만 그림이고 글자인 것은 글자다. 로고·캐릭터·이용권은 오려 붙였고
-       슬로건·브랜드 가치·색값은 마크업으로 다시 쳤다 -->
+       받은 그대로 한 장. 조각조각 오려 타일로 깔았던 것을 걷었다 -->
   <section class="vw-panel room room--paper" aria-labelledby="r-brand">
     <div class="room-head">
       <p class="room-no">브랜드</p>
@@ -399,108 +347,13 @@
     </div>
 
     <div class="stage">
-      <div class="tiles">
-        <figure class="tile tile--mark">
-          <h3>LOGO</h3>
-          <a class="tile-zoom" href="/assets/case/playgrown/brand-mark.jpg"
-             data-cap="PlayGrown 로고와 슬로건">
-            <img src="/assets/case/playgrown/brand-mark.jpg" width="369" height="159"
-                 alt="빨간 왕관 모양 마크와 PLAYGROWN 워드마크" loading="lazy" decoding="async">
-          </a>
-          <figcaption>
-            <p><strong>Play. Grown-Ups. Slay Own Limits.</strong></p>
-            <p>PlayGrown(플레이그로운)은 어른이 된 우리도 여전히 <strong>‘놀 권리’</strong>가 있다는 믿음에서
-              탄생했습니다. 다양한 놀이와 경험을 통해 스스로의 한계를 깨고,
-              더 단단하고 멋지게 <strong>‘자란 어른’</strong>이 되어가는 브랜드입니다.</p>
-          </figcaption>
-        </figure>
-
-        <figure class="tile">
-          <h3>CHARACTER</h3>
-          <a class="tile-zoom" href="/assets/case/playgrown/brand-croww.jpg"
-             data-cap="마스코트 까마귀 Croww">
-            <img src="/assets/case/playgrown/brand-croww.jpg" width="284" height="292"
-                 alt="빨간 베레모를 쓰고 돋보기를 든 까마귀가 ‘꺄악!’ 하고 외치는 그림" loading="lazy" decoding="async">
-          </a>
-          <figcaption>
-            <p><strong>Croww</strong> — 영민하고 아름다운 걸 좋아하는 느좋 길조.</p>
-            <p>아름다운 걸 보면 감동하며 ‘꺄악’ 하고 웁니다.</p>
-          </figcaption>
-        </figure>
-
-        <figure class="tile">
-          <h3>STORY</h3>
-          <a class="tile-zoom" href="/assets/case/playgrown/brand-story.jpg"
-             data-cap="PLAY → GROW → GROWN-UP! · Croww가 Grown-up 하면 Crown을 얻는다">
-            <img src="/assets/case/playgrown/brand-story.jpg" width="492" height="241"
-                 alt="까마귀 세 마리가 차례로 자라 마지막에 왕관을 쓰는 그림. PLAY, GROW, GROWN-UP!" loading="lazy" decoding="async">
-          </a>
-          <figcaption>
-            <p><strong>Croww가 Grown-up 하면 Crown을 얻는다.</strong></p>
-            <p>철자 하나가 더해지면 왕관이 됩니다. 이름이 곧 브랜드가 말하려는 것입니다.</p>
-          </figcaption>
-        </figure>
-
-        <figure class="tile tile--wide">
-          <h3>PLAY</h3>
-          <a class="tile-zoom" href="/assets/case/playgrown/brand-play.jpg"
-             data-cap="보드게임 · VR · 키링 만들기 · 선배템 · 친목회 · 타로 · 게임하기 · 드로잉">
-            <img src="/assets/case/playgrown/brand-play.jpg" width="568" height="367"
-                 alt="까마귀들이 보드게임, VR, 키링 만들기, 타로, 드로잉 등을 하며 노는 그림" loading="lazy" decoding="async">
-          </a>
-          <figcaption><p>공간에서 벌어질 일들을 먼저 그려 봤습니다. 여기 그려진 것 대부분이 그날 실제로 있었습니다.</p></figcaption>
-        </figure>
-
-        <div class="tile">
-          <h3>BRAND VALUE</h3>
-          <ul class="values">
-            <li><b>즐거움의 권리</b><span>누구나 즐겁게 놀 권리가 있다.</span></li>
-            <li><b>성장의 경험</b><span>놀이를 통해 배우고 자란다.</span></li>
-            <li><b>자기다움의 발견</b><span>스스로를 존중하고 표현한다.</span></li>
-            <li><b>나만의 정상을 향해</b><span>각자의 속도로, 멋진 어른이 된다.</span></li>
-          </ul>
-        </div>
-
-        <figure class="tile">
-          <h3>USE — 놀 권리 이용권</h3>
-          <a class="tile-zoom" href="/assets/case/playgrown/brand-ticket.jpg"
-             data-cap="놀 권리 이용권 · 스페셜 이용권 3회 티켓">
-            <img src="/assets/case/playgrown/brand-ticket.jpg" width="369" height="343"
-                 alt="WELCOME PlayGrown 놀 권리 이용권 두 장. 스페셜 이용권 3회 티켓" loading="lazy" decoding="async">
-          </a>
-          <figcaption><p>브랜드 고유의 놀이 · 성장하는 커뮤니티 · 나만의 속도. 세 가지를 이용권에 적어 넣었습니다.</p></figcaption>
-        </figure>
-
-        <figure class="tile">
-          <h3>VISIT COUPON</h3>
-          <a class="tile-zoom" href="/assets/case/playgrown/brand-coupon.jpg"
-             data-cap="방문 쿠폰 — 놀 권리를 인증해 보세요!">
-            <img src="/assets/case/playgrown/brand-coupon.jpg" width="300" height="236"
-                 alt="네 칸짜리 방문 쿠폰. ‘놀 권리를 인증해 보세요!’" loading="lazy" decoding="async">
-          </a>
-          <figcaption><p>네 번 오면 채워지는 쿠폰. 실물로 인쇄해 현장에서 나눠 줬습니다.</p></figcaption>
-        </figure>
-
-        <div class="tile">
-          <h3>BRAND COLOR</h3>
-          <!-- 색값은 그림에서 눈으로 뽑은 것이 아니라 보드에 적혀 있던 값 그대로다.
-               그래서 이 페이지의 팔레트도 여기서 나왔다 (playgrown.css 맨 위) -->
-          <ul class="swatches">
-            <li><i style="background:#E63B2E"></i><b>PLAY RED</b><br><code>#E63B2E</code></li>
-            <li><i style="background:#111111"></i><b>CROW BLACK</b><br><code>#111111</code></li>
-            <li><i style="background:#F6F3ED"></i><b>PAPER</b><br><code>#F6F3ED</code></li>
-            <li><i style="background:#D9D6D0"></i><b>STONE</b><br><code>#D9D6D0</code></li>
-          </ul>
-        </div>
-
-        <div class="tile tile--slogan tile--wide">
-          <p class="tile-slogan-en">PLAY,<br><em>GROWN-UPS,</em><br>SLAY OWN LIMITS.</p>
-          <p>놀 줄 아는 어른이, 세상을 더 멋지게 만든다.</p>
-        </div>
-      </div>
-
-      <p class="room-note"><a href="/assets/case/playgrown/brand-board.jpg" class="tile-zoom"
-         data-cap="브랜드 보드 전체">브랜드 보드 한 장으로 보기 →</a></p>
+      <figure class="board">
+        <a class="zoom-link" href="/assets/case/playgrown/brand-board.jpg" data-cap="PlayGrown 브랜드 보드 원본">
+          <img src="/assets/case/playgrown/brand-board.jpg" width="1536" height="1024"
+               alt="PlayGrown 브랜드 보드 원본. 왼쪽 위에 빨간 마크와 PLAYGROWN 워드마크, 슬로건 “Play. Grown-Ups. Slay Own Limits.”와 브랜드 소개. 가운데 위에는 빨간 베레모를 쓰고 돋보기를 든 까마귀 Croww, 오른쪽에는 PLAY에서 GROW를 거쳐 GROWN-UP으로 자라 왕관을 쓰는 스토리. 아래로는 까마귀들이 보드게임·VR·키링 만들기·타로·드로잉을 하는 그림, 브랜드 가치 넷(즐거움의 권리 · 성장의 경험 · 자기다움의 발견 · 나만의 정상을 향해), 놀 권리 이용권과 방문 쿠폰, 그리고 브랜드 색 넷 — PLAY RED #E63B2E · CROW BLACK #111111 · PAPER #F6F3ED · STONE #D9D6D0. 맨 아래 띠에 “PLAY, GROWN-UPS, SLAY OWN LIMITS. 놀 줄 아는 어른이, 세상을 더 멋지게 만든다.”" loading="lazy" decoding="async">
+        </a>
+        <figcaption>눌러서 크게 보기</figcaption>
+      </figure>
     </div>
   </section>
 

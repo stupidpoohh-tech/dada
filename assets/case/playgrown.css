@@ -124,7 +124,7 @@
 /* **밝은 물건은 어두운 방에서도 밝은 물건이다.** 방에서 뒤집은 색을 그대로 물려받으면
    흰 종이 위에 흰 글자가 앉는다 — 짙은 벽에 일력을 걸었더니 낱장이 통째로 백지로
    나와서 알았다. 종이 위에 놓이는 것들은 여기서 색을 도로 세운다. */
-.memo-sheet, .day-sheet, .tile, .plan-frame {
+.day-sheet, .plan-frame {
   --ink: #1F241C;
   --sub: #656B60;
   --faint: #9AA093;
@@ -325,179 +325,27 @@
 .note-list li { margin: 0 0 10px; }
 
 
-/* ── 1 · 리서치 메모 ────────────────────────────────────────────────
-   찢어 붙인 노트지 한 장. 종이는 그림이 아니라 CSS다 — 글이 이미지 안에 들어가면
-   검색엔진도 스크린리더도 못 읽는다. 그래서 톱니도 구멍도 테이프도 전부 규칙으로 만든다 */
+/* ── 1 · 2 · 4 · 받은 그대로 한 장 ──────────────────────────────────
+   칼럼 · 포지셔닝 보드 · 브랜드 보드는 오리지 않고 통째로 건다.
+   **처음에는 셋 다 다시 지었다** — 종이를 CSS로 그리고 원을 %로 앉히고 보드를
+   조각조각 오려 타일로 깔았다. 쓰는 사람이 「편집 없이 그대로」를 골라서(2026-08-21)
+   그 규칙을 통째로 걷었다. 지운 것은 git 이력에 있다.
 
-.memo {
-  max-width: 760px; margin: 0 auto; position: relative;
-  /* clip-path가 border를 같이 잘라내므로 테두리를 못 쓴다. 종이의 두께는
-     drop-shadow로만 낸다 (border를 주면 톱니 위로 직선이 하나 그어진다) */
-  filter: drop-shadow(0 8px 18px rgba(17, 17, 17, .13));
-  transform: rotate(-.5deg);
+   남은 규칙은 **한 화면에 담기게 하는 것**이 전부다. 넘기는 화면이라 그림이 화면보다
+   크면 절마다 굴려야 해서 넘기는 맛이 사라진다. 작게 보이는 대신 눌러서 크게 볼 수
+   있게 해 뒀다(라이트박스). */
+
+.board { margin: 0; display: grid; gap: 10px; justify-items: center; }
+ /* 눌러서 크게. JS가 없으면 그냥 그림 파일이 열린다 */
+.zoom-link { display: block; cursor: zoom-in; }
+.zoom-link:focus-visible { outline: 3px solid var(--pg-red); outline-offset: 3px; }
+.board a { display: block; max-width: 100%; }
+.board img {
+  display: block; margin: 0 auto;
+  max-width: 100%; max-height: 64dvh; width: auto; height: auto;
+  border-radius: 8px; box-shadow: var(--pg-lift);
 }
-
-.memo-sheet {
-  position: relative;
-  /* 톱니는 %가 아니라 px로 판다. %로 주면 글이 길어질수록 톱니가 같이 커져
-     짧은 절은 종이, 긴 절은 톱니바퀴가 된다 */
-  clip-path: polygon(
-    0 7px, 4% 1px, 8% 6px, 12% 0, 16% 5px, 20% 2px, 24% 8px, 28% 3px,
-    32% 7px, 36% 1px, 40% 6px, 44% 2px, 48% 7px, 52% 0, 56% 5px, 60% 3px,
-    64% 8px, 68% 2px, 72% 6px, 76% 1px, 80% 7px, 84% 3px, 88% 5px, 92% 0,
-    96% 4px, 100% 2px,
-    100% calc(100% - 6px), 96% calc(100% - 1px), 92% calc(100% - 7px),
-    88% calc(100% - 2px), 84% calc(100% - 5px), 80% calc(100% - 1px),
-    76% calc(100% - 8px), 72% calc(100% - 3px), 68% calc(100% - 6px),
-    64% calc(100% - 0px), 60% calc(100% - 5px), 56% calc(100% - 2px),
-    52% calc(100% - 7px), 48% calc(100% - 1px), 44% calc(100% - 6px),
-    40% calc(100% - 3px), 36% calc(100% - 8px), 32% calc(100% - 2px),
-    28% calc(100% - 5px), 24% calc(100% - 1px), 20% calc(100% - 7px),
-    16% calc(100% - 3px), 12% calc(100% - 6px), 8% calc(100% - 0px),
-    4% calc(100% - 4px), 0 calc(100% - 2px)
-  );
-  /* **종이색을 깔아야 톱니가 읽힌다.** 흰 종이를 흰 배경에 놓으면 뜯긴 자국이
-     아예 안 보인다 — 실물로 확인하고 알았다. 바탕(PAPER)보다 살짝 밝은 종이다 */
-  background-color: #FBF9F4;
-  /* 왼쪽 고리 구멍. 세로로 반복하는 배경 하나로 낸다 — 요소를 여섯 개 두면
-     글이 길어질 때마다 개수를 손으로 맞춰야 한다 */
-  background-image: radial-gradient(circle 7.5px at 30px 44px, #E6E0D2 98%, #0000 100%);
-  background-size: 100% 88px;
-  background-repeat: repeat-y;
-  padding: 40px 34px 40px 68px;
-}
-
-/* 마스킹테이프. 종이 밖으로 걸쳐야 「붙인 것」으로 읽히므로 잘리는 .memo-sheet가
-   아니라 그 바깥(.memo)에 둔다 */
-.memo-tape {
-  position: absolute; left: 8px; top: -14px; z-index: 2;
-  width: 104px; height: 34px;
-  background: rgba(214, 189, 143, .62);
-  border-left: 1px dashed rgba(160, 132, 84, .35);
-  border-right: 1px dashed rgba(160, 132, 84, .35);
-  transform: rotate(-24deg);
-}
-
-.memo-note { margin: 0 0 14px; padding-left: 22px; position: relative; font-size: 14.5px; line-height: 1.85; color: var(--ink); }
-.memo-note::before { content: '✔'; position: absolute; left: 0; top: 0; color: var(--pg-red); font-size: 13px; }
-
-.memo-quote {
-  margin: 24px 0 0; padding: 20px 22px;
-  background: rgba(230, 59, 46, .13);
-  border: 0;
-}
-.memo-quote p { margin: 0; font-size: 14px; line-height: 1.85; color: var(--ink); }
-.memo-quote p + p { margin-top: 11px; }
-.memo-quote p:first-child strong { font-weight: 800; }
-.memo-by { display: block; margin-top: 13px; font-size: 12.5px; font-style: normal; color: var(--sub); }
-
-/* ── 2 · 포지셔닝 보드 ──────────────────────────────────────────────
-   가운데가 이 브랜드고 둘레가 경쟁 카테고리다. 표로 그리면 여덟 줄짜리 목록이
-   되는데, 이 그림이 말하려는 것은 값이 아니라 **거리**라 자리로 그린다 */
-
-.pos { max-width: 880px; margin: 0 auto; }
-
-.pos-field {
-  position: relative; aspect-ratio: 1 / .82;
-  margin: 0 auto; max-width: 780px;
-}
-/* 둘레의 옅은 원 — 「주변 카테고리 영역」 */
-.pos-field::before {
-  content: ''; position: absolute; inset: 8% 6%;
-  border: 1px solid rgba(17, 17, 17, .07); border-radius: 50%;
-}
-.pos-spokes { position: absolute; inset: 0; width: 100%; height: 100%; }
-
-.pos-core {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 30%; aspect-ratio: 1; margin: 0;
-  display: grid; place-items: center;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(230, 59, 46, .20) 0%, rgba(230, 59, 46, .08) 62%, rgba(230, 59, 46, 0) 100%);
-  color: var(--pg-red); font-weight: 800; font-size: clamp(15px, 2.3vw, 22px);
-  line-height: 1.35; text-align: center;
-}
-
-.pos-ring { list-style: none; margin: 0; padding: 0; }
-.pos-ring li {
-  position: absolute; left: var(--x); top: var(--y);
-  transform: translate(-50%, -50%);
-  width: 21%; aspect-ratio: 1;
-  display: grid; place-items: center; align-content: center;
-  border-radius: 50%; padding: 4px;
-  background: var(--tint, rgba(17, 17, 17, .05));
-  text-align: center;
-}
-.pos-ring b { display: block; font-size: clamp(11px, 1.5vw, 14px); font-weight: 800; color: var(--pg-black); }
-.pos-ring span { display: block; margin-top: 4px; font-size: clamp(9.5px, 1.15vw, 11.5px); line-height: 1.45; color: var(--sub); }
-
-.pos-axis {
-  position: absolute; margin: 0;
-  font-size: 12px; font-weight: 700; color: var(--faint); white-space: nowrap;
-}
-.pos-wrap { position: relative; padding: 30px 74px; }
-.pos-axis--t { left: 50%; top: 4px; transform: translateX(-50%); }
-.pos-axis--b { left: 50%; bottom: 4px; transform: translateX(-50%); }
-.pos-axis--l { left: 0; top: 50%; transform: translateY(-50%); }
-.pos-axis--r { right: 0; top: 50%; transform: translateY(-50%); }
-
-.pos-legend {
-  display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
-  margin: 8px 0 0; padding: 0; list-style: none;
-  font-size: 12px; color: var(--sub);
-}
-.pos-legend li { display: flex; align-items: center; gap: 7px; }
-.pos-legend i { width: 11px; height: 11px; border-radius: 50%; background: var(--tint); }
-
-/* ── 4 · 브랜드 보드 ────────────────────────────────────────────────
-   타일 격자. **그림인 것만 그림이고 글자인 것은 글자다** — 로고와 캐릭터와
-   이용권은 오려 붙이고, 슬로건 · 브랜드 가치 · 색값은 마크업으로 다시 쳤다 */
-
-.tiles {
-  display: grid; gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
-  align-items: start;
-}
-.tile {
-  margin: 0; padding: 18px;
-  background: #fff; border-radius: 12px; box-shadow: var(--pg-lift);
-}
-.tile--wide { grid-column: span 2; }
-.tile h3 {
-  margin: 0 0 10px; font-size: 11.5px; font-weight: 800;
-  letter-spacing: .12em; color: var(--pg-red);
-}
-.tile p { margin: 0; font-size: 13.5px; line-height: 1.75; color: var(--sub); }
-.tile p + p { margin-top: 9px; }
-.tile p strong { color: var(--ink); font-weight: 700; }
-.tile img { display: block; width: 100%; height: auto; border-radius: 6px; }
-/* 그림 타일은 눌러서 크게 볼 수 있다. JS가 없으면 그냥 그림 파일이 열린다 */
-.tile-zoom { display: block; cursor: zoom-in; }
-.tile-zoom:focus-visible { outline: 3px solid var(--pg-red); outline-offset: 3px; }
-
-.tile--mark img { max-width: 250px; margin: 2px 0 14px; }
-.tile--slogan {
-  background: #111111; color: #fff;   /* 위와 같은 이유로 토큰이 아니라 값 */
-  display: grid; align-content: center; gap: 6px; padding: 26px;
-}
-.tile--slogan p { color: rgba(255, 255, 255, .72); font-size: 13px; }
-.tile-slogan-en {
-  margin: 0; font-size: clamp(17px, 2.4vw, 23px); font-weight: 800;
-  line-height: 1.35; letter-spacing: .02em; color: #fff;
-}
-.tile-slogan-en em { font-style: normal; color: var(--pg-red); }
-
-.values { margin: 0; padding: 0; list-style: none; }
-.values li { margin: 0 0 13px; }
-.values li:last-child { margin-bottom: 0; }
-.values b { display: block; font-size: 13.5px; font-weight: 800; color: var(--pg-black); }
-.values span { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.6; color: var(--sub); }
-
-.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
-.swatches li { margin: 0; }
-.swatches i { display: block; height: 46px; border-radius: 5px; border: 1px solid rgba(17, 17, 17, .08); }
-.swatches b { display: block; margin-top: 6px; font-size: 10px; font-weight: 800; letter-spacing: .06em; color: var(--ink); }
-.swatches code { font-size: 10.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.board figcaption { font-size: 12.5px; color: var(--faint); }
 
 /* ── 6 · 공간 ───────────────────────────────────────────────────────
    조감도 위 % 좌표. 마을 지도와 정확히 같은 기법이다 — 고정 종횡비 상자에
@@ -558,7 +406,7 @@
 }
 .zones p { margin: 9px 0 0; font-size: 13px; line-height: 1.7; color: var(--sub); }
 
-/* ── 눌러서 크게 (브랜드 보드) ── */
+/* ── 눌러서 크게 ── */
 
 /* 닫혀 있을 때는 브라우저 기본값(display:none)이 이겨야 한다. `display: grid`를
    그냥 주면 그 기본값을 덮어써서 **안 연 라이트박스가 화면 왼쪽 위에 얹혀 있는다** */
@@ -589,30 +437,6 @@
   .case-page { --cols: [full-start] 16px [content-start] minmax(0, 1fr) [content-end] 16px [full-end]; }
   .case { padding: 0 0 56px; }
   .room { padding: 52px 0; }
-  .memo-sheet { padding: 32px 22px 32px 56px; background-position: -6px 0; }
-  .memo-tape { width: 82px; height: 28px; }
-  .tile--wide { grid-column: span 1; }
-
-  /* 포지셔닝 — 원을 흩어 놓던 것을 위아래 목록으로. 축은 글로 남긴다 */
-  .pos-wrap { padding: 0; }
-  .pos-field { aspect-ratio: auto; max-width: none; }
-  .pos-field::before, .pos-spokes { display: none; }
-  .pos-core {
-    position: static; transform: none; width: auto; aspect-ratio: auto;
-    padding: 22px; border-radius: 14px; margin-bottom: 12px;
-    background: rgba(230, 59, 46, .10);
-  }
-  .pos-ring { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .pos-ring li {
-    position: static; transform: none; width: auto; aspect-ratio: auto;
-    border-radius: 12px; padding: 13px 12px; text-align: left;
-    place-items: start;
-  }
-  .pos-axis { position: static; display: block; transform: none; text-align: center; white-space: normal; }
-  .pos-axis--t { margin-bottom: 10px; }
-  .pos-axis--b { margin-top: 10px; }
-  .pos-axis--l, .pos-axis--r { display: none; }
-
   /* 조감도 — 라벨을 떼고 번호만 남긴다. 이름은 바로 아래 목록에 그대로 있다 */
   .plan-pin span { display: none; }
   .plan-pin i { width: 20px; height: 20px; font-size: 11px; }
@@ -627,8 +451,6 @@
 }
 
 @media (max-width: 420px) {
-  .pos-ring { grid-template-columns: 1fr; }
-  .swatches { grid-template-columns: repeat(2, 1fr); }
   .days { grid-template-columns: 1fr 1fr; }
 }
 

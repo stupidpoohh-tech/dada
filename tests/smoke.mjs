@@ -1224,6 +1224,13 @@ if (head('케이스 스터디 — 뼈대')) {
   const lost = await p.evaluate((ids) => ids.filter((i) => !document.getElementById(i)), dots);
   ok(lost.length === 0, '점이 가리키는 표제가 전부 실제로 있다', lost.join(', '));
 
+  /* 받은 그대로 건 보드 셋(칼럼 · 포지셔닝 · 브랜드). 오려 붙이던 것을 걷었다 */
+  ok(await p.locator('.board img').count() === 3, '보드 셋이 통째로 걸려 있다');
+  /* **글이 그림 안으로 들어갔으므로 alt가 유일한 통로다.** 한 줄짜리 이름표만
+     붙여 두면 눈으로 안 보는 사람에게는 그 절이 통째로 없는 것이 된다 */
+  const alts = await p.$$eval('.board img', (is) => is.map((i) => i.alt.length));
+  ok(alts.every((n) => n > 120), 'alt에 내용이 옮겨 적혀 있다', alts.join(', '));
+
   /* **그림이 실제로 뜨는지는 눈으로 못 본다.** 경로 하나만 틀려도 자리는 그대로
      남고 그림만 안 오는데, 스크린샷에서는 그것이 「원래 흰 칸」과 구별되지 않는다 */
   await p.evaluate(() => {
@@ -1243,7 +1250,7 @@ if (head('케이스 스터디 — 뼈대')) {
   }), '안 연 라이트박스는 안 보인다');
 
   ok(await p.evaluate(() => {
-    const a = document.querySelector('.tile-zoom');
+    const a = document.querySelector('.zoom-link');
     a.click();                       // locator로 누르면 안 된다 (위 설명)
     const d = document.querySelector('dialog.lightbox');
     return d.open && !!d.querySelector('img').getAttribute('src');
@@ -1349,10 +1356,11 @@ if (head('케이스 스터디 — 폰')) {
      지도 위에는 번호만 남긴다 (§6이 겪은 문제를 여기서도 겪는다) */
   ok(await p.evaluate(() => getComputedStyle(document.querySelector('.plan-pin span')).display === 'none'),
     '폰에서는 지도 위 이름표를 떼고 번호만 남긴다');
-  /* 포지셔닝 보드는 좁아지면 자리로 그리던 것을 목록으로 되돌린다.
-     안 그러면 원 여덟 개가 서로 겹쳐 글자가 안 읽힌다 */
-  ok(await p.evaluate(() => getComputedStyle(document.querySelector('.pos-ring li')).position === 'static'),
-    '폰에서는 포지셔닝 원이 목록으로 펴진다');
+  /* 받은 그대로 건 보드 셋은 **화면 안에 담겨야 한다.** 넘기는 화면이라 그림이
+     화면보다 크면 절마다 굴려야 해서 넘기는 맛이 사라진다 */
+  const over = await p.evaluate(() => [...document.querySelectorAll('.board img')]
+    .filter((i) => i.getBoundingClientRect().height > innerHeight).length);
+  ok(over === 0, '보드가 화면 밖으로 안 넘친다', `넘친 것 ${over}`);
   await p.close();
 }
 
@@ -1378,7 +1386,7 @@ if (head('케이스 스터디 — JS 없이')) {
   const p = await ctx.newPage();
   await p.goto(BASE + CASE, { waitUntil: 'domcontentloaded' });
   const text = await p.locator('main.case').innerText();
-  ok(['제3의 공간', '어른들의', '파일럿', '아트존', '행정가'].every((t) => text.includes(t)),
+  ok(['어른이 놀 곳이', '어른들의', '뜯어낸', '파일럿', '아트존', '행정가'].every((t) => text.includes(t)),
     'JS 없이도 여덟 절의 본문이 읽힌다');
   ok(await p.locator('.film-card[href*="youtube"]').count() === 2,
     'JS 없으면 재생 카드는 그냥 유튜브로 가는 링크다');
@@ -1387,7 +1395,7 @@ if (head('케이스 스터디 — JS 없이')) {
      이어진 한 장으로 남는다 */
   ok(await p.locator('body.viewer').count() === 0, 'JS 없으면 넘기는 화면이 안 켜진다');
   ok(await p.locator('.vw-pager').count() === 0, 'JS 없으면 넘기는 단추도 없다');
-  ok(await p.locator('.tile-zoom[href$=".jpg"]').count() >= 6,
+  ok(await p.locator('.zoom-link[href$=".jpg"]').count() === 3,
     'JS 없으면 확대는 그냥 그림 파일이 열린다 (링크로 두었다)');
   await ctx.close();
 }

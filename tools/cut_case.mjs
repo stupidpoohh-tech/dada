@@ -29,25 +29,28 @@ const OUT = 'assets/case/playgrown';
    400~540px밖에 안 되는데, 여기에 480px 썸네일을 또 만들면 같은 그림이 두 번
    들어간다 — 큰 것을 눌러도 더 나올 화소가 없다. 「눌러서 크게」의 값이 실제로
    있는 것은 보드 전체(1536px) 한 장뿐이라 그것만 따로 뽑는다. */
+/* **자르지 않는 것이 기본이다.** 처음에는 브랜드 보드를 조각조각 오려 타일로 깔았는데,
+   쓰는 사람이 「편집 없이 그대로」를 골랐다(2026-08-21). 그래서 칼럼 · 포지셔닝 ·
+   브랜드 보드는 통째로 한 장씩 뽑는다 — `at: [0, 0, 100, 100]`이 그 뜻이다.
+
+   원본이 1510~1536px라 `long: 1600`을 줘도 **한 픽셀도 줄지 않는다.** 바뀌는 것은
+   PNG를 JPEG로 다시 담는 것뿐이고, 그것만으로 2.1MB가 200KB대가 된다.
+   글씨가 작은 장이라 화질은 0.9로 올렸다(다른 것은 0.82). */
 const CUTS = [
-  /* 브랜드 보드에서 **그림인 것만** 오려 낸다. 로고·슬로건·브랜드 가치·색값처럼
-     글자로 된 것은 자르지 않고 HTML로 다시 친다 — 통이미지로 깔면 검색엔진도
-     스크린리더도 못 읽는다(PLAN.md 「HTML로 짠다」). 그림과 글자의 경계가
-     여기 자르는 목록에 그대로 나타난다 */
-  { src: '4.brand-board.png', name: 'brand-mark',   at: [3.5, 5, 24, 15.5], thumb: 0 },
-  { src: '4.brand-board.png', name: 'brand-croww',  at: [33, 7.5, 18.5, 28.5], thumb: 0 },
-  { src: '4.brand-board.png', name: 'brand-story',  at: [66.5, 15, 32, 23.5], thumb: 0 },
-  { src: '4.brand-board.png', name: 'brand-play',   at: [0, 46, 37, 34], thumb: 0 },
-  { src: '4.brand-board.png', name: 'brand-ticket', at: [50.5, 43.5, 24, 33.5], thumb: 0 },
-  { src: '4.brand-board.png', name: 'brand-coupon', at: [78, 43.5, 19.5, 23], thumb: 0 },
-  // 보드 전체 한 장. 격자에는 안 깔리고 「보드 전체 보기」로만 온다
-  { src: '4.brand-board.png', name: 'brand-board', at: [0, 0, 100, 100], long: 1600, thumb: 0 },
+  /* **한 군데만 덮는다.** 인용 아래 이름줄에 인터뷰이의 실명과 나이가 그대로 있다.
+     쓰는 사람의 것이 아니라 **남의 개인정보**이고, 사업 덱에 적는 것과 공개 웹에
+     올리는 것은 다른 일이다(§5 「공개 전 정리」). 내용은 alt와 아래 문장에 남으므로
+     읽는 사람이 잃는 것은 없다. 동의를 받아 두었다면 이 한 줄을 지우면 원본 그대로 나간다 */
+  { src: '1.column.png', name: 'column', at: [0, 0, 100, 100], long: 1600, q: 0.9, thumb: 0,
+    cover: [[14.3, 82.4, 44.6, 5]] },
+  { src: '2.positioning-board.png', name: 'positioning', at: [0, 0, 100, 100], long: 1600, q: 0.9, thumb: 0 },
+  { src: '4.brand-board.png', name: 'brand-board', at: [0, 0, 100, 100], long: 1600, q: 0.9, thumb: 0 },
 
   /* 맵 — 조감도 한 장. 존 라벨은 이미지가 아니라 HTML로 얹는다.
      **투명을 살린 PNG는 1.5MB였다.** 대신 바탕을 깔고 JPEG로 뽑으면 1/10이 된다.
      깔 색은 흰색이다 — 종이색(PAPER)을 깔아 봤더니 **조감도 둘레의 옅은 흰 후광이
      그 위에 겹쳐** 네모난 자국이 그대로 드러났다. 원본이 흰 바탕에서 나온 그림이라
-     흰색으로 맞추고, 이 그림은 흰 카드 위에 놓는다 (.map-frame) */
+     흰색으로 맞추고, 이 그림은 흰 카드 위에 놓는다 (.plan-frame) */
   { src: '6.map.png', name: 'map', at: [11, 9, 78, 80], long: 1500, bg: '#FFFFFF', thumb: 0 },
 ];
 
@@ -135,7 +138,7 @@ for (const cut of CUTS) {
   if (cut.thumb !== 0) jobs.push(['thumb', cut.thumb ?? THUMB]);
   for (const [tag, long] of jobs) {
     const { data, w, h } = await page.evaluate(
-      ([url, at, long, png, bg]) => new Promise((res, rej) => {
+      ([url, at, long, png, bg, q, cover]) => new Promise((res, rej) => {
         const img = new Image();
         img.onerror = () => rej(new Error('load'));
         img.onload = () => {
@@ -150,14 +153,23 @@ for (const cut of CUTS) {
              투명이 검게 나오므로 종이색을 먼저 깐다 — 브랜드 색 PAPER. */
           if (!png) { g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); }
           g.drawImage(img, img.width * x, img.height * y, sw, sh, 0, 0, c.width, c.height);
+          /* 덮는 색은 **바로 옆에서 떠 온다.** 색을 손으로 적어 두면 원본을 다시
+             뽑았을 때 그 자리만 다른 색 네모가 된다 */
+          cover.forEach(([cx, cy, cw2, ch2]) => {
+            const rx = c.width * cx / 100, ry = c.height * cy / 100;
+            const rw = c.width * cw2 / 100, rh = c.height * ch2 / 100;
+            const px = g.getImageData(Math.min(c.width - 1, rx + rw + 6), ry + rh / 2, 1, 1).data;
+            g.fillStyle = `rgb(${px[0]},${px[1]},${px[2]})`;
+            g.fillRect(rx, ry, rw, rh);
+          });
           res({
-            data: c.toDataURL(png ? 'image/png' : 'image/jpeg', 0.82).split(',')[1],
+            data: c.toDataURL(png ? 'image/png' : 'image/jpeg', q).split(',')[1],
             w: c.width, h: c.height,
           });
         };
         img.src = url;
       }),
-      [url, cut.at, long, !!cut.png, cut.bg || '#F6F3ED'],
+      [url, cut.at, long, !!cut.png, cut.bg || '#F6F3ED', cut.q || 0.82, cut.cover || []],
     );
     const ext = cut.png ? 'png' : 'jpg';
     const file = path.join(OUT, `${cut.name}${tag === 'thumb' ? '-t' : ''}.${ext}`);
