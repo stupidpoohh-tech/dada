@@ -51,7 +51,9 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
   `sitemap.xml`이 생성물이다. 잊으면 `npm test`가 잡는다.
 - 좌표를 잴 때는 `node tools/shot.mjs --grid --crop 72,68,100,100`
 - 마을 말고 다른 쪽을 찍을 때는 `--url`. **긴 문서는 `--el`로 절씩 찍는다** —
-  한 장으로 떠내면 `<img>`만 백지로 나온다 (`node tools/shot.mjs --url /case/playgrown.html --el '.map'`)
+  한 장으로 떠내면 `<img>`만 백지로 나온다 (`node tools/shot.mjs --url /case/playgrown.html --el '.plan'`)
+- 케이스 스터디 그림을 다시 자를 일이 생기면 `node tools/cut_case.mjs`
+  (원본은 `_material/`, gitignore에 있다 — 없으면 배포 브랜치 이력에서 꺼낸다)
 
 ## 밟은 적 있는 지뢰
 
@@ -59,6 +61,9 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
   그 -100%는 제 높이인데 그림이 오기 전엔 높이가 0이고, **iOS 사파리는 그림이 온 뒤에도
   다시 계산하지 않아** 폰에서만 마을이 통째로 흘러내린다. (app.js의 `upTo`)
 - **적는 칸 글자는 16px 아래로 내리지 않는다.** iOS가 커서 들어갈 때 화면을 확대한다.
+- **케이스 스터디는 굴릴 수 있는 곳이 하나뿐이어야 한다.** 문서는 100dvh로 못 박고
+  굴리는 것은 화면 안에서만 — 마을 머리띠를 그냥 뒀더니 그 높이만큼 밀려 어긋났다.
+  `.viewer`를 붙이는 것은 JS라, 없으면 그냥 굴리는 문서로 남는다 (이 되돌림을 깨지 않는다)
 - **지도 위 문끼리 판정(44px)이 겹치지 않게.** 우편함과 확성기가 24px 겹쳐
   엉뚱한 것이 열린 적이 있다. `npm test`가 지킨다.
 - **넘치는 화면을 `align-content: center`로 두지 않는다.** 화면보다 긴 절은 위쪽이
@@ -69,24 +74,6 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
   (케이스 스터디에서 프로세스가 안 끝난 적 있다).
 - 편집용 원본(`assets/sprites/*.png`, `assets/map/town.jpg`)은 `.gitignore`에 있어
   **새 컨테이너에는 없다.** 꺼내는 법은 README 「편집용 원본」.
-
-## 지금 짓고 있는 것 (끝나면 이 절을 지운다)
-
-**PlayGrown 케이스 스터디** — `/case/playgrown.html`. **여덟 절을 다 지었고,
-넘기는 화면(화면 아홉)으로 간다** — 굴리는 문서와 둘 다 지어 견주고 정했다(§5).
-
-- **`.viewer`를 붙이는 것은 JS다.** 없으면 규칙이 하나도 안 걸려 **그냥 굴리는
-  문서로 남는다.** 이 되돌림을 깨지 않는다 — 회귀 테스트가 지킨다
-- **굴릴 수 있는 곳을 둘로 만들지 않는다.** 문서는 100dvh로 못 박고 굴리는 것은
-  화면 안에서만. 마을 머리띠를 그냥 뒀더니 그 높이만큼 밀려 어긋난 적 있다
-
-- **아직 아무 데서도 못 들어간다.** `noindex` 한 줄 + sitemap 미등록 +
-  `mascot.item` 비어 있음. 열 때는 **셋을 같이** 푼다.
-  `node tests/smoke.mjs 아직` 이 셋이 어긋나면 잡는다
-- 여는 것은 다원님이 정한다. **노트 절은 받은 세 줄이 전부다** — 회고 문장을
-  대신 써 넣지 않는다 (개인 사정은 안 쓰기로 정했다)
-- 그림 자르기는 `node tools/cut_case.mjs` (원본은 `_material/`, gitignore에 있다).
-  자리를 잴 때는 `node tools/cut_case.mjs --grid 6.map.png`
 
 ## 글투
 

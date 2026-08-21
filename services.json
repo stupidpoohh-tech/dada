@@ -46,7 +46,14 @@
         25,
         32
       ],
-      "building": { "src": "building-museum.webp", "at": [19.0, 26.7], "w": 13.8 },
+      "building": {
+        "src": "building-museum.webp",
+        "at": [
+          19.0,
+          26.7
+        ],
+        "w": 13.8
+      },
       "direct": "art-portfolio"
     },
     {
@@ -60,7 +67,14 @@
         35,
         36
       ],
-      "building": { "src": "building-school.webp", "at": [53.0, 23.8], "w": 18.6 }
+      "building": {
+        "src": "building-school.webp",
+        "at": [
+          53.0,
+          23.8
+        ],
+        "w": 18.6
+      }
     },
     {
       "id": "seonggyungwan",
@@ -73,7 +87,14 @@
         25,
         27
       ],
-      "building": { "src": "building-seonggyungwan.webp", "at": [84.3, 29.4], "w": 12.2 }
+      "building": {
+        "src": "building-seonggyungwan.webp",
+        "at": [
+          84.3,
+          29.4
+        ],
+        "w": 12.2
+      }
     },
     {
       "id": "park",
@@ -98,7 +119,14 @@
         18,
         34
       ],
-      "building": { "src": "building-company.webp", "at": [43.6, 68.3], "w": 9.7 }
+      "building": {
+        "src": "building-company.webp",
+        "at": [
+          43.6,
+          68.3
+        ],
+        "w": 9.7
+      }
     },
     {
       "id": "cafe",
@@ -111,35 +139,27 @@
         18,
         33
       ],
-      "building": { "src": "building-cafe.webp", "at": [59.7, 69.8], "w": 12.5 },
+      "building": {
+        "src": "building-cafe.webp",
+        "at": [
+          59.7,
+          69.8
+        ],
+        "w": 12.5
+      },
       "mascot": {
         "name": "까마귀 Croww",
-        "at": [65.2, 74.4],
+        "at": [
+          65.2,
+          74.4
+        ],
         "w": 6.6,
         "frames": {
           "rest": "crow-side.png",
           "flap": "crow-fly.png",
           "tilt": "crow-look.png"
         },
-        "column": {
-          "icon": "\ud83d\udcf0",
-          "title": "제3의 공간",
-          "label": "리서치",
-          "notes": [
-            "근 1~2년 사이, 미국에서는 틱톡을 중심으로 \u2018제3의 공간\u2019이라는 개념이 화두에 오름. 여기서 제1의 공간은 \u2018집\u2019, 제2의 공간은 \u2018직장\u2019을 의미함. 제3의 공간은 집도 직장도 아니지만, 누구나 편하게 들러 사람들과 어울릴 수 있는 공간을 뜻함. 예를 들면 동아리방이나 경로당 같은 곳임.",
-            "현대 사회에서 제3의 공간이 사라지고 있다는 인식이 확산되면서, 필요성을 강조하는 목소리가 커지고 있음.",
-            "이에 따라, 요즘 미국에서는 Z세대가 직접 제3의 공간을 조성하는 \u2018커뮤니티 사업\u2019이 주목받는 중. 일례로 뉴욕 쪽에선 \u2018VERCI\u2019라는 소셜 클럽이 유명함.",
-            "이런 소셜 클럽은 지정된 공간을 중심으로, 코워킹(Coworking)부터 다양한 사교 활동까지 함께하는 점이 특징임. 별다른 목적 없이 들러 대화를 나누거나 쉬다 가는 사람들도 많을 만큼, 자유롭고 편안한 분위기가 형성돼 있음."
-          ],
-          "quote": {
-            "lines": [
-              "실제로 뉴욕에선 친구들끼리 기획하는 홈파티나, 스킬 쉐어 워크숍이 많아지는 추세예요. 예술\u00b7공예 기반의 창작 커뮤니티(Creative Collective)도 늘고 있고요. 저는 지인을 통해 \u2018VERCI\u2019라는 소셜 클럽을 소개받았는데요.",
-              "이곳에서 특히 인기가 많은 활동은 \u2018금요일 마무리하기(Ship It Friday)\u2019예요. \u2018금요일 마무리하기\u2019는 각자 이번 주에 한 일을 2분 동안 공유하는 시간인데요. 아주 작은 시도나 실패한 경험까지도 환영하는 분위기라 서로에게 큰 힘이 돼요. 모든 활동은 자유롭게 참여할 수 있고, 원하면 정기 프로그램을 기획할 수도 있어요."
-            ],
-            "by": "이승은(26세, 프리랜서, 미국 소재 대학교 및 직장 경험 있음)"
-          },
-          "soon": "PlayGrown 기록을 전시 세션으로 정리하고 있어요. 그 사이에 읽던 칼럼을 먼저 꺼내 둡니다."
-        }
+        "item": "playgrown"
       }
     },
     {
@@ -153,7 +173,14 @@
         25,
         29
       ],
-      "building": { "src": "building-bank.webp", "at": [84.3, 67.3], "w": 12.6 }
+      "building": {
+        "src": "building-bank.webp",
+        "at": [
+          84.3,
+          67.3
+        ],
+        "w": 12.6
+      }
     },
     {
       "id": "house",
@@ -166,56 +193,97 @@
         24,
         26
       ],
-      "building": { "src": "building-house.webp", "at": [85.0, 91.4], "w": 10.2 },
+      "building": {
+        "src": "building-house.webp",
+        "at": [
+          85.0,
+          91.4
+        ],
+        "w": 10.2
+      },
       "speaker": {
         "name": "집 테마송 확성기",
-        "at": [94.5, 93.0],
+        "at": [
+          94.5,
+          93.0
+        ],
         "w": 3.4,
         "sprite": "horn.png",
         "song": {
           "title": "집이 어떻게 세모.mp3",
           "audio": "assets/audio/house-theme.mp3",
           "lyrics": [
-            { "label": "Intro", "lines": ["우리 집은 세모네, 예."] },
-            { "label": "Verse 1", "lines": [
-              "사람들은 내게 말하지.",
-              "왜 눈깔을 세모낳게 뜨냐고.",
-              "눈깔만 세모난 게 다행인 거야",
-              "너를 세모로 접진 않았잖아요."
-            ] },
-            { "label": "Chorus", "lines": [
-              "그래도 나는 내 세모집이 좋아",
-              "너도 보면 좋아할걸. 왜냐면 세모는 재밌으니까. 세모는 재밌어.",
-              "너도 알면 좋아할걸. 나는 재밌을 테니까."
-            ] },
-            { "label": "Verse 2", "lines": [
-              "모두가 네모네모네모할 때",
-              "세모난 건 참 애로애로애로해",
-              "사람들은 에로하길 어려워해",
-              "아무래도 나는 애로 사는 거지"
-            ] },
-            { "label": "Chorus", "lines": [
-              "그래도 나는 내 세모집이 좋아",
-              "너도 보면 좋아할걸. 왜냐면 세모는 재밌으니까. 세모는 재밌어.",
-              "너도 알면 좋아할걸. 나는 재밌을 테니까."
-            ] },
-            { "label": "Bridge", "lines": [
-              "세모나서 이상한가요?",
-              "네모난 틀 속 세모의 자유.",
-              "그거 알아요?",
-              "우리 집 창문엔 햇살이 이쁘게 들어온다.",
-              "우리집 옷장은 나니아처럼 깊어.",
-              "이 집은 나의 우주."
-            ] },
-            { "label": "Chorus", "lines": [
-              "나는 내 세모집이 좋아",
-              "너도 보면 좋아할걸. 왜냐면 세모는 재밌으니까. 세모는 재밌어.",
-              "너도 알면 좋아할걸. 나는 재밌을 테니까."
-            ] }
+            {
+              "label": "Intro",
+              "lines": [
+                "우리 집은 세모네, 예."
+              ]
+            },
+            {
+              "label": "Verse 1",
+              "lines": [
+                "사람들은 내게 말하지.",
+                "왜 눈깔을 세모낳게 뜨냐고.",
+                "눈깔만 세모난 게 다행인 거야",
+                "너를 세모로 접진 않았잖아요."
+              ]
+            },
+            {
+              "label": "Chorus",
+              "lines": [
+                "그래도 나는 내 세모집이 좋아",
+                "너도 보면 좋아할걸. 왜냐면 세모는 재밌으니까. 세모는 재밌어.",
+                "너도 알면 좋아할걸. 나는 재밌을 테니까."
+              ]
+            },
+            {
+              "label": "Verse 2",
+              "lines": [
+                "모두가 네모네모네모할 때",
+                "세모난 건 참 애로애로애로해",
+                "사람들은 에로하길 어려워해",
+                "아무래도 나는 애로 사는 거지"
+              ]
+            },
+            {
+              "label": "Chorus",
+              "lines": [
+                "그래도 나는 내 세모집이 좋아",
+                "너도 보면 좋아할걸. 왜냐면 세모는 재밌으니까. 세모는 재밌어.",
+                "너도 알면 좋아할걸. 나는 재밌을 테니까."
+              ]
+            },
+            {
+              "label": "Bridge",
+              "lines": [
+                "세모나서 이상한가요?",
+                "네모난 틀 속 세모의 자유.",
+                "그거 알아요?",
+                "우리 집 창문엔 햇살이 이쁘게 들어온다.",
+                "우리집 옷장은 나니아처럼 깊어.",
+                "이 집은 나의 우주."
+              ]
+            },
+            {
+              "label": "Chorus",
+              "lines": [
+                "나는 내 세모집이 좋아",
+                "너도 보면 좋아할걸. 왜냐면 세모는 재밌으니까. 세모는 재밌어.",
+                "너도 알면 좋아할걸. 나는 재밌을 테니까."
+              ]
+            }
           ]
         }
       },
-      "mailbox": { "sprite": "mailbox.webp", "at": [82.3, 97.5], "w": 1.95, "item": "game-guide" },
+      "mailbox": {
+        "sprite": "mailbox.webp",
+        "at": [
+          82.3,
+          97.5
+        ],
+        "w": 1.95,
+        "item": "game-guide"
+      },
       "direct": "house-catalog"
     },
     {
@@ -232,28 +300,100 @@
   "floater": {
     "name": "날아다니는 쪽지",
     "label": "MEMO",
-    "icon": "\u2709\ufe0f",
+    "icon": "✉️",
     "w": 7,
     "dur": 52,
     "path": [
-      { "at": [14, 80], "stop": true },
-      { "at": [7, 52] },
-      { "at": [19, 20] },
-      { "at": [42, 9] },
-      { "at": [67, 16] },
-      { "at": [89, 33] },
-      { "at": [66, 78], "stop": true },
-      { "at": [42, 78], "stop": true },
-      { "at": [26, 88], "stop": true },
-      { "at": [14, 80] }
+      {
+        "at": [
+          14,
+          80
+        ],
+        "stop": true
+      },
+      {
+        "at": [
+          7,
+          52
+        ]
+      },
+      {
+        "at": [
+          19,
+          20
+        ]
+      },
+      {
+        "at": [
+          42,
+          9
+        ]
+      },
+      {
+        "at": [
+          67,
+          16
+        ]
+      },
+      {
+        "at": [
+          89,
+          33
+        ]
+      },
+      {
+        "at": [
+          66,
+          78
+        ],
+        "stop": true
+      },
+      {
+        "at": [
+          42,
+          78
+        ],
+        "stop": true
+      },
+      {
+        "at": [
+          26,
+          88
+        ],
+        "stop": true
+      },
+      {
+        "at": [
+          14,
+          80
+        ]
+      }
     ],
-    "frames": { "down": "note-down.png", "mid": "note-mid.png", "up": "note-up.png" },
+    "frames": {
+      "down": "note-down.png",
+      "mid": "note-mid.png",
+      "up": "note-up.png"
+    },
     "bundle": {
       "title": "매일 쓰는 것들",
       "items": [
-        { "id": "calendar", "name": "\uce98\ub9b0\ub354", "icon": "\ud83d\uddd3", "date": "2026-05" },
-        { "id": "planner", "name": "\ud074\ub9ac\uc5b4 \uc704\ud06c", "icon": "\ud83d\uddd2" },
-        { "id": "tracker", "name": "\ud2b8\ub798\ucee4", "icon": "\ud83d\udcc8", "date": "2026-05" }
+        {
+          "id": "calendar",
+          "name": "캘린더",
+          "icon": "🗓",
+          "date": "2026-05"
+        },
+        {
+          "id": "planner",
+          "name": "클리어 위크",
+          "icon": "🗒"
+        },
+        {
+          "id": "tracker",
+          "name": "트래커",
+          "icon": "📈",
+          "date": "2026-05"
+        }
       ]
     }
   },
@@ -339,7 +479,7 @@
       "url": "https://www.instagram.com/reel/DcQVLM9uumI/?igsh=a2Y1bTl1N3ZidXBt",
       "description": "신도리코x낭만백수달 협업",
       "date": "2026-08",
-      "icon": "\ud83e\udda6",
+      "icon": "🦦",
       "status": "live",
       "needsReview": false
     },
@@ -472,6 +612,20 @@
       "icon": "🎮",
       "status": "live",
       "needsReview": false
+    },
+    {
+      "id": "playgrown",
+      "no": 28,
+      "name": "PlayGrown 케이스 스터디",
+      "district": "cafe",
+      "type": "doc",
+      "url": "/case/playgrown.html",
+      "description": "어른들의 키즈카페를 18일 만에 만들고 하루 열어 본 기록",
+      "date": "2025-07",
+      "icon": "🐦‍⬛",
+      "status": "live",
+      "needsReview": false,
+      "featured": 2
     }
   ]
 }

@@ -644,9 +644,14 @@ if (head('게임 안내서')) {
 }
 
 /* ── 11. 카페 앞 까마귀 Croww ─────────────────────────────
-   PlayGrown 기록은 아직 준비 중이라 갈 문서가 없다. 그렇다고 눌러도 아무 일이 없으면
-   문이 아니므로, **읽던 칼럼을 그 자리에서 펴 보이는 버튼**으로 세워 뒀다
-   (districts[].mascot.column). 칼럼이 먼저 오고 「준비 중」은 맨 아래에 온다.
+   **물건마다 문이 하나씩**이다 — 카페 건물을 누르면 항목이 다 나오고, 카페 앞에 선
+   까마귀를 누르면 PlayGrown 기록만 열린다. 문이 갈려도 어수선하지 않은 이유는
+   까마귀가 그 기록의 등장인물이기 때문이다(18일 안에 나온 것 중 하나가 이 까마귀다).
+
+   기록이 올라가기 전에는 갈 곳이 없어서 「읽던 칼럼을 그 자리에서 펴 보이는 버튼」이
+   그 자리를 대신했다. 2026-08-21에 문서를 열면서 그것은 걷었다 — 없는 곳을 가리키는
+   링크도, 갈 곳이 생겼는데 그 자리에서 펴 보이는 임시 문도 두지 않는다.
+
    이 마을에는 프레임 애니메이션이 없어서 퍼덕임과 갸웃만 그림 세 장을 번갈아 쓰는데,
    두 장이 겹쳐 보이거나 마을과 박자가 어긋나면 그 자리만 딴 세상이 된다. */
 if (head('카페 앞 까마귀')) {
@@ -657,45 +662,28 @@ if (head('카페 앞 까마귀')) {
   const crow = p.locator('.crow-spot');
   ok(await crow.count() === 1, '카페 앞에 까마귀가 한 마리 있다');
 
-  // 갈 문서는 없지만 펼 칼럼이 있으므로 진짜 버튼이어야 한다
-  const idle = await p.evaluate(() => {
+  const door = await p.evaluate(() => {
     const n = document.querySelector('.crow-spot');
     return { tag: n.tagName, href: n.getAttribute('href'),
+             label: n.getAttribute('aria-label') || '',
              pe: getComputedStyle(n).pointerEvents,
              cur: getComputedStyle(n).cursor };
   });
-  ok(idle.tag === 'BUTTON' && !idle.href && idle.pe === 'auto' && idle.cur === 'pointer',
-    '칼럼이 걸려 있으면 풍경이 아니라 문이다', JSON.stringify(idle));
+  ok(door.tag === 'A' && door.href === '/case/playgrown.html'
+     && door.pe === 'auto' && door.cur === 'pointer',
+    '까마귀가 제 기록으로 가는 문이다', JSON.stringify(door));
+  ok(/Croww/.test(door.label) && /PlayGrown/.test(door.label),
+    '어디로 가는 문인지 이름에 적혀 있다', door.label);
+  /* 임시로 세워 뒀던 칼럼은 걷었다. 남아 있으면 같은 것을 두 군데서 읽게 된다 */
+  ok(await p.evaluate(() => !document.querySelector('.crow-spot[aria-expanded]')),
+    '그 자리에서 펴 보이던 임시 문은 걷었다');
 
   await crow.click();
-  const col = await p.evaluate(() => {
-    const panel = document.getElementById('panel');
-    const notes = [...panel.querySelectorAll('.column-note')];
-    const soon = panel.querySelector('.empty');
-    const quote = panel.querySelector('.column-quote');
-    return {
-      shown: !document.getElementById('panelWrap').hidden,
-      title: panel.querySelector('.panel-title')?.textContent || '',
-      notes: notes.length,
-      quoted: !!quote && /Ship It Friday/.test(quote.textContent),
-      by: quote?.querySelector('.column-by')?.textContent || '',
-      soon: soon?.textContent || '',
-      // 순서가 곧 말이다 — 읽을 것이 먼저, 준비 중은 맨 아래
-      soonLast: !!soon && panel.lastElementChild === soon,
-      expanded: document.querySelector('.crow-spot').getAttribute('aria-expanded'),
-    };
-  });
-  ok(col.shown && /제3의 공간/.test(col.title), '까마귀를 누르면 칼럼이 열린다', col.title);
-  ok(col.notes === 4, '칼럼 본문 네 문단이 다 있다', String(col.notes));
-  ok(col.quoted && /이승은/.test(col.by), '인용과 말한 사람이 함께 온다', col.by);
-  ok(/준비 중/.test(col.soon), '준비 중이라는 말이 함께 있다', col.soon);
-  ok(col.soonLast, '칼럼이 먼저 오고 준비 중은 맨 아래다');
-  ok(col.expanded === 'true', '열려 있는 동안 까마귀가 그렇다고 말한다', col.expanded);
-
-  // 다시 누르면 닫힌다 — 확성기·쪽지와 같은 규칙
-  await crow.click();
-  ok(await p.evaluate(() => document.getElementById('panelWrap').hidden),
-    '다시 누르면 닫힌다');
+  await p.waitForLoadState('domcontentloaded');
+  ok(new URL(p.url()).pathname === '/case/playgrown.html',
+    '누르면 기록이 열린다', p.url());
+  await p.goBack();
+  await p.waitForTimeout(700);
 
   // 한 번에 한 장만 보여야 한다 — 두 장이 함께 뜨면 날개가 유령처럼 겹친다
   const frames = await p.evaluate(() => {
@@ -1404,10 +1392,11 @@ if (head('케이스 스터디 — JS 없이')) {
   await ctx.close();
 }
 
-if (head('케이스 스터디 — 아직 안 걸었다')) {
-  /* **절이 다 차기 전에는 아무 데서도 이 문서로 못 들어가야 한다.** 반쪽짜리
-     문서가 검색에 남거나 마을에서 열리면 안 된다. noindex를 떼는 날 sitemap과
-     services.json에 같이 올리라고, 둘을 여기서 묶어 둔다 */
+if (head('케이스 스터디 — 문 셋이 같이 열린다')) {
+  /* **셋은 늘 같이 간다** — noindex · sitemap 등록 · 마을의 문. 짓는 동안에는 셋 다
+     닫혀 있었고(2026-08-21에 셋 다 열었다), 다시 닫을 일이 생겨도 셋이 같이 닫혀야
+     한다. 하나만 어긋나면 반쪽짜리가 검색에 남거나, 마을에 없는 곳을 가리키는 문이
+     생긴다. 어느 쪽으로 가든 어긋나는 것만 잡는다 */
   const p = await desktop();
   await p.goto(BASE + CASE, { waitUntil: 'domcontentloaded' });
   const hidden = await p.locator('meta[name="robots"][content~="noindex"]').count() === 1;
@@ -1415,9 +1404,10 @@ if (head('케이스 스터디 — 아직 안 걸었다')) {
   const listed = map.includes('/case/playgrown.html');
   ok(hidden !== listed, 'noindex와 sitemap 등록이 서로 어긋나지 않는다',
     `noindex=${hidden} sitemap=${listed}`);
+  ok(!hidden, '지금은 열려 있다 (색인된다)');
   const svc = await p.evaluate((u) => fetch(u).then((r) => r.json()), BASE + '/services.json');
   const door = JSON.stringify(svc).includes('/case/playgrown.html');
-  ok(hidden !== door, 'noindex인 동안에는 마을에서 문이 안 열린다',
+  ok(hidden !== door, '마을의 문도 같이 열리고 같이 닫힌다',
     `noindex=${hidden} services=${door}`);
   await p.close();
 }
