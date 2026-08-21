@@ -29,6 +29,9 @@ tools/cut_buildings.py 건물·우편함 시트에서 건물마다 한 장씩 �
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
 tools/cut_crow.py     까마귀 시트를 프레임 세 장으로 자른다 (같은 캔버스·같은 기준점)
 tools/cut_note.py     쪽지 시트를 프레임 세 장으로 자른다 (종이를 기준점으로 맞춘다)
+tools/shot.mjs        마을을 찍어 보는 도구 — 크롭·%눈금 (아래 「찍어 보기」)
+tools/serve.mjs       로컬 서버를 알아서 띄운다 — 검사와 찍기 도구가 함께 쓴다
+CLAUDE.md             세션마다 자동으로 읽히는 요약 — 모르면 사고 나는 것만 짧게
 worker.js             「제작자에게 한마디」를 받는 서버. 이 마을에서 코드가 도는 유일한 곳
 tests/smoke.mjs       브라우저 회귀 테스트 (npm run test:browser)
 tests/worker.mjs      worker.js 검사 — 모듈을 그대로 불러 부른다 (npm run test:worker)
@@ -48,9 +51,21 @@ python3 -m http.server 8000
 
 ```
 npm install          # 처음 한 번 (playwright)
-npm run serve &      # 8000번 포트로 띄운 뒤
-npm test             # worker.mjs + smoke.mjs
+npm test             # worker.mjs + smoke.mjs — 71초
+
+node tests/smoke.mjs 확성기 한마디    # 그 절만 — 5~12초
 ```
+
+**서버는 알아서 뜬다.** 8000번이 안 열려 있으면 검사가 저장소 루트에서 띄웠다가
+끝날 때 내린다(`tools/serve.mjs`). 컨테이너가 쉬다 깨면 배경 서버가 먼저 사라지는데,
+그때 화면에는 `ERR_CONNECTION_REFUSED`만 떠서 **고친 것이 깨진 줄 알고 헤매게 된다** —
+이 저장소에서 검사가 실패한 이유 중 제일 잦은 것이 이거였다. 따로 띄워 둔 서버가
+있으면 그것을 쓰고 건드리지 않는다(`npm run serve`도 그대로 된다).
+
+**바꾼 곳만 돌릴 수 있다.** 절 이름 조각을 인자로 주면 그 절만 돈다. 한 줄 고칠
+때마다 71초를 물리면 고치는 시간보다 기다리는 시간이 길어진다. 다만 **푸시 전에는
+인자 없이 한 번 돌린다** — 부분만 돌고 넘어가면 남의 절을 깨뜨린 것을 못 본다
+(건너뛴 절이 있으면 마지막 줄이 그렇다고 말해 준다).
 
 두 벌이다. `tests/worker.mjs`는 **브라우저도 wrangler도 없이** `worker.js`를 모듈로
 그대로 불러 `fetch()`를 부른다(KV는 `Map` 하나로 흉내 낸다) — 서버가 있어도 검사는
@@ -62,6 +77,32 @@ npm test             # worker.mjs + smoke.mjs
 캐릭터 판정이 흔들리지 않고 64px을 넘기, 여닫고 호버한 뒤에도 마을이 한 박자이기,
 터치에서 건물이 얼어붙지 않기, 안내가 닫은 뒤 돌아오고 대비가 AA를 넘기,
 책이 건물에서 출발해 끊김 없이 날아오기, 화면과 `list.html`이 `services.json`과 어긋나지 않기.
+
+## 찍어 보기 (`tools/shot.mjs`)
+
+고친 것이 눈에 어떻게 보이는지 확인할 때 쓴다. **매번 스크립트를 새로 쓰지 않기
+위해 있는 파일이다** — 그때마다 다시 쓰면 매번 같은 데서 걸린다(크롬 경로, 서버가
+떠 있는지, 애니메이션이 매번 다른 자리에서 잡히는지).
+
+```bash
+node tools/shot.mjs                           # 폰·데스크톱 두 장
+node tools/shot.mjs --phone --map             # 폰의 지도만
+node tools/shot.mjs --crop 72,68,100,100      # 지도의 그 %구역만 (세모집 마당)
+node tools/shot.mjs --click '#sayHi'          # 누른 뒤에 찍는다
+node tools/shot.mjs --grid --crop 33,0,69,40  # %눈금을 얹어 찍는다 (좌표 잴 때)
+```
+
+세 가지를 여기서 한 번에 처리한다.
+
+- **서버를 알아서 띄운다** (`tools/serve.mjs` — 검사와 함께 쓴다)
+- **움직임을 0에 세운다.** 마을은 늘 숨쉬고 흔들려서, 세우지 않으면 찍을 때마다 건물
+  크기가 미세하게 달라 「고치기 전후」를 견줄 수가 없다
+- **크롬 경로를 안다** (`/opt/pw-browsers/chromium`). 그냥 `chromium.launch()`를 부르면
+  `Executable doesn't exist`로 죽는다
+
+`--grid`는 **재는 도구라 늘 큰 화면(1600×1400)으로 찍는다.** 폰 해상도에서는 1%가
+3px밖에 안 돼 눈금이 뭉개지는데, 재려고 얹은 것이 못 읽히면 얹은 뜻이 없다.
+숫자는 크롭 안쪽에 붙는다 — 지도 꼭대기에 두면 잘라낸 그림 밖으로 나간다.
 
 ## 작업물 전체 목록 (`/list.html`)
 

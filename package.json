@@ -7,7 +7,8 @@
     "serve": "python3 -m http.server 8000",
     "test": "node tests/worker.mjs && node tests/smoke.mjs",
     "test:worker": "node tests/worker.mjs",
-    "test:browser": "node tests/smoke.mjs"
+    "test:browser": "node tests/smoke.mjs",
+    "shot": "node tools/shot.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

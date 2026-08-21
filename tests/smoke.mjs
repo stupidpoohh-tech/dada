@@ -7,8 +7,13 @@
  *   npm test
  */
 import { chromium } from 'playwright';
+import { serve } from '../tools/serve.mjs';
 
 const BASE = process.env.BASE || 'http://localhost:8000';
+/* **서버가 없으면 여기서 띄운다.** 컨테이너가 쉬다 깨면 배경 서버가 먼저 사라지는데,
+   그러면 화면에는 ERR_CONNECTION_REFUSED만 떠서 고친 것이 깨진 줄 알고 헤맨다.
+   우리가 띄운 것만 마지막에 내린다 — 따로 띄워 둔 서버는 건드리지 않는다. */
+const server = await serve(BASE);
 const CHROME = process.env.CHROME || '/opt/pw-browsers/chromium';
 
 let pass = 0, fail = 0;
@@ -16,7 +21,24 @@ const ok = (cond, label, detail = '') => {
   if (cond) { pass++; console.log(`  ✅ ${label}`); }
   else { fail++; console.log(`  ❌ ${label}${detail ? '  → ' + detail : ''}`); }
 };
-const head = (t) => console.log(`\n── ${t} ${'─'.repeat(Math.max(0, 46 - t.length))}`);
+/* **바꾼 곳만 돌릴 수 있다.** 139개를 다 돌리면 72초다 — 한 줄 고칠 때마다
+   그걸 물리면 고치는 시간보다 기다리는 시간이 길어진다. 이름 조각을 인자로
+   주면 그 절만 돈다 (여러 개 주면 그중 하나라도 걸리는 절).
+
+     node tests/smoke.mjs                 전부
+     node tests/smoke.mjs 확성기          「마당의 확성기」만
+     node tests/smoke.mjs 한마디 까마귀    둘 다
+
+   푸시 전에는 인자 없이 한 번 돌린다 — 부분만 돌고 넘어가면 남의 절을
+   깨뜨린 것을 못 본다. */
+const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+const want = (t) => !only.length || only.some((o) => t.includes(o));
+let skipped = 0;
+const head = (t) => {
+  if (!want(t)) { skipped++; return false; }
+  console.log(`\n── ${t} ${'─'.repeat(Math.max(0, 46 - t.length))}`);
+  return true;
+};
 
 const browser = await chromium.launch({ executablePath: CHROME }).catch(() =>
   chromium.launch());   // 로컬에 브라우저가 따로 깔려 있으면 그것을 쓴다
@@ -46,8 +68,7 @@ const phone = () => browser.newPage({
 /* ── 1. 책 뷰어 ────────────────────────────────────────────
    아트북과 세모집 카탈로그가 뷰어 한 벌을 나눠 쓴다. 폴더·쪽수·해시·비율이
    권마다 갈아끼워지지 않으면 다른 책의 값이 새어 나온다. */
-head('책 뷰어');
-{
+if (head('책 뷰어')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(600);
@@ -99,8 +120,7 @@ head('책 뷰어');
 
 /* ── 2. 목록 카드의 책 해시 ────────────────────────────────
    깨진 적 있음: books 등록이 renderModalList()보다 늦어 카드가 '#'만 물었다. */
-head('목록 카드');
-{
+if (head('목록 카드')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(500);
@@ -115,8 +135,7 @@ head('목록 카드');
 /* ── 3. "나" 캐릭터 판정 영역 ──────────────────────────────
    깨진 적 있음: 버튼 자체가 folk-idle로 흔들려 누를 자리도 같이 움직였다.
    폰에서 21x25px에 세로로 7.5px씩 뛰니 조금만 빗나가도 안 눌렸다. */
-head('캐릭터 판정 영역');
-{
+if (head('캐릭터 판정 영역')) {
   const p = await phone();
   await town(p);
   await p.waitForTimeout(900);
@@ -199,8 +218,7 @@ head('캐릭터 판정 영역');
 /* ── 4. 마을 박자 ──────────────────────────────────────────
    깨진 적 있음 ①: 호버·뾰옹이 물러나면 그 요소만 idle이 0부터 다시 시작했다.
    깨진 적 있음 ②: 터치에서 :hover가 눌린 채 남아 그 건물만 얼어붙었다. */
-head('마을 박자');
-{
+if (head('마을 박자')) {
   const beat = (p) => p.evaluate(() => {
     const a = document.getAnimations().filter((x) =>
       ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle'].includes(x.animationName));
@@ -244,8 +262,7 @@ head('마을 박자');
 /* ── 5. 안내 문구 ──────────────────────────────────────────
    깨진 적 있음: 한 번 무언가를 열면 gone이 붙은 채 영영 돌아오지 않았다.
    대비도 한 번 깨졌다 — 눈에 띄게 하려다 1.64:1까지 떨어뜨렸다. */
-head('안내 문구');
-{
+if (head('안내 문구')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(600);
@@ -283,8 +300,7 @@ head('안내 문구');
 /* ── 6. 책이 건물에서 날아온다 ─────────────────────────────
    깨진 적 있음 ①: 닫을 때 쓴 변형이 fill로 남아 다음에 잴 때 출발점이 어긋났다.
    깨진 적 있음 ②: 큰 페이지를 처음 그리느라 프레임이 멈춰 비행 구간이 먹혔다. */
-head('책이 건물에서 날아온다');
-{
+if (head('책이 건물에서 날아온다')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(900);
@@ -366,8 +382,7 @@ head('책이 건물에서 날아온다');
 
 /* ── 7. 데이터와 화면이 어긋나지 않는가 ────────────────────
    services.json만 고치면 지도·목록·칩이 함께 바뀌어야 한다. */
-head('데이터 단일 소스');
-{
+if (head('데이터 단일 소스')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(600);
@@ -430,8 +445,7 @@ head('데이터 단일 소스');
    마을은 JS로 그려져 크롤러에게는 빈 페이지다. 이 페이지가 유일하게
    기계가 읽는 통로이므로, services.json과 어긋나면 바로 잡아야 한다.
    손으로 고칠 수 있는 파일이 아니라 `python3 tools/build_list.py`의 산출물이다. */
-head('/list 정적 페이지');
-{
+if (head('/list 정적 페이지')) {
   const p = await desktop();
   const res = await p.goto(BASE + '/list.html', { waitUntil: 'load' });
   ok(res && res.ok(), 'list.html이 열린다');
@@ -478,8 +492,7 @@ head('/list 정적 페이지');
 
 /* ── 9. 크롤러가 보는 것 ───────────────────────────────────
    JS를 끈 상태가 곧 검색엔진이 보는 화면이다. */
-head('크롤러 시점');
-{
+if (head('크롤러 시점')) {
   const ctx = await browser.newContext({ javaScriptEnabled: false });
   const p = await ctx.newPage();
   await p.goto(BASE + '/list.html', { waitUntil: 'load' });
@@ -502,8 +515,7 @@ head('크롤러 시점');
    깨진 적 있음 ②: 46면을 한 줄로 이어 두고 챕터 이동을 smooth 스크롤로 했더니
    사이의 스무 장이 전부 지나가느라 화면이 파바박 튀었다. 지금은 챕터마다 따로
    놓인 카드 뭉치라, 한 번에 한 뭉치만 화면에 올라간다. */
-head('게임 안내서');
-{
+if (head('게임 안내서')) {
   const p = await desktop();
   await p.goto(BASE + '/game/', { waitUntil: 'networkidle' });
   await p.waitForTimeout(900);
@@ -637,8 +649,7 @@ head('게임 안내서');
    (districts[].mascot.column). 칼럼이 먼저 오고 「준비 중」은 맨 아래에 온다.
    이 마을에는 프레임 애니메이션이 없어서 퍼덕임과 갸웃만 그림 세 장을 번갈아 쓰는데,
    두 장이 겹쳐 보이거나 마을과 박자가 어긋나면 그 자리만 딴 세상이 된다. */
-head('카페 앞 까마귀');
-{
+if (head('카페 앞 까마귀')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(900);
@@ -729,8 +740,7 @@ head('카페 앞 까마귀');
 /* ── 12. 세모집 마당의 확성기 ────────────────────────────
    집 테마송이 나오는 자리다. `speaker.song`이 있으면 진짜 버튼이라 눌리고,
    세모집 옆에 서 있으면서도 세모집 클릭을 가로채면 안 된다. */
-head('마당의 확성기');
-{
+if (head('마당의 확성기')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(700);
@@ -860,8 +870,7 @@ head('마당의 확성기');
    깨진 적 있음: 지도 위 가장 높이 뜬 채로 늘 잡히게 뒀더니 **건물 위를 지날 때
    그 건물의 클릭을 가로챘다** — 미술관을 누르려는데 쪽지가 먹었다.
    지금은 멈춰 선 동안만 잡히고, 머무는 자리는 전부 건물이 없는 빈 땅이다. */
-head('날아다니는 쪽지');
-{
+if (head('날아다니는 쪽지')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(900);
@@ -972,8 +981,7 @@ head('날아다니는 쪽지');
    깨진 적 있음: services.json만 예전 것이 캐시에 남은 채 새 app.js를 만났다.
    프레임 역할 이름이 CSS와 어긋나 세 장이 한꺼번에 뜨고, 그중 사라진 파일 하나가
    404가 나면서 **카페 앞에 브라우저의 물음표 상자가 그대로 섰다.** */
-head('캐시 어긋남');
-{
+if (head('캐시 어긋남')) {
   const p = await desktop();
 
   // 데이터는 캐시를 반드시 다시 확인해야 한다 — 코드와 짝이 맞아야 하는 파일이다
@@ -999,7 +1007,7 @@ head('캐시 어긋남');
     '애니메이션이 없어도 프레임은 한 장만 보인다', JSON.stringify(stacked));
   await p.close();
 }
-{
+if (want('캐시 어긋남')) {
   // 그림 하나가 사라져도 지도에 물음표를 그리지 않는다.
   // 일부러 끊는 것이라 이 페이지는 콘솔 오류 수집에서 뺀다 (watch를 안 건다)
   const p = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -1021,8 +1029,7 @@ head('캐시 어긋남');
    배치도 함께 지킨다. 푸터에 남는 것은 이름 옆의 👋 하나뿐이고, 적는 칸은 창
    안에 있다 — 나가는 길에 자리를 먹지 않는 것이 요점이라, 푸터에 폼이 다시
    펼쳐지면 여기서 잡힌다. */
-head('제작자에게 한마디');
-{
+if (head('제작자에게 한마디')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(500);
@@ -1156,8 +1163,7 @@ head('제작자에게 한마디');
    남의 서버 사정에 흔들리고, 내가 고치면서 여닫은 것이 통계에 섞인다.
    마을은 URL이 바뀌지 않으므로 무엇을 봤는지는 커스텀 이벤트로만 남는다 —
    그래서 세 페이지 전부에 붙어 있는지, 부르는 자리가 실제로 부르는지 본다. */
-head('방문 통계');
-{
+if (head('방문 통계')) {
   const p = await desktop();
   const sent = [];
   await town(p);
@@ -1193,7 +1199,7 @@ head('방문 통계');
     '무엇을 열었는지가 함께 간다', JSON.stringify(dis));
   await p.close();
 }
-{
+if (want('방문 통계')) {
   const p = await desktop();
   await p.goto(BASE + '/game/', { waitUntil: 'networkidle' });
   ok(await p.locator('script[src="/ga.js"]').count() === 1, '안내서에도 ga.js가 붙어 있다');
@@ -1209,9 +1215,13 @@ head('방문 통계');
 }
 
 /* ── 마무리 ─────────────────────────────────────────────── */
-head('JS 오류');
-ok(errors.length === 0, '콘솔 오류 없음', errors.slice(0, 3).join(' / '));
+if (head('JS 오류')) {
+  ok(errors.length === 0, '콘솔 오류 없음', errors.slice(0, 3).join(' / '));
+}
 
 await browser.close();
-console.log(`\n${fail ? '❌' : '✅'}  통과 ${pass} · 실패 ${fail}\n`);
+if (server) server.kill();
+// 부분만 돌았으면 그렇다고 말한다 — 「통과」라는 말이 전부를 뜻하지 않게
+console.log(`\n${fail ? '❌' : '✅'}  통과 ${pass} · 실패 ${fail}`
+  + (skipped ? `  (${skipped}개 절 건너뜀 — 푸시 전에는 인자 없이 한 번 돌릴 것)` : '') + '\n');
 process.exit(fail ? 1 : 0);
