@@ -1301,7 +1301,7 @@ if (head('케이스 스터디 — 영상')) {
 if (head('케이스 스터디 — 조감도')) {
   const p = await desktop();
   await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
-  const pins = await p.$$eval('.map-pin', (els) => els.map((e) => ({
+  const pins = await p.$$eval('.plan-pin', (els) => els.map((e) => ({
     x: parseFloat(e.style.getPropertyValue('--x')),
     y: parseFloat(e.style.getPropertyValue('--y')),
   })));
@@ -1314,7 +1314,7 @@ if (head('케이스 스터디 — 조감도')) {
 
   /* 지도 위 핀은 눈으로 보여주는 것뿐이라 스크린리더에서 감춰야 한다.
      진짜 내용은 <ol>에 있다 — 크롤러도 스크린리더도 SVG나 핀은 못 읽는다 */
-  ok(await p.locator('.map-pin[aria-hidden="true"]').count() === 5,
+  ok(await p.locator('.plan-pin[aria-hidden="true"]').count() === 5,
     '핀은 스크린리더에서 감춰져 있다');
   await p.close();
 }
@@ -1324,7 +1324,7 @@ if (head('케이스 스터디 — 폰')) {
   await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
   /* 390px에서는 조감도 이름표가 안 읽힌다. 이름은 바로 아래 목록에 그대로 있으므로
      지도 위에는 번호만 남긴다 (§6이 겪은 문제를 여기서도 겪는다) */
-  ok(await p.evaluate(() => getComputedStyle(document.querySelector('.map-pin span')).display === 'none'),
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector('.plan-pin span')).display === 'none'),
     '폰에서는 지도 위 이름표를 떼고 번호만 남긴다');
   /* 포지셔닝 보드는 좁아지면 자리로 그리던 것을 목록으로 되돌린다.
      안 그러면 원 여덟 개가 서로 겹쳐 글자가 안 읽힌다 */

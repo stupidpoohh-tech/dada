@@ -68,7 +68,7 @@
   <!-- ── 리서치 ───────────────────────────────────────────────────
        찢어 붙인 노트지 한 장. 종이는 CSS이고 글은 글이다 — 통이미지로 만들면
        이 문서를 스크롤 페이지로 정한 이유(검색엔진·스크린리더가 읽는다)가 사라진다 -->
-  <section class="room" aria-labelledby="r-research">
+  <section class="room room--desk" aria-labelledby="r-research">
     <div class="room-head">
       <p class="room-no">리서치</p>
       <h2 class="room-title" id="r-research">어른이 놀 곳이 왜 없나</h2>
@@ -109,7 +109,7 @@
   <!-- ── 포지셔닝 ─────────────────────────────────────────────────
        표로 그리면 여덟 줄짜리 목록이 되는데, 이 그림이 말하려는 것은 값이 아니라
        거리다. 그래서 자리로 그린다 -->
-  <section class="room" aria-labelledby="r-position">
+  <section class="room room--board" aria-labelledby="r-position">
     <div class="room-head">
       <p class="room-no">포지셔닝</p>
       <h2 class="room-title" id="r-position">비어 있던 가운데</h2>
@@ -171,7 +171,7 @@
   <!-- ── 18일 ─────────────────────────────────────────────────────
        일력은 원래 한 장씩 뜯는 물건이라 열여덟 장을 한눈에 놓는다.
        그림 한 장 없이 전부 CSS다 — 톱니는 clip-path, 집게는 검은 띠와 리벳 둘 -->
-  <section class="room" aria-labelledby="r-days">
+  <section class="room room--wall" aria-labelledby="r-days">
     <div class="room-head">
       <p class="room-no">18일</p>
       <h2 class="room-title" id="r-days">뜯어낸 열여덟 장</h2>
@@ -390,7 +390,7 @@
   <!-- ── 브랜드 ───────────────────────────────────────────────────
        그림인 것만 그림이고 글자인 것은 글자다. 로고·캐릭터·이용권은 오려 붙였고
        슬로건·브랜드 가치·색값은 마크업으로 다시 쳤다 -->
-  <section class="room" aria-labelledby="r-brand">
+  <section class="room room--paper" aria-labelledby="r-brand">
     <div class="room-head">
       <p class="room-no">브랜드</p>
       <h2 class="room-title" id="r-brand">18일이 낳은 것들</h2>
@@ -508,7 +508,7 @@
   <!-- ── 마케팅 ───────────────────────────────────────────────────
        영상은 눌러야 온다. 재생 카드는 브랜드 색으로 직접 그린 것이라
        **누르기 전에는 남의 서버에 아무 요청도 안 나간다** (§4 「영상을 넣을 때」) -->
-  <section class="room" aria-labelledby="r-promo">
+  <section class="room room--dim" aria-labelledby="r-promo">
     <div class="room-head">
       <p class="room-no">마케팅</p>
       <h2 class="room-title" id="r-promo">15초로 알렸다</h2>
@@ -536,7 +536,7 @@
   <!-- ── 공간 ─────────────────────────────────────────────────────
        조감도 위 % 좌표. 마을 지도와 정확히 같은 기법이다.
        좌표는 눈대중이 아니라 원본 조감도에서 재서 적었다 -->
-  <section class="room" aria-labelledby="r-space">
+  <section class="room room--plan" aria-labelledby="r-space">
     <div class="room-head">
       <p class="room-no">공간</p>
       <h2 class="room-title" id="r-space">하루짜리 다섯 개 존</h2>
@@ -545,18 +545,18 @@
     </div>
 
     <div class="stage">
-      <figure class="map">
-        <div class="map-frame">
+      <figure class="plan">
+        <div class="plan-frame">
           <img src="/assets/case/playgrown/map.jpg" width="1498" height="864"
                alt="대관한 북카페 한 층의 조감도. 왼쪽에 소파와 빈백, 가운데에 긴 테이블과 원형 테이블, 오른쪽에 서가, 아래쪽에 빨간 카운터가 있다."
                loading="lazy" decoding="async">
           <!-- 핀은 아래 목록을 눈으로 보여주는 것뿐이다. 크롤러와 스크린리더는
                이 핀을 못 읽으므로 진짜 내용은 <ol>에 있다 -->
-          <b class="map-pin" style="--x:11%;--y:18%" aria-hidden="true"><i>1</i><span>휴식존</span></b>
-          <b class="map-pin" style="--x:37%;--y:35%" aria-hidden="true"><i>2</i><span>게임존</span></b>
-          <b class="map-pin map-pin--l" style="--x:83%;--y:24%" aria-hidden="true"><i>3</i><span>아트존</span></b>
-          <b class="map-pin map-pin--l" style="--x:82%;--y:57%" aria-hidden="true"><i>4</i><span>핫존</span></b>
-          <b class="map-pin" style="--x:50%;--y:79%" aria-hidden="true"><i>5</i><span>스낵존</span></b>
+          <b class="plan-pin" style="--x:11%;--y:18%" aria-hidden="true"><i>1</i><span>휴식존</span></b>
+          <b class="plan-pin" style="--x:37%;--y:35%" aria-hidden="true"><i>2</i><span>게임존</span></b>
+          <b class="plan-pin plan-pin--l" style="--x:83%;--y:24%" aria-hidden="true"><i>3</i><span>아트존</span></b>
+          <b class="plan-pin plan-pin--l" style="--x:82%;--y:57%" aria-hidden="true"><i>4</i><span>핫존</span></b>
+          <b class="plan-pin" style="--x:50%;--y:79%" aria-hidden="true"><i>5</i><span>스낵존</span></b>
         </div>
         <figcaption>2025년 7월 18일 하루, 성수 북카페 센버스 대관</figcaption>
       </figure>
@@ -577,7 +577,7 @@
 
   <!-- ── 파일럿 ───────────────────────────────────────────────────
        그날. 여기까지가 「했다」이고 다음 절이 「그래서 접었다」다 -->
-  <section class="room" aria-labelledby="r-pilot">
+  <section class="room room--dim2" aria-labelledby="r-pilot">
     <div class="room-head">
       <p class="room-no">파일럿</p>
       <h2 class="room-title" id="r-pilot">그날, 네 시간</h2>
@@ -603,7 +603,7 @@
        **여기만은 무조건 정적이다.** 앞의 일곱 절이 메모지·보드·일력·영상으로
        잔뜩 차려진 뒤 마지막에 꾸밈이 전부 사라지는 대비 자체가 이 절의 정서다.
        연출로 만들 것을 구조로 만든다 (§5 「타이핑 노트」) -->
-  <section class="room room--last" aria-labelledby="r-note">
+  <section class="room room--last room--sheet" aria-labelledby="r-note">
     <div class="room-head">
       <p class="room-no">노트</p>
       <h2 class="room-title" id="r-note">배운 것</h2>

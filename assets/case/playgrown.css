@@ -23,12 +23,23 @@
   --pg-lift: 0 10px 30px rgba(17, 17, 17, .10);
   --pg-line: #E2DED4;
   background: var(--pg-paper);
+
+  /* **방마다 바탕을 갈아 끼우려면 절이 화면 폭을 꽉 채워야 한다.** 그런데 본문은
+     가운데 1000px 안에 있어야 한다. 격자 한 벌을 여기 적어 두고 `.case`와 `.room`이
+     같이 쓰면, 절은 `full`에 놓여 끝에서 끝까지 가고 그 안의 것들은 `content`에
+     머문다. `100vw`로 늘리는 방법도 있지만 그건 스크롤바 폭만큼 넘쳐서
+     가로 스크롤바가 생긴다 — 격자는 그 문제가 아예 없다. */
+  --cols:
+    [full-start] minmax(20px, 1fr)
+    [content-start] minmax(0, 1000px) [content-end]
+    minmax(20px, 1fr) [full-end];
 }
 
 .case {
-  width: 100%; max-width: 1040px;
-  margin: 0 auto; padding: 0 20px 72px;
+  display: grid; grid-template-columns: var(--cols);
+  padding: 0 0 72px;
 }
+.case > * { grid-column: content; }
 
 /* ── 머리 ── */
 
@@ -61,8 +72,64 @@
 
 /* ── 절 ── */
 
-.room { margin: 0; padding: 62px 0 0; }
-.room + .room { border-top: 1px solid var(--pg-line); margin-top: 62px; }
+/* 절은 끝에서 끝까지 가는 띠다. 안의 것들은 가운데 칸에 머문다 */
+.room {
+  grid-column: full;
+  display: grid; grid-template-columns: var(--cols);
+  margin: 0; padding: 74px 0;
+  background: var(--ground, transparent);
+}
+.room > * { grid-column: content; }
+
+/* ── 방마다 다른 바탕 ───────────────────────────────────────────
+   **이것이 「챕터가 넘어간다」를 만드는 장치다.** 스크롤을 뺏지 않고(§5가 금지했다)
+   대신 굴릴 때마다 바닥이 실제로 바뀐다. JS도 필요 없고, 읽는 순서도 안 흔들리고,
+   안내서(/game/)의 카드 넘기기와도 겹치지 않는다.
+
+   어두운 방은 색을 하나하나 뒤집지 않는다 — 이 페이지의 물건들이 전부
+   `--ink`·`--sub`·`--faint`·`--pg-black`만 보고 그려지므로, **그 넷을 방에서
+   다시 정의하면 안에 있는 것이 통째로 따라온다.** 토큰을 쓴 값이 여기서 돌아온다. */
+
+.room--desk  { --ground: #EAE0CB; }   /* 크래프트 책상 — 메모지가 놓인 자리 */
+.room--board { --ground: #F3F4F5; }   /* 흰 보드 벽. 순백으로 하면 원의 옅은 색이 안 보인다 */
+.room--paper { --ground: var(--pg-paper); }
+.room--plan  {                        /* 도면 — 옅은 모눈 */
+  --ground: #E7ECEF;
+  background-image:
+    repeating-linear-gradient(to right, rgba(56, 92, 112, .075) 0 1px, transparent 1px 26px),
+    repeating-linear-gradient(to bottom, rgba(56, 92, 112, .075) 0 1px, transparent 1px 26px);
+}
+.room--sheet { --ground: #FFFFFF; }
+
+.room--wall  { --ground: #26221D; }   /* 짙은 벽 — 일력이 걸린 자리 */
+.room--dim   { --ground: #131110; }   /* 암전. 영상 둘은 불 꺼진 방이다 */
+.room--dim2  { --ground: #1A100E; }
+
+.room--wall, .room--dim, .room--dim2 {
+  --ink: #F6F3ED;
+  --sub: rgba(246, 243, 237, .74);
+  --faint: rgba(246, 243, 237, .52);
+  --pg-black: #FBF9F4;
+  --pg-line: rgba(255, 255, 255, .17);
+  /* 빨강은 어두운 바탕에서 한 톤 올린다. #E63B2E는 검정 위에서 탁해진다 */
+  --pg-red: #FF5B4B;
+}
+/* 검은 카드가 검은 방에 놓이면 경계가 사라진다. 실 하나만 두른다 */
+.room--dim .film-card, .room--dim2 .film-card { outline: 1px solid rgba(255, 255, 255, .14); }
+
+/* **밝은 물건은 어두운 방에서도 밝은 물건이다.** 방에서 뒤집은 색을 그대로 물려받으면
+   흰 종이 위에 흰 글자가 앉는다 — 짙은 벽에 일력을 걸었더니 낱장이 통째로 백지로
+   나와서 알았다. 종이 위에 놓이는 것들은 여기서 색을 도로 세운다. */
+.memo-sheet, .day-sheet, .tile, .plan-frame {
+  --ink: #1F241C;
+  --sub: #656B60;
+  --faint: #9AA093;
+  --pg-black: #111111;
+  --pg-line: #E2DED4;
+  --pg-red: #E63B2E;
+}
+/* 집게는 쇠붙이다. 검은 벽에서는 검은 집게가 안 보이므로 한 톤 올린다 */
+.room--wall { --pg-clip: #4A4239; }
 
 /* **표제는 형식이 달라도 같은 자리에 있어야 한다.** 아래에 놓이는 물건은 절마다
    메모지였다 보드였다 조감도였다 하는데, 길잡이까지 자리를 옮기면 읽는 사람이
@@ -144,7 +211,7 @@
 /* 검은 집게와 리벳 둘. 낱장 위에 얹혀야 하므로 잘리는 .day-sheet 바깥에 둔다 */
 .day-clip {
   position: absolute; z-index: 2; left: 16%; right: 16%; top: 0; height: 15px;
-  border-radius: 2px; background: var(--pg-black);
+  border-radius: 2px; background: var(--pg-clip, #111111);
   background-image:
     radial-gradient(circle 2.6px at 28% 50%, #8C8C8C 98%, #0000 100%),
     radial-gradient(circle 2.6px at 72% 50%, #8C8C8C 98%, #0000 100%);
@@ -199,10 +266,13 @@
   position: relative; display: grid; align-content: end; gap: 10px;
   width: min(300px, 78vw); aspect-ratio: 9 / 16;
   padding: 20px; border-radius: 16px;
-  background: var(--pg-black); color: #fff; text-decoration: none;
+  /* **여기는 토큰을 쓰지 않는다.** 이 카드는 「검은 물건」이라 방이 어두워졌다고
+     같이 밝아지면 안 된다 — 암전한 방에서 카드가 크림색으로 뒤집혀 흰 글자가
+     안 보였다. 브랜드 색 CROW BLACK을 그대로 박는다 */
+  background: #111111; color: #fff; text-decoration: none;
   box-shadow: var(--pg-lift); overflow: hidden;
 }
-.film-card--pilot { background: var(--pg-red); }
+.film-card--pilot { background: #E63B2E; }
 /* 가운데 재생 삼각형. 테두리 트릭으로 만든다 — 아이콘 파일을 하나 더 받지 않으려고 */
 .film-play {
   position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
@@ -242,7 +312,6 @@
    전부 사라지는 대비 자체가 「접었다」의 정서다. 연출로 만들 것을 구조로 만든다.
    그래서 이 절에는 .stage가 없다 — 등장 연출이 아예 안 걸린다 */
 
-.room--last { border-top-color: var(--pg-black); }
 .note {
   max-width: 620px; margin: 0 auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, "Noto Sans Mono", monospace;
@@ -404,7 +473,7 @@
 
 .tile--mark img { max-width: 250px; margin: 2px 0 14px; }
 .tile--slogan {
-  background: var(--pg-black); color: #fff;
+  background: #111111; color: #fff;   /* 위와 같은 이유로 토큰이 아니라 값 */
   display: grid; align-content: center; gap: 6px; padding: 26px;
 }
 .tile--slogan p { color: rgba(255, 255, 255, .72); font-size: 13px; }
@@ -430,8 +499,8 @@
    조감도 위 % 좌표. 마을 지도와 정확히 같은 기법이다 — 고정 종횡비 상자에
    그림을 깔고 그 위에 %로 앉힌다. 좌표는 눈대중이 아니라 원본에서 재서 적었다 */
 
-.map { margin: 0 auto; max-width: 980px; }
-.map-frame {
+.plan { margin: 0 auto; max-width: 980px; }
+.plan-frame {
   position: relative; aspect-ratio: 1498 / 864;
   /* 조감도는 투명 대신 **흰 바탕**을 깔고 JPEG로 뽑았다(cut_case.mjs).
      그러니 놓이는 자리도 흰 카드여야 자국이 안 보인다. 브랜드 타일과 같은
@@ -439,33 +508,33 @@
   background: #fff; border-radius: 12px; overflow: hidden;
   box-shadow: var(--pg-lift);
 }
-.map-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.plan-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
 
 /* 지도 위 핀은 **아래 목록을 눈으로 보여주는 것뿐**이다. 크롤러와 스크린리더는
    이 핀을 못 읽으므로 진짜 내용은 <ol>에 있고 여기는 aria-hidden이다 */
-.map-pin {
+.plan-pin {
   position: absolute; left: var(--x); top: var(--y);
   transform: translate(-50%, -50%);
   display: flex; align-items: center; gap: 6px;
   font-size: 12.5px; font-weight: 800; color: var(--pg-black);
   white-space: nowrap;
 }
-.map-pin i {
+.plan-pin i {
   display: grid; place-items: center; flex: none;
   width: 22px; height: 22px; border-radius: 50%;
   background: var(--pg-red); color: #fff;
   font-size: 12px; font-style: normal; font-weight: 800;
   box-shadow: 0 2px 8px rgba(17, 17, 17, .3);
 }
-.map-pin span {
+.plan-pin span {
   background: rgba(251, 249, 244, .92); border-radius: 999px;
   padding: 3px 9px; box-shadow: 0 1px 5px rgba(17, 17, 17, .13);
 }
 /* 오른쪽에 앉은 핀은 이름표를 왼쪽에 단다. 안 그러면 이름표가 조감도 밖으로
    비어져 나가 잘린다 — 원본에서도 오른쪽 두 존은 말풍선이 왼쪽을 향해 있다 */
-.map-pin--l { flex-direction: row-reverse; }
+.plan-pin--l { flex-direction: row-reverse; }
 
-.map figcaption { margin: 12px 0 0; font-size: 12.5px; color: var(--faint); text-align: center; }
+.plan figcaption { margin: 12px 0 0; font-size: 12.5px; color: var(--faint); text-align: center; }
 
 .zones {
   display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -513,9 +582,9 @@
    포지셔닝 원이 서로 겹친다. 그래서 좁아지면 **자리로 그리던 것을 목록으로 되돌린다** */
 
 @media (max-width: 760px) {
-  .case { padding: 0 16px 56px; }
-  .room { padding-top: 46px; }
-  .room + .room { margin-top: 46px; }
+  .case-page { --cols: [full-start] 16px [content-start] minmax(0, 1fr) [content-end] 16px [full-end]; }
+  .case { padding: 0 0 56px; }
+  .room { padding: 52px 0; }
   .memo-sheet { padding: 32px 22px 32px 56px; background-position: -6px 0; }
   .memo-tape { width: 82px; height: 28px; }
   .tile--wide { grid-column: span 1; }
@@ -541,8 +610,8 @@
   .pos-axis--l, .pos-axis--r { display: none; }
 
   /* 조감도 — 라벨을 떼고 번호만 남긴다. 이름은 바로 아래 목록에 그대로 있다 */
-  .map-pin span { display: none; }
-  .map-pin i { width: 20px; height: 20px; font-size: 11px; }
+  .plan-pin span { display: none; }
+  .plan-pin i { width: 20px; height: 20px; font-size: 11px; }
 }
 
 @media (max-width: 760px) {
