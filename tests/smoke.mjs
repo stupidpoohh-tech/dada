@@ -1232,7 +1232,7 @@ if (head('케이스 스터디 — 뼈대')) {
   /* 점은 표제를 가리키고 지켜보는 것은 절이다. 앵커가 없는 곳을 가리키면
      눌러도 아무 데도 안 가는데, 화면에는 티가 안 난다 */
   const dots = await p.$$eval('.case-dots a', (as) => as.map((a) => a.hash.slice(1)));
-  ok(dots.length === 8, '절 바로가기 점이 여덟이다', String(dots.length));
+  ok(dots.length === 9, '목차가 아홉이다 (표지 + 절 여덟)', String(dots.length));
   const lost = await p.evaluate((ids) => ids.filter((i) => !document.getElementById(i)), dots);
   ok(lost.length === 0, '점이 가리키는 표제가 전부 실제로 있다', lost.join(', '));
 
@@ -1260,6 +1260,41 @@ if (head('케이스 스터디 — 뼈대')) {
     const d = document.querySelector('dialog.lightbox');
     return d.open && !!d.querySelector('img').getAttribute('src');
   }), '타일을 누르면 크게 열린다');
+  await p.close();
+}
+
+if (head('케이스 스터디 — 넘기는 화면')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(500);
+  ok(await p.locator('body.viewer').count() === 1, 'JS가 켜지면 넘기는 화면이 된다');
+  ok(await p.locator('.vw-panel').count() === 9, '화면이 아홉이다 (표지 + 절 여덟)');
+  ok(await p.locator('.vw-pager button').count() === 9, '점도 아홉이다');
+
+  const go = (n) => p.evaluate((i) => {
+    document.querySelectorAll('.vw-pager button')[i].click();
+  }, n).then(() => p.waitForTimeout(600));
+
+  await go(4);
+  ok(await p.evaluate(() => location.hash) === '#r-brand',
+    '넘기면 주소에 어느 화면인지가 남는다', await p.evaluate(() => location.hash));
+  ok((await p.textContent('.vw-live')).includes('9개 화면 중 5'),
+    '몇 번째 화면인지 스크린리더에 알린다', await p.textContent('.vw-live'));
+  /* **지금 화면 말고는 훑기에서 빠져 있어야 한다.** 안 그러면 탭을 누를 때마다
+     화면 밖 링크로 초점이 날아가 화면이 제멋대로 옆으로 밀린다 */
+  ok(await p.evaluate(() => [...document.querySelectorAll('.vw-panel')].filter((x) => !x.inert).length) === 1,
+    '지금 화면 말고는 훑기에서 빠져 있다');
+
+  await p.goBack(); await p.waitForTimeout(600);
+  ok((await p.textContent('.vw-count')).startsWith('1 /'),
+    '뒤로 가기가 마을이 아니라 앞 화면으로 온다', await p.textContent('.vw-count'));
+
+  /* 화면보다 긴 절을 가운데 두면 위쪽이 굴려도 안 닿는 데로 밀려난다.
+     브랜드 보드가 그래서 표제가 통째로 사라진 적이 있다 */
+  await go(4);
+  const top = await p.evaluate(() => Math.round(
+    document.querySelectorAll('.vw-panel')[4].querySelector('.room-no').getBoundingClientRect().top));
+  ok(top > 0 && top < 200, '넘치는 화면은 위에서 시작한다', `top=${top}`);
   await p.close();
 }
 
@@ -1359,6 +1394,11 @@ if (head('케이스 스터디 — JS 없이')) {
     'JS 없이도 여덟 절의 본문이 읽힌다');
   ok(await p.locator('.film-card[href*="youtube"]').count() === 2,
     'JS 없으면 재생 카드는 그냥 유튜브로 가는 링크다');
+  /* **넘기는 쪽을 골랐어도 못 넘기는 상황에서 통째로 안 읽히면 안 된다.**
+     `.viewer`를 붙이는 것은 JS라, JS가 없으면 아홉 화면이 위에서 아래로
+     이어진 한 장으로 남는다 */
+  ok(await p.locator('body.viewer').count() === 0, 'JS 없으면 넘기는 화면이 안 켜진다');
+  ok(await p.locator('.vw-pager').count() === 0, 'JS 없으면 넘기는 단추도 없다');
   ok(await p.locator('.tile-zoom[href$=".jpg"]').count() >= 6,
     'JS 없으면 확대는 그냥 그림 파일이 열린다 (링크로 두었다)');
   await ctx.close();
@@ -1379,25 +1419,6 @@ if (head('케이스 스터디 — 아직 안 걸었다')) {
   const door = JSON.stringify(svc).includes('/case/playgrown.html');
   ok(hidden !== door, 'noindex인 동안에는 마을에서 문이 안 열린다',
     `noindex=${hidden} services=${door}`);
-  await p.close();
-}
-
-if (head('케이스 스터디 — B안 견본')) {
-  /* 비교가 끝나면 지울 파일이다. **지우는 것을 잊어도 새어 나가지는 않게** 묶어 둔다 */
-  const p = await desktop();
-  const r = await p.goto(BASE + '/case/playgrown-b.html', { waitUntil: 'domcontentloaded' });
-  if (r && r.status() === 404) {
-    ok(true, '견본을 지웠다 (비교가 끝났다)');
-  } else {
-    /* `~=`는 공백으로 끊어 맞추므로 `content="noindex, nofollow"`의 쉼표에 걸려
-       안 잡힌다. 견본 쪽은 쉼표를 쓰므로 `*=`로 본다 */
-    ok(await p.locator('meta[name="robots"][content*="noindex"]').count() === 1,
-      '견본은 색인되지 않는다');
-    ok(await p.locator('.vw-note').count() === 1, '견본이라고 화면에 적혀 있다');
-    const map = await p.evaluate((u) => fetch(u).then((x) => x.text()), BASE + '/sitemap.xml');
-    ok(!map.includes('playgrown-b'), '견본은 sitemap에 없다');
-    ok(await p.locator('.vw-panel').count() === 3, '견본은 세 절이다');
-  }
   await p.close();
 }
 

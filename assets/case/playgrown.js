@@ -59,58 +59,143 @@ document.querySelectorAll('.film-card[data-yt]').forEach((a) => {
   });
 });
 
-/* ── 지금 어느 방인지 ───────────────────────────────────────────
-   점 여덟 개에 현재 절을 표시한다. 스크롤 이벤트로 매번 좌표를 재면 굴릴 때마다
-   계산이 돌아 폰에서 버벅인다 — IntersectionObserver는 브라우저가 대신 봐 준다. */
-const dots = [...document.querySelectorAll('.case-dots a')];
-if (dots.length && window.IntersectionObserver) {
-  /* **점이 가리키는 것은 표제가 아니라 절 전체다.** 앵커는 표제(h2)를 가리켜야
-     눌렀을 때 제목이 화면 위에 오는데, 표제만 지켜보면 그 몇 십 px이 띠를 지나는
-     순간에만 켜지고 나머지 내내 꺼져 있다. 그래서 앵커는 표제, 지켜보는 것은 절. */
-  const watched = new Map();          // 절 → 그 절의 점
-  const here = new Set();
-  dots.forEach((d) => {
-    const head = document.getElementById(d.hash.slice(1));
-    const room = head && head.closest('section.room');
-    if (room) watched.set(room, d);
-  });
+/* ── 넘기는 화면 ────────────────────────────────────────────────
+   화면 아홉(표지 + 절 여덟)을 한 장씩 넘긴다.
 
-  const paint = () => {
-    /* **맨 아래까지 내려갔으면 마지막 절이다.** 마지막 절(노트)은 짧아서 페이지
-       끝에 닿아도 제 위쪽이 띠까지 못 올라온다 — 그러면 끝까지 굴렸는데도 점은
-       계속 앞 절을 가리킨다. 더 굴릴 데가 없으면 그것이 곧 마지막 절이다. */
-    const d = document.documentElement;
-    if (window.scrollY + window.innerHeight >= d.scrollHeight - 4) {
-      dots.forEach((x, i) => {
-        if (i === dots.length - 1) x.setAttribute('aria-current', 'true');
-        else x.removeAttribute('aria-current');
-      });
-      return;
-    }
-    /* 띠에 걸친 절이 둘일 때는 **아래쪽 것**을 고른다 — 내려가는 중이면 새로 들어온
-       절이고, 올라가는 중이면 아직 화면을 채우고 있는 절이다 */
-    const live = [...watched.keys()].filter((r) => here.has(r));
-    const now = watched.get(live[live.length - 1]) || dots[0];
-    dots.forEach((d) => {
-      if (d === now) d.setAttribute('aria-current', 'true');
-      else d.removeAttribute('aria-current');   // 값 없는 속성은 CSS가 못 잡는다
-    });
+   **`.viewer`를 여기서 붙인다.** 그래서 JS가 없으면 아무 규칙도 안 걸리고
+   문서는 그냥 위에서 아래로 이어진 한 장으로 남는다 — 넘기는 쪽을 고르면서도
+   못 넘기는 상황에서 통째로 안 읽히는 일은 없어야 한다.
+
+   굴리는 문서라면 공짜로 얻었을 것 넷을 여기서는 손으로 만든다.
+   초점 옮기기 · 뒤로 가기 · 스크린리더에 알리기 · 안 보이는 화면을 훑기에서 빼기.
+   이 넷이 없으면 키보드로 읽는 사람은 안 보이는 화면에 갇히고, 뒤로 가기는
+   마을로 나가 버리고, 눈으로 안 보는 사람에게는 아무 일도 안 일어난 것이 된다. */
+const track = document.getElementById('vwTrack');
+const panels = [...document.querySelectorAll('.vw-panel')];
+
+if (track && panels.length > 1) {
+  document.body.classList.add('viewer');
+
+  /* 화면 이름은 절의 어깨말(리서치 · 18일 …)을 그대로 쓴다. 표지에는 없다 */
+  const nameOf = (el) => (el.querySelector('.room-no') || {}).textContent?.trim() || '표지';
+  /* 뒤로 가기에 남길 이름표. 앵커가 이미 이 id를 가리키고 있다 */
+  const ids = panels.map((el) => (el.querySelector('[id]') || {}).id || '');
+  const canInert = 'inert' in HTMLElement.prototype;
+
+  const el = (tag, cls, txt) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt) n.textContent = txt;
+    return n;
   };
 
-  /* 경계선은 화면 위쪽 35%. 가운데에 두면 절이 화면보다 길 때(일력·브랜드 보드가
-     그렇다) 다음 절 표제가 이미 올라왔는데도 점이 안 넘어간다 */
-  const io = new IntersectionObserver((rows) => {
-    rows.forEach((r) => (r.isIntersecting ? here.add(r.target) : here.delete(r.target)));
-    paint();
-  }, { rootMargin: '0px 0px -65% 0px' });
-  watched.forEach((_, room) => io.observe(room));
+  const pager = el('nav', 'vw-pager');
+  pager.setAttribute('aria-label', '화면 고르기');
+  const dots = panels.map((p, i) => {
+    const b = el('button', null);
+    b.type = 'button';
+    b.setAttribute('aria-label', `${i + 1}. ${nameOf(p)}`);
+    b.addEventListener('click', () => go(i));
+    pager.appendChild(b);
+    return b;
+  });
+  const count = el('span', 'vw-count');
+  pager.appendChild(count);
 
-  /* 페이지 끝에 닿는 것은 절이 바뀌는 일이 아니라 IntersectionObserver가 안 알려준다.
-     한 프레임에 한 번으로 묶어 두면 여덟 개 칠하는 값은 없는 것이나 같다 */
-  let queued = false;
-  addEventListener('scroll', () => {
-    if (queued) return;
-    queued = true;
-    requestAnimationFrame(() => { queued = false; paint(); });
+  const arrow = (dir, glyph, label) => {
+    const b = el('button', `vw-arrow vw-arrow--${dir}`, glyph);
+    b.type = 'button';
+    b.setAttribute('aria-label', label);
+    return b;
+  };
+  const prev = arrow('prev', '←', '이전 화면');
+  const next = arrow('next', '→', '다음 화면');
+  prev.addEventListener('click', () => go(at - 1));
+  next.addEventListener('click', () => go(at + 1));
+
+  /* 화면이 바뀐 것을 눈으로 안 보는 사람에게 말해 준다 */
+  const live = el('p', 'vw-live');
+  live.setAttribute('aria-live', 'polite');
+
+  panels.forEach((p) => { p.tabIndex = -1; });
+  document.body.append(pager, prev, next, live);
+
+  let at = -1;
+
+  function go(i, opt = {}) {
+    const to = Math.max(0, Math.min(panels.length - 1, i));
+    if (to === at) return;
+    at = to;
+    track.style.transform = `translateX(${-at * 100}%)`;
+
+    panels.forEach((p, n) => {
+      /* **안 보이는 화면은 훑기에서 뺀다.** 안 그러면 탭을 누를 때마다 화면 밖
+         링크로 초점이 날아가 화면이 제멋대로 옆으로 밀린다 */
+      if (canInert) p.inert = n !== at;
+      if (n !== at) p.scrollTop = 0;
+    });
+    dots.forEach((d, n) => {
+      if (n === at) d.setAttribute('aria-current', 'true');
+      else d.removeAttribute('aria-current');
+    });
+    count.textContent = `${at + 1} / ${panels.length}`;
+    prev.disabled = at === 0;
+    next.disabled = at === panels.length - 1;
+    /* 넘어간 화면은 맨 위에서 시작한다. 안 되돌리면 앞 화면을 굴려 놓은 만큼
+       다음 화면도 중간부터 보인다 */
+    panels[at].scrollTop = 0;
+
+    if (opt.focus !== false) panels[at].focus({ preventScroll: true });
+    live.textContent = `${panels.length}개 화면 중 ${at + 1} — ${nameOf(panels[at])}`;
+
+    /* 뒤로 가기가 마을로 나가 버리지 않게 화면마다 이력을 남긴다.
+       처음 그릴 때만 replace다 — 들어오자마자 뒤로 가기가 하나 쌓이면 안 된다 */
+    const url = ids[at] ? `#${ids[at]}` : location.pathname;
+    if (opt.push === false) history.replaceState({ at }, '', url);
+    else history.pushState({ at }, '', url);
+  }
+
+  addEventListener('popstate', (e) => {
+    const i = e.state && typeof e.state.at === 'number'
+      ? e.state.at
+      : Math.max(0, ids.indexOf(location.hash.slice(1)));
+    go(i, { push: false });
+  });
+
+  /* 글자를 넣는 칸이 없는 화면이라 좌우 화살표를 통째로 가져다 쓴다.
+     위아래는 안 건드린다 — 절 안을 굴리는 데 쓰이기 때문이다 */
+  addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowRight') go(at + 1);
+    if (e.key === 'ArrowLeft') go(at - 1);
+  });
+
+  /* 손가락 쓸기. **세로로 쓴 것은 넘기지 않는다** — 절 안을 굴리는 동작이라
+     가로보다 세로가 크면 그대로 둔다. 안 가르면 일력을 훑다가 화면이 넘어간다 */
+  let x0 = null, y0 = null;
+  addEventListener('touchstart', (e) => {
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
   }, { passive: true });
+  addEventListener('touchend', (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    const dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4) go(at + (dx < 0 ? 1 : -1));
+    x0 = y0 = null;
+  }, { passive: true });
+
+  /* 주소에 화면 이름표가 붙어 온 것이면 그 화면부터 편다.
+     처음에는 초점을 옮기지 않는다 — 들어오자마자 화면이 스스로 움직이면 놀란다 */
+  const first = Math.max(0, ids.indexOf(location.hash.slice(1)));
+  go(first, { push: false, focus: false });
+
+  /* 목차(굴려서 읽을 때의 것)를 눌러도 그 화면으로 간다 */
+  document.querySelectorAll('.case-dots a').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const i = ids.indexOf(a.hash.slice(1));
+      if (i < 0) return;
+      e.preventDefault();
+      go(i);
+    });
+  });
 }

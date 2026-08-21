@@ -39,6 +39,7 @@
        **지금 어느 방인지만 조용히 보여준다.** 데스크톱에만 나온다 -->
   <nav class="case-dots" aria-label="절 바로가기">
     <ol>
+      <li><a href="#r-cover"><span>표지</span></a></li>
       <li><a href="#r-research"><span>리서치</span></a></li>
       <li><a href="#r-position"><span>포지셔닝</span></a></li>
       <li><a href="#r-days"><span>18일</span></a></li>
@@ -50,9 +51,11 @@
     </ol>
   </nav>
 
+  <div class="vw-track" id="vwTrack">
+  <section class="vw-panel vw-cover">
   <header class="case-head">
     <p class="case-kicker">케이스 스터디</p>
-    <h2 class="case-title">PlayGrown — 어른들의 키즈카페</h2>
+    <h2 class="case-title" id="r-cover">PlayGrown — 어른들의 키즈카페</h2>
     <p class="case-sub">어른이 된 우리도 놀 권리가 있다는 문장 하나로 시작해,
       18일 만에 브랜드와 공간을 만들고 하루를 열어 본 기록입니다.
       상시 운영이 아니라 <strong>파일럿 1회</strong>였고, 이 문서는 그 하루가 무엇을 알려 줬는지에 대한 것입니다.</p>
@@ -64,11 +67,12 @@
       <div><dt>공간</dt><dd>다섯 개 존</dd></div>
     </dl>
   </header>
+  </section>
 
   <!-- ── 리서치 ───────────────────────────────────────────────────
        찢어 붙인 노트지 한 장. 종이는 CSS이고 글은 글이다 — 통이미지로 만들면
        이 문서를 스크롤 페이지로 정한 이유(검색엔진·스크린리더가 읽는다)가 사라진다 -->
-  <section class="room room--desk" aria-labelledby="r-research">
+  <section class="vw-panel room room--desk" aria-labelledby="r-research">
     <div class="room-head">
       <p class="room-no">리서치</p>
       <h2 class="room-title" id="r-research">어른이 놀 곳이 왜 없나</h2>
@@ -109,7 +113,7 @@
   <!-- ── 포지셔닝 ─────────────────────────────────────────────────
        표로 그리면 여덟 줄짜리 목록이 되는데, 이 그림이 말하려는 것은 값이 아니라
        거리다. 그래서 자리로 그린다 -->
-  <section class="room room--board" aria-labelledby="r-position">
+  <section class="vw-panel room room--board" aria-labelledby="r-position">
     <div class="room-head">
       <p class="room-no">포지셔닝</p>
       <h2 class="room-title" id="r-position">비어 있던 가운데</h2>
@@ -171,7 +175,7 @@
   <!-- ── 18일 ─────────────────────────────────────────────────────
        일력은 원래 한 장씩 뜯는 물건이라 열여덟 장을 한눈에 놓는다.
        그림 한 장 없이 전부 CSS다 — 톱니는 clip-path, 집게는 검은 띠와 리벳 둘 -->
-  <section class="room room--wall" aria-labelledby="r-days">
+  <section class="vw-panel room room--wall" aria-labelledby="r-days">
     <div class="room-head">
       <p class="room-no">18일</p>
       <h2 class="room-title" id="r-days">뜯어낸 열여덟 장</h2>
@@ -390,7 +394,7 @@
   <!-- ── 브랜드 ───────────────────────────────────────────────────
        그림인 것만 그림이고 글자인 것은 글자다. 로고·캐릭터·이용권은 오려 붙였고
        슬로건·브랜드 가치·색값은 마크업으로 다시 쳤다 -->
-  <section class="room room--paper" aria-labelledby="r-brand">
+  <section class="vw-panel room room--paper" aria-labelledby="r-brand">
     <div class="room-head">
       <p class="room-no">브랜드</p>
       <h2 class="room-title" id="r-brand">18일이 낳은 것들</h2>
@@ -508,7 +512,7 @@
   <!-- ── 마케팅 ───────────────────────────────────────────────────
        영상은 눌러야 온다. 재생 카드는 브랜드 색으로 직접 그린 것이라
        **누르기 전에는 남의 서버에 아무 요청도 안 나간다** (§4 「영상을 넣을 때」) -->
-  <section class="room room--dim" aria-labelledby="r-promo">
+  <section class="vw-panel room room--dim" aria-labelledby="r-promo">
     <div class="room-head">
       <p class="room-no">마케팅</p>
       <h2 class="room-title" id="r-promo">15초로 알렸다</h2>
@@ -536,7 +540,7 @@
   <!-- ── 공간 ─────────────────────────────────────────────────────
        조감도 위 % 좌표. 마을 지도와 정확히 같은 기법이다.
        좌표는 눈대중이 아니라 원본 조감도에서 재서 적었다 -->
-  <section class="room room--plan" aria-labelledby="r-space">
+  <section class="vw-panel room room--plan" aria-labelledby="r-space">
     <div class="room-head">
       <p class="room-no">공간</p>
       <h2 class="room-title" id="r-space">하루짜리 다섯 개 존</h2>
@@ -577,7 +581,7 @@
 
   <!-- ── 파일럿 ───────────────────────────────────────────────────
        그날. 여기까지가 「했다」이고 다음 절이 「그래서 접었다」다 -->
-  <section class="room room--dim2" aria-labelledby="r-pilot">
+  <section class="vw-panel room room--dim2" aria-labelledby="r-pilot">
     <div class="room-head">
       <p class="room-no">파일럿</p>
       <h2 class="room-title" id="r-pilot">그날, 네 시간</h2>
@@ -603,7 +607,7 @@
        **여기만은 무조건 정적이다.** 앞의 일곱 절이 메모지·보드·일력·영상으로
        잔뜩 차려진 뒤 마지막에 꾸밈이 전부 사라지는 대비 자체가 이 절의 정서다.
        연출로 만들 것을 구조로 만든다 (§5 「타이핑 노트」) -->
-  <section class="room room--last room--sheet" aria-labelledby="r-note">
+  <section class="vw-panel room room--last room--sheet" aria-labelledby="r-note">
     <div class="room-head">
       <p class="room-no">노트</p>
       <h2 class="room-title" id="r-note">배운 것</h2>
@@ -618,6 +622,7 @@
     </div>
   </section>
 
+  </div>
 </main>
 
 <!-- 눌러서 크게. JS가 없으면 이 페이지의 확대 링크는 그냥 그림 파일을 연다 -->

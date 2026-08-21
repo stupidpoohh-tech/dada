@@ -72,14 +72,18 @@
 
 /* ── 절 ── */
 
-/* 절은 끝에서 끝까지 가는 띠다. 안의 것들은 가운데 칸에 머문다 */
-.room {
+/* 화면 하나는 끝에서 끝까지 가는 띠다. 안의 것들은 가운데 칸에 머문다.
+   **표지도 절과 같은 띠다** — 넘기는 화면에서는 표지가 첫 장이 된다 */
+.vw-track { grid-column: full; display: grid; grid-template-columns: var(--cols); }
+.vw-panel {
   grid-column: full;
   display: grid; grid-template-columns: var(--cols);
   margin: 0; padding: 74px 0;
   background: var(--ground, transparent);
 }
-.room > * { grid-column: content; }
+.vw-panel > * { grid-column: content; }
+.vw-cover { --ground: var(--pg-paper); }
+.room { margin: 0; }
 
 /* ── 방마다 다른 바탕 ───────────────────────────────────────────
    **이것이 「챕터가 넘어간다」를 만드는 장치다.** 스크롤을 뺏지 않고(§5가 금지했다)
@@ -626,4 +630,106 @@
   .pos-ring { grid-template-columns: 1fr; }
   .swatches { grid-template-columns: repeat(2, 1fr); }
   .days { grid-template-columns: 1fr 1fr; }
+}
+
+
+/* ── 넘기는 화면 ────────────────────────────────────────────────
+   **JS가 켜져 있을 때만 켜진다.** `.viewer`를 붙이는 것은 playgrown.js이고,
+   JS가 없으면 아래 규칙이 하나도 안 걸려 **그냥 굴리는 문서로 남는다** —
+   화면 아홉이 위에서 아래로 이어진 한 장이 된다. 넘기는 쪽을 고르면서도
+   못 넘기는 상황에서 문서가 통째로 안 읽히는 일은 없어야 한다.
+
+   물건과 방 바탕은 위에서 정한 것을 그대로 쓴다. 여기서 바꾸는 것은
+   **화면을 어떻게 넘기느냐**뿐이다. */
+
+/* **넘기는 동안 문서 자체는 한 뼘도 안 굴러야 한다.** 처음에 마을 머리띠를
+   그냥 둔 채로 두었더니 그 높이(118px)만큼 페이지가 밀려 화면이 어긋났다 —
+   굴릴 수 있는 곳이 둘(문서와 화면)이 되면 반드시 어긋난다. 문서는 못 굴리게
+   못 박고, 굴리는 것은 화면 안에서만 한다. */
+.viewer { height: 100dvh; overflow: hidden; }
+.viewer .topbar { display: none; }   /* 마을로 가는 길은 왼쪽 위 고리로 남는다 */
+.viewer .case { height: 100dvh; padding: 0; }
+/* 굴려서 읽을 때의 목차다. 넘길 때는 아래 페이저가 그 일을 한다 */
+.viewer .case-dots { display: none; }
+/* 등장 연출은 굴릴 때의 것이다. 넘기는 화면에서는 넘어가는 것 자체가 연출이라
+   둘이 겹치면 화면마다 물건이 한 번 더 들썩인다 */
+.viewer .room > .stage { animation: none; }
+
+.viewer .vw-track {
+  display: flex; height: 100dvh;
+  transition: transform .42s cubic-bezier(.22, .61, .36, 1);
+}
+@media (prefers-reduced-motion: reduce) { .viewer .vw-track { transition: none; } }
+
+/* **한 화면이 넘칠 때는 그 화면 안에서 굴린다.** 일력 열여덟 장은 폰에서 절대
+   한 화면에 안 들어간다 — 억지로 줄이면 글자가 안 읽히고 잘라내면 내용이 준다.
+   그래서 이 문서는 「절 사이는 넘기고 절 안은 굴린다」다 */
+.viewer .vw-panel {
+  flex: 0 0 100%; height: 100%;
+  overflow-y: auto; overscroll-behavior: contain;
+  /* **넘치는 화면은 가운데 두면 안 된다.** 짧은 절은 가운데 놓는 것이 보기 좋은데,
+     브랜드 보드처럼 화면보다 긴 절을 가운데 두면 **위쪽이 굴려도 안 닿는 데로
+     밀려난다** — 표제가 통째로 사라져서 알았다. `safe`는 넘칠 때만 위로 붙인다.
+     두 줄인 이유는 `safe`를 모르는 브라우저에서 앞줄이 남게 하려는 것이다 */
+  align-content: start;
+  align-content: safe center;
+  padding: 92px 0 104px;   /* 위는 돌아가기, 아래는 화살표·점이 앉는 자리 */
+}
+.viewer .vw-panel:focus { outline: none; }   /* 넘길 때마다 초점을 여기로 옮긴다 */
+
+/* ── 넘기는 것들 ── */
+
+.vw-arrow {
+  position: fixed; z-index: 30; top: 50%; transform: translateY(-50%);
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 0; cursor: pointer;
+  background: rgba(17, 17, 17, .5); color: #fff;
+  font-size: 18px; line-height: 1;
+  transition: background .16s, opacity .16s;
+}
+.vw-arrow:hover { background: rgba(17, 17, 17, .8); }
+.vw-arrow--prev { left: 16px; }
+.vw-arrow--next { right: 16px; }
+/* 끝에서는 흐려질 뿐 사라지지 않는다 — 단추가 사라지면 화면이 덜컥 움직인다 */
+.vw-arrow[disabled] { opacity: .2; cursor: default; }
+
+.vw-pager {
+  position: fixed; z-index: 30; left: 50%; bottom: 20px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 14px; border-radius: 999px;
+  background: rgba(17, 17, 17, .5);
+  max-width: calc(100vw - 120px);
+}
+.vw-pager button {
+  flex: none; width: 8px; height: 8px; padding: 0; border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, .4); cursor: pointer;
+  transition: background .16s, transform .16s;
+}
+.vw-pager button[aria-current="true"] { background: #FF5B4B; transform: scale(1.35); }
+.vw-count {
+  margin-left: 4px; font-size: 11.5px; font-weight: 700;
+  color: rgba(255, 255, 255, .82); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* 마을로 돌아가는 길은 넘기는 동안에도 늘 보여야 한다 */
+.viewer .doc-back {
+  position: fixed; z-index: 30; left: 16px; top: 16px; margin: 0;
+  padding: 6px 12px; border-radius: 999px; background: rgba(17, 17, 17, .5);
+}
+.viewer .doc-back a { color: rgba(255, 255, 255, .88); }
+.viewer .doc-back a:hover { color: #fff; }
+
+/* 스크린리더에만 읽히는 알림. 넘어간 것은 화면이 바뀌는 일이라
+   눈으로 안 보는 사람에게는 아무 일도 안 일어난 것과 같다 */
+.vw-live {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .vw-arrow { top: auto; bottom: 18px; transform: none; width: 40px; height: 40px; }
+  .vw-arrow--prev { left: 12px; }
+  .vw-arrow--next { right: 12px; }
+  .viewer .vw-panel { padding: 84px 0 92px; }
+  .vw-pager { max-width: calc(100vw - 116px); }
 }
