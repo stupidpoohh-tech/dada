@@ -50,6 +50,8 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
 - `services.json`을 고쳤으면 **`python3 tools/build_list.py`** — `list.html`·
   `sitemap.xml`이 생성물이다. 잊으면 `npm test`가 잡는다.
 - 좌표를 잴 때는 `node tools/shot.mjs --grid --crop 72,68,100,100`
+- 마을 말고 다른 쪽을 찍을 때는 `--url`. **긴 문서는 `--el`로 절씩 찍는다** —
+  한 장으로 떠내면 `<img>`만 백지로 나온다 (`node tools/shot.mjs --url /case/playgrown.html --el '.map'`)
 
 ## 밟은 적 있는 지뢰
 
@@ -59,16 +61,26 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
 - **적는 칸 글자는 16px 아래로 내리지 않는다.** iOS가 커서 들어갈 때 화면을 확대한다.
 - **지도 위 문끼리 판정(44px)이 겹치지 않게.** 우편함과 확성기가 24px 겹쳐
   엉뚱한 것이 열린 적이 있다. `npm test`가 지킨다.
+- **스크롤로 굴러가는 애니메이션이 걸린 쪽은 playwright의 locator로 누르거나
+  굴리지 않는다.** locator는 「요소가 멈출 때까지」 기다리는데 굴릴 때마다 조금씩
+  움직여서 **영영 안 멈춘다.** `evaluate` 안에서 `element.click()`으로 한다
+  (케이스 스터디에서 프로세스가 안 끝난 적 있다).
 - 편집용 원본(`assets/sprites/*.png`, `assets/map/town.jpg`)은 `.gitignore`에 있어
   **새 컨테이너에는 없다.** 꺼내는 법은 README 「편집용 원본」.
 
 ## 지금 짓고 있는 것 (끝나면 이 절을 지운다)
 
-**PlayGrown 케이스 스터디** — `/case/playgrown.html`. 한 번 지었다가 같은 날
-내렸다(절이 「물건」이 아니라 「문단」이어서). 다시 지을 때는 **PLAN.md의
-「전시 세션 — 여섯 개의 방」부터 읽는다** — 무엇을 만들지가 거기 정해져 있다.
-카페 앞 까마귀가 이 문서를 열게 되어 있고(`mascot.item`), 그때까지는 칼럼이
-그 자리를 대신하고 있다.
+**PlayGrown 케이스 스터디** — `/case/playgrown.html`. **여덟 절 중 넷을 지었다**
+(리서치 메모 · 포지셔닝 · 브랜드 보드 · 공간). 무엇을 만들지는 PLAN.md
+「전시 세션 — 여덟 개의 방」에 있다.
+
+- **아직 아무 데서도 못 들어간다.** `noindex` 한 줄 + sitemap 미등록 +
+  `mascot.item` 비어 있음. 절이 다 차면 **셋을 같이** 푼다.
+  `node tests/smoke.mjs 아직` 이 셋이 어긋나면 잡는다
+- 못 지은 넷은 **재료가 0바이트로 올라왔다** — 일력 18일치 · 유튜브 링크 ·
+  파일럿 영상 · 결론. 다시 받아야 한다
+- 그림 자르기는 `node tools/cut_case.mjs` (원본은 `_material/`, gitignore에 있다).
+  자리를 잴 때는 `node tools/cut_case.mjs --grid 6.map.png`
 
 ## 글투
 

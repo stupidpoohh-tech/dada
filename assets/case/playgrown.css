@@ -1,0 +1,395 @@
+/* PlayGrown 케이스 스터디 전용 규칙.
+ *
+ * **왜 styles.css에 안 섞는가.** 이 문서는 절마다 형식이 달라서(메모지 · 포지셔닝
+ * 보드 · 브랜드 보드 · 조감도) 규칙이 꽤 늘어난다. 마을 한 채를 위한 규칙을
+ * 마을 전체 파일에 섞어 두면 이후 마을을 손볼 때마다 이것까지 같이 읽어야 한다.
+ * 이 파일은 `/case/playgrown.html`에서만 불린다.
+ *
+ * **바탕은 하나, 물건만 바뀐다.** 배경색 · 여백 리듬 · 본문 폭 · 글자 크기는 절마다
+ * 안 바꾼다. 바뀌는 것은 그 위에 놓인 물건뿐이다 — 같은 책상에 메모지, 보드,
+ * 조감도를 차례로 올리는 셈이다. 형식을 절마다 바꾸는 것의 대가가 산만함이라,
+ * 묶는 장치를 여기 먼저 적어 둔다.
+ */
+
+/* 색은 브랜드 보드에 적혀 있던 네 개를 그대로 쓴다. 눈대중으로 고른 색이 아니라
+   이 브랜드가 정해 둔 값이라 여기서 새로 정할 것이 없다. */
+.case-page {
+  --pg-red: #E63B2E;
+  --pg-black: #111111;
+  --pg-paper: #F6F3ED;
+  --pg-stone: #D9D6D0;
+  /* 종이 위에 놓이는 것들의 공통 그림자. 물건이 책상에 놓인 것처럼 보이게 하는
+     유일한 장치라 절마다 다르게 주지 않는다 */
+  --pg-lift: 0 10px 30px rgba(17, 17, 17, .10);
+  --pg-line: #E2DED4;
+  background: var(--pg-paper);
+}
+
+.case {
+  width: 100%; max-width: 1040px;
+  margin: 0 auto; padding: 0 20px 72px;
+}
+
+/* ── 머리 ── */
+
+.case-head { max-width: 680px; margin: 0 auto 8px; }
+
+.case-kicker {
+  margin: 0 0 10px;
+  font-size: 12px; font-weight: 800; letter-spacing: .14em;
+  color: var(--pg-red);
+}
+.case-title {
+  margin: 0; font-size: clamp(27px, 4.2vw, 40px); font-weight: 800;
+  line-height: 1.25; letter-spacing: -.01em; color: var(--pg-black);
+}
+.case-sub { margin: 10px 0 0; font-size: 15.5px; color: var(--sub); line-height: 1.7; }
+
+/* 사실 몇 가지를 표로. 글로 풀면 "2025년 4월부터 5월까지 18일 동안"이 되는데,
+   읽는 사람이 실제로 찾는 것은 기간 · 역할 · 결과 셋이라 찾기 쉬운 자리에 둔다 */
+.case-facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 2px 18px; margin: 26px 0 0;
+  padding: 18px 0 0; border-top: 1px solid var(--pg-line);
+}
+.case-facts div { margin: 0 0 10px; }
+.case-facts dt {
+  font-size: 11.5px; font-weight: 800; letter-spacing: .1em; color: var(--faint);
+  margin: 0 0 4px;
+}
+.case-facts dd { margin: 0; font-size: 14px; color: var(--ink); line-height: 1.55; }
+
+/* ── 절 ── */
+
+.room { margin: 0; padding: 62px 0 0; }
+.room + .room { border-top: 1px solid var(--pg-line); margin-top: 62px; }
+
+/* **표제는 형식이 달라도 같은 자리에 있어야 한다.** 아래에 놓이는 물건은 절마다
+   메모지였다 보드였다 조감도였다 하는데, 길잡이까지 자리를 옮기면 읽는 사람이
+   매 절 처음부터 눈으로 훑게 된다 */
+.room-head { max-width: 680px; margin: 0 auto 30px; }
+.room-no {
+  display: inline-block; margin: 0 0 8px;
+  font-size: 11.5px; font-weight: 800; letter-spacing: .12em; color: var(--pg-red);
+}
+.room-title { margin: 0; font-size: clamp(20px, 2.6vw, 25px); font-weight: 800; color: var(--pg-black); }
+.room-lead { margin: 9px 0 0; font-size: 14.5px; line-height: 1.75; color: var(--sub); }
+.room-note { max-width: 680px; margin: 22px auto 0; font-size: 13.5px; line-height: 1.75; color: var(--sub); }
+.room-note strong { color: var(--ink); }
+
+/* 물건이 화면에 들어올 때만 아주 짧게. 미지원 브라우저에서는 통째로 무시되고
+   본문은 그대로 보인다 — 그래서 이 연출에 아무것도 걸지 않는다.
+
+   **투명도는 쓰지 않는다.** §6(game/guide.css)에서 이미 한 판단이고, 여기서는
+   이유가 하나 더 있다 — 스크롤로 굴러가는 애니메이션이라 「아직 안 굴러간 상태」가
+   기본값이 되는데, 그 기본값이 opacity:0이면 스크롤을 못 하는 상황(전체 페이지
+   스크린샷 · 인쇄 · 화면을 안 굴리고 읽는 도구)에서 문서가 통째로 빈 종이가 된다.
+   실제로 처음 찍어 보고 절 넷이 백지로 나와서 알았다. 자리만 움직인다. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .room > .stage {
+      animation: pg-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 8% entry 42%;
+    }
+  }
+}
+@keyframes pg-rise { from { transform: translateY(14px); } to { transform: none; } }
+
+/* ── 1 · 리서치 메모 ────────────────────────────────────────────────
+   찢어 붙인 노트지 한 장. 종이는 그림이 아니라 CSS다 — 글이 이미지 안에 들어가면
+   검색엔진도 스크린리더도 못 읽는다. 그래서 톱니도 구멍도 테이프도 전부 규칙으로 만든다 */
+
+.memo {
+  max-width: 760px; margin: 0 auto; position: relative;
+  /* clip-path가 border를 같이 잘라내므로 테두리를 못 쓴다. 종이의 두께는
+     drop-shadow로만 낸다 (border를 주면 톱니 위로 직선이 하나 그어진다) */
+  filter: drop-shadow(0 8px 18px rgba(17, 17, 17, .13));
+  transform: rotate(-.5deg);
+}
+
+.memo-sheet {
+  position: relative;
+  /* 톱니는 %가 아니라 px로 판다. %로 주면 글이 길어질수록 톱니가 같이 커져
+     짧은 절은 종이, 긴 절은 톱니바퀴가 된다 */
+  clip-path: polygon(
+    0 7px, 4% 1px, 8% 6px, 12% 0, 16% 5px, 20% 2px, 24% 8px, 28% 3px,
+    32% 7px, 36% 1px, 40% 6px, 44% 2px, 48% 7px, 52% 0, 56% 5px, 60% 3px,
+    64% 8px, 68% 2px, 72% 6px, 76% 1px, 80% 7px, 84% 3px, 88% 5px, 92% 0,
+    96% 4px, 100% 2px,
+    100% calc(100% - 6px), 96% calc(100% - 1px), 92% calc(100% - 7px),
+    88% calc(100% - 2px), 84% calc(100% - 5px), 80% calc(100% - 1px),
+    76% calc(100% - 8px), 72% calc(100% - 3px), 68% calc(100% - 6px),
+    64% calc(100% - 0px), 60% calc(100% - 5px), 56% calc(100% - 2px),
+    52% calc(100% - 7px), 48% calc(100% - 1px), 44% calc(100% - 6px),
+    40% calc(100% - 3px), 36% calc(100% - 8px), 32% calc(100% - 2px),
+    28% calc(100% - 5px), 24% calc(100% - 1px), 20% calc(100% - 7px),
+    16% calc(100% - 3px), 12% calc(100% - 6px), 8% calc(100% - 0px),
+    4% calc(100% - 4px), 0 calc(100% - 2px)
+  );
+  /* **종이색을 깔아야 톱니가 읽힌다.** 흰 종이를 흰 배경에 놓으면 뜯긴 자국이
+     아예 안 보인다 — 실물로 확인하고 알았다. 바탕(PAPER)보다 살짝 밝은 종이다 */
+  background-color: #FBF9F4;
+  /* 왼쪽 고리 구멍. 세로로 반복하는 배경 하나로 낸다 — 요소를 여섯 개 두면
+     글이 길어질 때마다 개수를 손으로 맞춰야 한다 */
+  background-image: radial-gradient(circle 7.5px at 30px 44px, #E6E0D2 98%, #0000 100%);
+  background-size: 100% 88px;
+  background-repeat: repeat-y;
+  padding: 40px 34px 40px 68px;
+}
+
+/* 마스킹테이프. 종이 밖으로 걸쳐야 「붙인 것」으로 읽히므로 잘리는 .memo-sheet가
+   아니라 그 바깥(.memo)에 둔다 */
+.memo-tape {
+  position: absolute; left: 8px; top: -14px; z-index: 2;
+  width: 104px; height: 34px;
+  background: rgba(214, 189, 143, .62);
+  border-left: 1px dashed rgba(160, 132, 84, .35);
+  border-right: 1px dashed rgba(160, 132, 84, .35);
+  transform: rotate(-24deg);
+}
+
+.memo-note { margin: 0 0 14px; padding-left: 22px; position: relative; font-size: 14.5px; line-height: 1.85; color: var(--ink); }
+.memo-note::before { content: '✔'; position: absolute; left: 0; top: 0; color: var(--pg-red); font-size: 13px; }
+
+.memo-quote {
+  margin: 24px 0 0; padding: 20px 22px;
+  background: rgba(230, 59, 46, .13);
+  border: 0;
+}
+.memo-quote p { margin: 0; font-size: 14px; line-height: 1.85; color: var(--ink); }
+.memo-quote p + p { margin-top: 11px; }
+.memo-quote p:first-child strong { font-weight: 800; }
+.memo-by { display: block; margin-top: 13px; font-size: 12.5px; font-style: normal; color: var(--sub); }
+
+/* ── 2 · 포지셔닝 보드 ──────────────────────────────────────────────
+   가운데가 이 브랜드고 둘레가 경쟁 카테고리다. 표로 그리면 여덟 줄짜리 목록이
+   되는데, 이 그림이 말하려는 것은 값이 아니라 **거리**라 자리로 그린다 */
+
+.pos { max-width: 880px; margin: 0 auto; }
+
+.pos-field {
+  position: relative; aspect-ratio: 1 / .82;
+  margin: 0 auto; max-width: 780px;
+}
+/* 둘레의 옅은 원 — 「주변 카테고리 영역」 */
+.pos-field::before {
+  content: ''; position: absolute; inset: 8% 6%;
+  border: 1px solid rgba(17, 17, 17, .07); border-radius: 50%;
+}
+.pos-spokes { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.pos-core {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 30%; aspect-ratio: 1; margin: 0;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(230, 59, 46, .20) 0%, rgba(230, 59, 46, .08) 62%, rgba(230, 59, 46, 0) 100%);
+  color: var(--pg-red); font-weight: 800; font-size: clamp(15px, 2.3vw, 22px);
+  line-height: 1.35; text-align: center;
+}
+
+.pos-ring { list-style: none; margin: 0; padding: 0; }
+.pos-ring li {
+  position: absolute; left: var(--x); top: var(--y);
+  transform: translate(-50%, -50%);
+  width: 21%; aspect-ratio: 1;
+  display: grid; place-items: center; align-content: center;
+  border-radius: 50%; padding: 4px;
+  background: var(--tint, rgba(17, 17, 17, .05));
+  text-align: center;
+}
+.pos-ring b { display: block; font-size: clamp(11px, 1.5vw, 14px); font-weight: 800; color: var(--pg-black); }
+.pos-ring span { display: block; margin-top: 4px; font-size: clamp(9.5px, 1.15vw, 11.5px); line-height: 1.45; color: var(--sub); }
+
+.pos-axis {
+  position: absolute; margin: 0;
+  font-size: 12px; font-weight: 700; color: var(--faint); white-space: nowrap;
+}
+.pos-wrap { position: relative; padding: 30px 74px; }
+.pos-axis--t { left: 50%; top: 4px; transform: translateX(-50%); }
+.pos-axis--b { left: 50%; bottom: 4px; transform: translateX(-50%); }
+.pos-axis--l { left: 0; top: 50%; transform: translateY(-50%); }
+.pos-axis--r { right: 0; top: 50%; transform: translateY(-50%); }
+
+.pos-legend {
+  display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
+  margin: 8px 0 0; padding: 0; list-style: none;
+  font-size: 12px; color: var(--sub);
+}
+.pos-legend li { display: flex; align-items: center; gap: 7px; }
+.pos-legend i { width: 11px; height: 11px; border-radius: 50%; background: var(--tint); }
+
+/* ── 4 · 브랜드 보드 ────────────────────────────────────────────────
+   타일 격자. **그림인 것만 그림이고 글자인 것은 글자다** — 로고와 캐릭터와
+   이용권은 오려 붙이고, 슬로건 · 브랜드 가치 · 색값은 마크업으로 다시 쳤다 */
+
+.tiles {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  align-items: start;
+}
+.tile {
+  margin: 0; padding: 18px;
+  background: #fff; border-radius: 12px; box-shadow: var(--pg-lift);
+}
+.tile--wide { grid-column: span 2; }
+.tile h3 {
+  margin: 0 0 10px; font-size: 11.5px; font-weight: 800;
+  letter-spacing: .12em; color: var(--pg-red);
+}
+.tile p { margin: 0; font-size: 13.5px; line-height: 1.75; color: var(--sub); }
+.tile p + p { margin-top: 9px; }
+.tile p strong { color: var(--ink); font-weight: 700; }
+.tile img { display: block; width: 100%; height: auto; border-radius: 6px; }
+/* 그림 타일은 눌러서 크게 볼 수 있다. JS가 없으면 그냥 그림 파일이 열린다 */
+.tile-zoom { display: block; cursor: zoom-in; }
+.tile-zoom:focus-visible { outline: 3px solid var(--pg-red); outline-offset: 3px; }
+
+.tile--mark img { max-width: 250px; margin: 2px 0 14px; }
+.tile--slogan {
+  background: var(--pg-black); color: #fff;
+  display: grid; align-content: center; gap: 6px; padding: 26px;
+}
+.tile--slogan p { color: rgba(255, 255, 255, .72); font-size: 13px; }
+.tile-slogan-en {
+  margin: 0; font-size: clamp(17px, 2.4vw, 23px); font-weight: 800;
+  line-height: 1.35; letter-spacing: .02em; color: #fff;
+}
+.tile-slogan-en em { font-style: normal; color: var(--pg-red); }
+
+.values { margin: 0; padding: 0; list-style: none; }
+.values li { margin: 0 0 13px; }
+.values li:last-child { margin-bottom: 0; }
+.values b { display: block; font-size: 13.5px; font-weight: 800; color: var(--pg-black); }
+.values span { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.6; color: var(--sub); }
+
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.swatches li { margin: 0; }
+.swatches i { display: block; height: 46px; border-radius: 5px; border: 1px solid rgba(17, 17, 17, .08); }
+.swatches b { display: block; margin-top: 6px; font-size: 10px; font-weight: 800; letter-spacing: .06em; color: var(--ink); }
+.swatches code { font-size: 10.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* ── 6 · 공간 ───────────────────────────────────────────────────────
+   조감도 위 % 좌표. 마을 지도와 정확히 같은 기법이다 — 고정 종횡비 상자에
+   그림을 깔고 그 위에 %로 앉힌다. 좌표는 눈대중이 아니라 원본에서 재서 적었다 */
+
+.map { margin: 0 auto; max-width: 980px; }
+.map-frame {
+  position: relative; aspect-ratio: 1498 / 864;
+  /* 조감도는 투명 대신 **흰 바탕**을 깔고 JPEG로 뽑았다(cut_case.mjs).
+     그러니 놓이는 자리도 흰 카드여야 자국이 안 보인다. 브랜드 타일과 같은
+     카드라 이 문서 안에서 따로 놀지도 않는다 */
+  background: #fff; border-radius: 12px; overflow: hidden;
+  box-shadow: var(--pg-lift);
+}
+.map-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+/* 지도 위 핀은 **아래 목록을 눈으로 보여주는 것뿐**이다. 크롤러와 스크린리더는
+   이 핀을 못 읽으므로 진짜 내용은 <ol>에 있고 여기는 aria-hidden이다 */
+.map-pin {
+  position: absolute; left: var(--x); top: var(--y);
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 800; color: var(--pg-black);
+  white-space: nowrap;
+}
+.map-pin i {
+  display: grid; place-items: center; flex: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--pg-red); color: #fff;
+  font-size: 12px; font-style: normal; font-weight: 800;
+  box-shadow: 0 2px 8px rgba(17, 17, 17, .3);
+}
+.map-pin span {
+  background: rgba(251, 249, 244, .92); border-radius: 999px;
+  padding: 3px 9px; box-shadow: 0 1px 5px rgba(17, 17, 17, .13);
+}
+/* 오른쪽에 앉은 핀은 이름표를 왼쪽에 단다. 안 그러면 이름표가 조감도 밖으로
+   비어져 나가 잘린다 — 원본에서도 오른쪽 두 존은 말풍선이 왼쪽을 향해 있다 */
+.map-pin--l { flex-direction: row-reverse; }
+
+.map figcaption { margin: 12px 0 0; font-size: 12.5px; color: var(--faint); text-align: center; }
+
+.zones {
+  display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin: 30px 0 0; padding: 0; list-style: none;
+  counter-reset: zone;
+}
+.zones li {
+  margin: 0; padding: 16px 18px;
+  background: #fff; border-radius: 12px; box-shadow: var(--pg-lift);
+}
+.zones h3 { margin: 0; font-size: 14.5px; font-weight: 800; color: var(--pg-black); }
+.zones h3::before {
+  counter-increment: zone; content: counter(zone);
+  display: inline-grid; place-items: center;
+  width: 20px; height: 20px; margin-right: 8px; border-radius: 50%;
+  background: var(--pg-red); color: #fff; font-size: 11px; vertical-align: 1px;
+}
+.zones p { margin: 9px 0 0; font-size: 13px; line-height: 1.7; color: var(--sub); }
+
+/* ── 눌러서 크게 (브랜드 보드) ── */
+
+/* 닫혀 있을 때는 브라우저 기본값(display:none)이 이겨야 한다. `display: grid`를
+   그냥 주면 그 기본값을 덮어써서 **안 연 라이트박스가 화면 왼쪽 위에 얹혀 있는다** */
+.lightbox[open] {
+  display: grid; place-items: center;
+}
+.lightbox {
+  position: fixed; inset: 0; z-index: 60;
+  gap: 14px;
+  padding: 24px; margin: 0; border: 0;
+  background: rgba(17, 17, 17, .88);
+}
+.lightbox::backdrop { background: rgba(17, 17, 17, .88); }
+.lightbox img { max-width: 100%; max-height: 78vh; object-fit: contain; border-radius: 6px; }
+.lightbox figcaption { font-size: 13px; color: rgba(255, 255, 255, .8); text-align: center; }
+.lightbox-close {
+  position: absolute; right: 14px; top: 14px;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 0; background: rgba(255, 255, 255, .14); color: #fff;
+  font-size: 19px; line-height: 1; cursor: pointer;
+}
+
+/* ── 좁은 화면 ──────────────────────────────────────────────────────
+   §6이 겪은 문제를 여기서도 겪는다 — 390px에서는 조감도 라벨이 안 읽히고
+   포지셔닝 원이 서로 겹친다. 그래서 좁아지면 **자리로 그리던 것을 목록으로 되돌린다** */
+
+@media (max-width: 760px) {
+  .case { padding: 0 16px 56px; }
+  .room { padding-top: 46px; }
+  .room + .room { margin-top: 46px; }
+  .memo-sheet { padding: 32px 22px 32px 56px; background-position: -6px 0; }
+  .memo-tape { width: 82px; height: 28px; }
+  .tile--wide { grid-column: span 1; }
+
+  /* 포지셔닝 — 원을 흩어 놓던 것을 위아래 목록으로. 축은 글로 남긴다 */
+  .pos-wrap { padding: 0; }
+  .pos-field { aspect-ratio: auto; max-width: none; }
+  .pos-field::before, .pos-spokes { display: none; }
+  .pos-core {
+    position: static; transform: none; width: auto; aspect-ratio: auto;
+    padding: 22px; border-radius: 14px; margin-bottom: 12px;
+    background: rgba(230, 59, 46, .10);
+  }
+  .pos-ring { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pos-ring li {
+    position: static; transform: none; width: auto; aspect-ratio: auto;
+    border-radius: 12px; padding: 13px 12px; text-align: left;
+    place-items: start;
+  }
+  .pos-axis { position: static; display: block; transform: none; text-align: center; white-space: normal; }
+  .pos-axis--t { margin-bottom: 10px; }
+  .pos-axis--b { margin-top: 10px; }
+  .pos-axis--l, .pos-axis--r { display: none; }
+
+  /* 조감도 — 라벨을 떼고 번호만 남긴다. 이름은 바로 아래 목록에 그대로 있다 */
+  .map-pin span { display: none; }
+  .map-pin i { width: 20px; height: 20px; font-size: 11px; }
+}
+
+@media (max-width: 420px) {
+  .pos-ring { grid-template-columns: 1fr; }
+  .swatches { grid-template-columns: repeat(2, 1fr); }
+}

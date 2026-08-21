@@ -1214,6 +1214,117 @@ if (want('방문 통계')) {
   await p.close();
 }
 
+/* ── PlayGrown 케이스 스터디 ──────────────────────────────
+   절마다 형식이 다른 문서라 깨지는 방식도 절마다 다르다. 여기 있는 것은
+   전부 짓는 동안 실제로 한 번씩 겪은 것들이다.
+
+   **이 페이지에서는 locator로 누르거나 굴리지 않는다.** 절이 스크롤로 굴러가는
+   애니메이션을 달고 있어서, playwright가 「요소가 멈출 때까지」 기다리면 영영
+   안 멈춘다 — 굴릴 때마다 조금씩 움직이기 때문이다. 실제로 프로세스가 안 끝났다.
+   그래서 누르는 것은 evaluate 안에서 element.click()으로 한다. */
+const CASE = '/case/playgrown.html';
+if (head('케이스 스터디 — 뼈대')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  ok(await p.locator('main.case section.room').count() === 4,
+    '절이 넷 있다 (재료가 오면 여덟이 되고, 그때 이 숫자를 고친다)');
+  ok(await p.locator('.room .room-title').count() === 4,
+    '절마다 표제가 같은 자리에 있다');
+
+  /* **그림이 실제로 뜨는지는 눈으로 못 본다.** 경로 하나만 틀려도 자리는 그대로
+     남고 그림만 안 오는데, 스크린샷에서는 그것이 「원래 흰 칸」과 구별되지 않는다 */
+  await p.evaluate(() => {
+    document.querySelectorAll('img[loading="lazy"]').forEach((i) => { i.loading = 'eager'; });
+  });
+  await p.waitForTimeout(900);
+  const dead = await p.evaluate(() => [...document.images]
+    .filter((i) => i.getAttribute('src') && !i.naturalWidth)
+    .map((i) => i.getAttribute('src')));
+  ok(dead.length === 0, '그림이 전부 실제로 뜬다', dead.join(', '));
+
+  /* 라이트박스는 <dialog>다. `display: grid`를 조건 없이 주면 **안 연 상자가
+     화면 왼쪽 위에 얹혀 있는다** — 처음 찍었을 때 ✕ 단추가 그렇게 떠 있었다 */
+  ok(await p.evaluate(() => {
+    const d = document.querySelector('dialog.lightbox');
+    return !!d && getComputedStyle(d).display === 'none';
+  }), '안 연 라이트박스는 안 보인다');
+
+  ok(await p.evaluate(() => {
+    const a = document.querySelector('.tile-zoom');
+    a.click();                       // locator로 누르면 안 된다 (위 설명)
+    const d = document.querySelector('dialog.lightbox');
+    return d.open && !!d.querySelector('img').getAttribute('src');
+  }), '타일을 누르면 크게 열린다');
+  await p.close();
+}
+
+if (head('케이스 스터디 — 조감도')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  const pins = await p.$$eval('.map-pin', (els) => els.map((e) => ({
+    x: parseFloat(e.style.getPropertyValue('--x')),
+    y: parseFloat(e.style.getPropertyValue('--y')),
+  })));
+  ok(pins.length === 5 && pins.length === await p.locator('.zones li').count(),
+    '핀과 존 목록의 개수가 같다', `핀 ${pins.length}`);
+  /* 좌표는 눈대중이 아니라 원본에서 잰다. 한 번은 눈금을 그림이 아니라 창에
+     맞춰 얹는 바람에 세로가 1.27배 어긋나 조감도 아래쪽이 잘려 나갔다 */
+  const out = pins.filter((q) => !(q.x > 2 && q.x < 98 && q.y > 2 && q.y < 98));
+  ok(out.length === 0, '핀이 조감도 밖으로 안 나간다', JSON.stringify(out));
+
+  /* 지도 위 핀은 눈으로 보여주는 것뿐이라 스크린리더에서 감춰야 한다.
+     진짜 내용은 <ol>에 있다 — 크롤러도 스크린리더도 SVG나 핀은 못 읽는다 */
+  ok(await p.locator('.map-pin[aria-hidden="true"]').count() === 5,
+    '핀은 스크린리더에서 감춰져 있다');
+  await p.close();
+}
+
+if (head('케이스 스터디 — 폰')) {
+  const p = await phone();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  /* 390px에서는 조감도 이름표가 안 읽힌다. 이름은 바로 아래 목록에 그대로 있으므로
+     지도 위에는 번호만 남긴다 (§6이 겪은 문제를 여기서도 겪는다) */
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector('.map-pin span')).display === 'none'),
+    '폰에서는 지도 위 이름표를 떼고 번호만 남긴다');
+  /* 포지셔닝 보드는 좁아지면 자리로 그리던 것을 목록으로 되돌린다.
+     안 그러면 원 여덟 개가 서로 겹쳐 글자가 안 읽힌다 */
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector('.pos-ring li')).position === 'static'),
+    '폰에서는 포지셔닝 원이 목록으로 펴진다');
+  await p.close();
+}
+
+if (head('케이스 스터디 — JS 없이')) {
+  /* 이 문서를 뷰어가 아니라 스크롤 페이지로 정한 이유가 「검색엔진과 스크린리더가
+     읽는다」였다. JS를 끈 채로도 본문이 다 있어야 그 이유가 지켜진다 */
+  const ctx = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  await p.goto(BASE + CASE, { waitUntil: 'domcontentloaded' });
+  const text = await p.locator('main.case').innerText();
+  ok(text.includes('제3의 공간') && text.includes('어른들의') && text.includes('아트존'),
+    'JS 없이도 세 절의 본문이 읽힌다');
+  ok(await p.locator('.tile-zoom[href$=".jpg"]').count() >= 6,
+    'JS 없으면 확대는 그냥 그림 파일이 열린다 (링크로 두었다)');
+  await ctx.close();
+}
+
+if (head('케이스 스터디 — 아직 안 걸었다')) {
+  /* **절이 다 차기 전에는 아무 데서도 이 문서로 못 들어가야 한다.** 반쪽짜리
+     문서가 검색에 남거나 마을에서 열리면 안 된다. noindex를 떼는 날 sitemap과
+     services.json에 같이 올리라고, 둘을 여기서 묶어 둔다 */
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'domcontentloaded' });
+  const hidden = await p.locator('meta[name="robots"][content~="noindex"]').count() === 1;
+  const map = await p.evaluate((u) => fetch(u).then((r) => r.text()), BASE + '/sitemap.xml');
+  const listed = map.includes('/case/playgrown.html');
+  ok(hidden !== listed, 'noindex와 sitemap 등록이 서로 어긋나지 않는다',
+    `noindex=${hidden} sitemap=${listed}`);
+  const svc = await p.evaluate((u) => fetch(u).then((r) => r.json()), BASE + '/services.json');
+  const door = JSON.stringify(svc).includes('/case/playgrown.html');
+  ok(hidden !== door, 'noindex인 동안에는 마을에서 문이 안 열린다',
+    `noindex=${hidden} services=${door}`);
+  await p.close();
+}
+
 /* ── 마무리 ─────────────────────────────────────────────── */
 if (head('JS 오류')) {
   ok(errors.length === 0, '콘솔 오류 없음', errors.slice(0, 3).join(' / '));
