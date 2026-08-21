@@ -10,13 +10,15 @@
 
 | 브랜치 | 역할 |
 |---|---|
-| `claude/handoff-review-o03yl2` | 개발 — 여기서 커밋한다 |
+| **개발** — 세션마다 다르다 | 시스템 프롬프트가 지정한 브랜치. 여기서 커밋한다 |
 | `claude/portfolio-web-planning-jjx9xd` | **배포 = 저장소 기본 브랜치.** 여기 올라가면 Cloudflare가 자동 배포 |
 
 개발 브랜치에만 올리면 **사이트는 하나도 안 바뀐다.** 실제로 한 번 사고가 났다.
+개발 브랜치 이름은 세션마다 새로 생기므로 여기 적어 두지 않는다 — `git branch --show-current`가 그것이다.
 
 ```bash
-git push -u origin claude/handoff-review-o03yl2
+DEV=$(git branch --show-current)
+git push -u origin "$DEV"
 git fetch origin claude/portfolio-web-planning-jjx9xd
 git merge-base --is-ancestor origin/claude/portfolio-web-planning-jjx9xd HEAD \
   && git push origin HEAD:claude/portfolio-web-planning-jjx9xd
@@ -59,6 +61,14 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
   엉뚱한 것이 열린 적이 있다. `npm test`가 지킨다.
 - 편집용 원본(`assets/sprites/*.png`, `assets/map/town.jpg`)은 `.gitignore`에 있어
   **새 컨테이너에는 없다.** 꺼내는 법은 README 「편집용 원본」.
+
+## 지금 짓고 있는 것 (끝나면 이 절을 지운다)
+
+**PlayGrown 케이스 스터디** — `/case/playgrown.html`. 한 번 지었다가 같은 날
+내렸다(절이 「물건」이 아니라 「문단」이어서). 다시 지을 때는 **PLAN.md의
+「전시 세션 — 여섯 개의 방」부터 읽는다** — 무엇을 만들지가 거기 정해져 있다.
+카페 앞 까마귀가 이 문서를 열게 되어 있고(`mascot.item`), 그때까지는 칼럼이
+그 자리를 대신하고 있다.
 
 ## 글투
 
