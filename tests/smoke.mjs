@@ -1242,19 +1242,12 @@ if (head('케이스 스터디 — 뼈대')) {
     .map((i) => i.getAttribute('src')));
   ok(dead.length === 0, '그림이 전부 실제로 뜬다', dead.join(', '));
 
-  /* 라이트박스는 <dialog>다. `display: grid`를 조건 없이 주면 **안 연 상자가
-     화면 왼쪽 위에 얹혀 있는다** — 처음 찍었을 때 ✕ 단추가 그렇게 떠 있었다 */
-  ok(await p.evaluate(() => {
-    const d = document.querySelector('dialog.lightbox');
-    return !!d && getComputedStyle(d).display === 'none';
-  }), '안 연 라이트박스는 안 보인다');
-
-  ok(await p.evaluate(() => {
-    const a = document.querySelector('.zoom-link');
-    a.click();                       // locator로 누르면 안 된다 (위 설명)
-    const d = document.querySelector('dialog.lightbox');
-    return d.open && !!d.querySelector('img').getAttribute('src');
-  }), '타일을 누르면 크게 열린다');
+  /* 「눌러서 크게」는 걷었다 — 두 손가락으로 벌리면 그만이라 같은 일을 하는
+     단추가 하나 더 있을 이유가 없었다. 다시 들어오지 않게 여기서 막아 둔다 */
+  ok(await p.locator('dialog.lightbox, .zoom-link').count() === 0,
+    '「눌러서 크게」는 없다 (두 손가락으로 벌린다)');
+  ok(await p.evaluate(() => [...document.querySelectorAll('.board img')]
+    .every((i) => !i.closest('a'))), '보드 그림은 링크로 감싸지 않는다');
   await p.close();
 }
 
@@ -1386,7 +1379,7 @@ if (head('케이스 스터디 — JS 없이')) {
   const p = await ctx.newPage();
   await p.goto(BASE + CASE, { waitUntil: 'domcontentloaded' });
   const text = await p.locator('main.case').innerText();
-  ok(['어른이 놀 곳이', '어른들의', '뜯어낸', '파일럿', '아트존', '행정가'].every((t) => text.includes(t)),
+  ok(['어른이 놀 곳이', '어른들의 키즈카페', '뜯어낸', '파일럿', '아트존', '행정가'].every((t) => text.includes(t)),
     'JS 없이도 여덟 절의 본문이 읽힌다');
   ok(await p.locator('.film-card[href*="youtube"]').count() === 2,
     'JS 없으면 재생 카드는 그냥 유튜브로 가는 링크다');
@@ -1395,8 +1388,7 @@ if (head('케이스 스터디 — JS 없이')) {
      이어진 한 장으로 남는다 */
   ok(await p.locator('body.viewer').count() === 0, 'JS 없으면 넘기는 화면이 안 켜진다');
   ok(await p.locator('.vw-pager').count() === 0, 'JS 없으면 넘기는 단추도 없다');
-  ok(await p.locator('.zoom-link[href$=".jpg"]').count() === 3,
-    'JS 없으면 확대는 그냥 그림 파일이 열린다 (링크로 두었다)');
+  ok(await p.locator('.board img').count() === 3, 'JS 없이도 보드 셋이 다 보인다');
   await ctx.close();
 }
 

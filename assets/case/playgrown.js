@@ -1,44 +1,11 @@
-/* 브랜드 보드 타일을 눌러서 크게 보는 것 하나. 이 페이지의 JS는 이게 전부다.
+/* 이 페이지의 JS는 둘뿐이다 — 영상을 눌렀을 때 바꿔 끼우는 것, 화면을 넘기는 것.
  *
- * **없어도 되게 만든다.** 확대는 전부 `<a href="…jpg">`라, 이 파일이 안 실행돼도
- * 누르면 그림 파일이 그냥 열린다. 문서 본문은 애초에 JS와 무관하다 — 이 페이지를
- * 뷰어가 아니라 스크롤 문서로 정한 이유가 그것이다.
+ * **「눌러서 크게」는 안 만든다** (2026-08-22에 걷었다). 폰에서는 두 손가락으로
+ * 벌리면 그만이라, 같은 일을 하는 단추를 하나 더 두는 것은 그 위에 얹는 짐이었다.
  *
- * `<dialog>`를 쓰는 이유는 **초점과 Esc를 브라우저가 대신 처리해 주기 때문**이다.
- * div로 만들면 초점 가두기와 Esc 닫기와 배경 스크롤 막기를 손으로 다시 짜야 한다.
+ * **없어도 되게 만든다.** 이 파일이 안 실행돼도 문서는 위에서 아래로 이어진
+ * 한 장으로 남고, 재생 카드는 유튜브로 가는 링크가 된다.
  */
-const links = document.querySelectorAll('.zoom-link');
-if (links.length && window.HTMLDialogElement) {
-  const box = document.createElement('dialog');
-  box.className = 'lightbox';
-  box.innerHTML = '<button class="lightbox-close" type="button" aria-label="닫기">✕</button>'
-    + '<img alt=""><figcaption></figcaption>';
-  document.body.appendChild(box);
-
-  const img = box.querySelector('img');
-  const cap = box.querySelector('figcaption');
-
-  links.forEach((a) => a.addEventListener('click', (e) => {
-    /* 새 탭으로 열려는 사람(가운데 클릭 · Ctrl/⌘)의 뜻을 뺏지 않는다 */
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-    e.preventDefault();
-    img.src = a.getAttribute('href');
-    /* 타일 안 그림의 대체 텍스트를 그대로 물려받는다. 링크에만 있는 설명(data-cap)은
-       그림 아래 설명으로 쓴다 — 둘을 겹쳐 읽히면 스크린리더가 같은 말을 두 번 한다 */
-    const inner = a.querySelector('img');
-    img.alt = inner ? inner.alt : (a.dataset.cap || '');
-    cap.textContent = a.dataset.cap || '';
-    box.showModal();
-  }));
-
-  const shut = () => box.close();
-  box.querySelector('.lightbox-close').addEventListener('click', shut);
-  /* 그림 바깥(백드롭)을 눌러도 닫힌다. dialog는 백드롭 클릭도 자기 자신에게
-     오므로 target이 상자 자신일 때만 닫는다 */
-  box.addEventListener('click', (e) => { if (e.target === box) shut(); });
-  /* 닫을 때 src를 비운다. 안 비우면 다음에 열 때 이전 그림이 한 프레임 보인다 */
-  box.addEventListener('close', () => { img.removeAttribute('src'); });
-}
 
 /* ── 영상 ───────────────────────────────────────────────────────
    재생 카드를 누르면 그 자리에 유튜브 틀을 바꿔 끼운다.
@@ -124,7 +91,7 @@ if (track && panels.length > 1) {
 
   function go(i, opt = {}) {
     const to = Math.max(0, Math.min(panels.length - 1, i));
-    if (to === at) return;
+    if (to === at && !opt.force) return;
     at = to;
     track.style.transform = `translateX(${-at * 100}%)`;
 
@@ -188,6 +155,23 @@ if (track && panels.length > 1) {
      처음에는 초점을 옮기지 않는다 — 들어오자마자 화면이 스스로 움직이면 놀란다 */
   const first = Math.max(0, ids.indexOf(location.hash.slice(1)));
   go(first, { push: false, focus: false });
+
+  /* **두 손가락으로 벌렸다 놓으면 화면이 어긋난다.** 확대하는 동안 브라우저는
+     보이는 창(visual viewport)을 따로 움직이는데, 다시 오므려도 그 어긋남이 남아
+     화면이 애매하게 잘린 채로 선다 — 폰에서 실제로 그랬다.
+
+     배율이 1로 돌아온 순간에 **문서를 원점으로 되돌리고 자리를 다시 칠한다.**
+     확대하고 있는 중에는 건드리지 않는다(그러면 확대 자체가 안 된다). */
+  const vv = window.visualViewport;
+  if (vv) {
+    const settle = () => {
+      if (vv.scale > 1.01) return;
+      if (scrollX || scrollY) scrollTo(0, 0);
+      go(at, { push: false, focus: false, force: true });
+    };
+    vv.addEventListener('resize', settle);
+    vv.addEventListener('scroll', settle);
+  }
 
   /* 목차(굴려서 읽을 때의 것)를 눌러도 그 화면으로 간다 */
   document.querySelectorAll('.case-dots a').forEach((a) => {

@@ -37,12 +37,13 @@ const OUT = 'assets/case/playgrown';
    PNG를 JPEG로 다시 담는 것뿐이고, 그것만으로 2.1MB가 200KB대가 된다.
    글씨가 작은 장이라 화질은 0.9로 올렸다(다른 것은 0.82). */
 const CUTS = [
-  /* **한 군데만 덮는다.** 인용 아래 이름줄에 인터뷰이의 실명과 나이가 그대로 있다.
-     쓰는 사람의 것이 아니라 **남의 개인정보**이고, 사업 덱에 적는 것과 공개 웹에
-     올리는 것은 다른 일이다(§5 「공개 전 정리」). 내용은 alt와 아래 문장에 남으므로
-     읽는 사람이 잃는 것은 없다. 동의를 받아 두었다면 이 한 줄을 지우면 원본 그대로 나간다 */
-  { src: '1.column.png', name: 'column', at: [0, 0, 100, 100], long: 1600, q: 0.9, thumb: 0,
-    cover: [[14.3, 82.4, 44.6, 5]] },
+  /* **칼럼은 인용 상자를 잘라 내고 위아래를 이어 붙인다.** 인용 부분을 빼기로
+     했는데(2026-08-22), 그냥 아래를 잘라 버리면 뜯긴 종이가 가위로 자른 종이가 된다.
+     그래서 **본문 띠와 종이의 뜯긴 아랫변 띠를 따로 떠서 세로로 붙인다** —
+     `bands`가 그 뜻이다. 덤으로 인터뷰이의 실명·나이도 같이 사라져서
+     따로 덮을 것이 없어졌다. */
+  { src: '1.column.png', name: 'column', long: 1600, q: 0.9, thumb: 0,
+    bands: [[0, 0, 100, 61], [0, 88.2, 100, 10]] },
   { src: '2.positioning-board.png', name: 'positioning', at: [0, 0, 100, 100], long: 1600, q: 0.9, thumb: 0 },
   { src: '4.brand-board.png', name: 'brand-board', at: [0, 0, 100, 100], long: 1600, q: 0.9, thumb: 0 },
 
@@ -138,29 +139,31 @@ for (const cut of CUTS) {
   if (cut.thumb !== 0) jobs.push(['thumb', cut.thumb ?? THUMB]);
   for (const [tag, long] of jobs) {
     const { data, w, h } = await page.evaluate(
-      ([url, at, long, png, bg, q, cover]) => new Promise((res, rej) => {
+      ([url, at, long, png, bg, q, bands]) => new Promise((res, rej) => {
         const img = new Image();
         img.onerror = () => rej(new Error('load'));
         img.onload = () => {
-          const [x, y, cw, ch] = at.map((v) => v / 100);
-          const sw = img.width * cw, sh = img.height * ch;
+          /* 띠 여럿을 세로로 이어 붙이는 경우와 한 덩어리를 잘라 내는 경우를
+             같은 길로 처리한다 — 이어 붙이기는 띠가 여럿인 잘라 내기일 뿐이다 */
+          const rects = (bands || [at]).map(([x, y, w2, h2]) => ({
+            sx: img.width * x / 100, sy: img.height * y / 100,
+            sw: img.width * w2 / 100, sh: img.height * h2 / 100,
+          }));
+          const sw = Math.max(...rects.map((r) => r.sw));
+          const sh = rects.reduce((n, r) => n + r.sh, 0);
           const k = Math.min(1, long / Math.max(sw, sh));   // 원본보다 키우지 않는다
           const c = document.createElement('canvas');
           c.width = Math.round(sw * k); c.height = Math.round(sh * k);
           const g = c.getContext('2d');
           g.imageSmoothingQuality = 'high';
-          /* PNG로 뽑는 것(조감도)은 배경이 비어 있어야 하고, JPEG로 뽑는 것은
-             투명이 검게 나오므로 종이색을 먼저 깐다 — 브랜드 색 PAPER. */
+          /* PNG로 뽑는 것은 배경이 비어 있어야 하고, JPEG로 뽑는 것은
+             투명이 검게 나오므로 바탕을 먼저 깐다 */
           if (!png) { g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); }
-          g.drawImage(img, img.width * x, img.height * y, sw, sh, 0, 0, c.width, c.height);
-          /* 덮는 색은 **바로 옆에서 떠 온다.** 색을 손으로 적어 두면 원본을 다시
-             뽑았을 때 그 자리만 다른 색 네모가 된다 */
-          cover.forEach(([cx, cy, cw2, ch2]) => {
-            const rx = c.width * cx / 100, ry = c.height * cy / 100;
-            const rw = c.width * cw2 / 100, rh = c.height * ch2 / 100;
-            const px = g.getImageData(Math.min(c.width - 1, rx + rw + 6), ry + rh / 2, 1, 1).data;
-            g.fillStyle = `rgb(${px[0]},${px[1]},${px[2]})`;
-            g.fillRect(rx, ry, rw, rh);
+          let top = 0;
+          rects.forEach((r) => {
+            g.drawImage(img, r.sx, r.sy, r.sw, r.sh, 0, Math.round(top * k),
+                        Math.round(r.sw * k), Math.round(r.sh * k));
+            top += r.sh;
           });
           res({
             data: c.toDataURL(png ? 'image/png' : 'image/jpeg', q).split(',')[1],
@@ -169,7 +172,7 @@ for (const cut of CUTS) {
         };
         img.src = url;
       }),
-      [url, cut.at, long, !!cut.png, cut.bg || '#F6F3ED', cut.q || 0.82, cut.cover || []],
+      [url, cut.at || [0, 0, 100, 100], long, !!cut.png, cut.bg || '#F6F3ED', cut.q || 0.82, cut.bands || null],
     );
     const ext = cut.png ? 'png' : 'jpg';
     const file = path.join(OUT, `${cut.name}${tag === 'thumb' ? '-t' : ''}.${ext}`);
