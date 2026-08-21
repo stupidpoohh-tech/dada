@@ -96,6 +96,169 @@
 }
 @keyframes pg-rise { from { transform: translateY(14px); } to { transform: none; } }
 
+/* ── 절 바로가기 ────────────────────────────────────────────────
+   여덟 방이 되니 「지금 몇 번째 방인지」가 필요해졌다. 스크롤 납치는 안 한다 —
+   읽는 순서를 흔들면 인과로 이어진 글이 끊긴다(§5). 조용한 점 여덟 개만 둔다.
+   좁은 화면에는 아예 안 나온다: 본문 옆에 놓을 자리가 없다 */
+.case-dots { display: none; }
+
+@media (min-width: 1180px) {
+  .case-dots {
+    display: block; position: fixed; z-index: 20;
+    right: 22px; top: 50%; transform: translateY(-50%);
+  }
+  .case-dots ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+  .case-dots a {
+    display: flex; align-items: center; justify-content: flex-end; gap: 9px;
+    padding: 5px 2px; text-decoration: none; color: var(--faint);
+    font-size: 11.5px; font-weight: 700;
+  }
+  /* 점은 ::after로 만든다. 글자(span)는 평소엔 숨어 있다가 가리키거나
+     현재 절일 때만 나온다 — 여덟 개가 늘 떠 있으면 본문 옆이 시끄럽다 */
+  .case-dots a::after {
+    content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(17, 17, 17, .18); transition: background .18s, transform .18s;
+  }
+  .case-dots span { opacity: 0; transition: opacity .18s; }
+  .case-dots a:hover span, .case-dots a:focus-visible span,
+  .case-dots [aria-current="true"] span { opacity: 1; }
+  .case-dots [aria-current="true"] { color: var(--pg-red); }
+  .case-dots [aria-current="true"]::after { background: var(--pg-red); transform: scale(1.3); }
+}
+
+/* ── 3 · 일력 ───────────────────────────────────────────────────
+   일력은 한 장씩 뜯는 물건이라 열여덟 장을 한눈에 늘어놓는다. 세로로 이어 붙이면
+   그냥 긴 목록이 되는데, 격자에 깔면 **기간이 부피로 보인다.**
+   그림은 한 장도 안 쓴다 — 집게도 톱니도 전부 규칙이다 */
+
+.days {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 26px 14px;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+}
+
+.day {
+  position: relative; padding-top: 11px;
+  filter: drop-shadow(0 5px 12px rgba(17, 17, 17, .12));
+}
+/* 검은 집게와 리벳 둘. 낱장 위에 얹혀야 하므로 잘리는 .day-sheet 바깥에 둔다 */
+.day-clip {
+  position: absolute; z-index: 2; left: 16%; right: 16%; top: 0; height: 15px;
+  border-radius: 2px; background: var(--pg-black);
+  background-image:
+    radial-gradient(circle 2.6px at 28% 50%, #8C8C8C 98%, #0000 100%),
+    radial-gradient(circle 2.6px at 72% 50%, #8C8C8C 98%, #0000 100%);
+}
+
+.day-sheet {
+  /* 뜯긴 윗변. px로 판다 — %로 주면 칸 높이에 따라 톱니 크기가 제각각이 된다 */
+  clip-path: polygon(
+    0 6px, 8% 1px, 16% 5px, 24% 0, 32% 4px, 40% 2px, 48% 6px, 56% 1px,
+    64% 5px, 72% 2px, 80% 6px, 88% 0, 96% 4px, 100% 2px, 100% 100%, 0 100%
+  );
+  background: #FBF9F4;
+  padding: 16px 12px 14px;
+  min-height: 118px;
+}
+
+.day-head {
+  display: flex; align-items: baseline; justify-content: center; gap: 6px;
+  margin: 0 0 4px; color: var(--pg-black);
+}
+.day-mon, .day-dow {
+  flex: none; font-size: 12px; font-weight: 700; line-height: 1.1;
+  display: grid; justify-items: center;
+}
+.day-mon i, .day-dow i {
+  font-style: normal; font-size: 7.5px; font-weight: 800;
+  letter-spacing: .06em; color: var(--faint);
+}
+.day-num {
+  font-size: 42px; font-weight: 800; line-height: .95;
+  letter-spacing: -.03em; font-variant-numeric: tabular-nums;
+}
+.day-do {
+  margin: 0; padding-top: 9px; border-top: 1px solid var(--pg-line);
+  font-size: 11.5px; line-height: 1.55; color: var(--sub); text-align: center;
+}
+
+/* 열여덟째 날만 다르다. 앞의 열일곱 장이 준비고 이 한 장이 그날이다 */
+.day--pilot .day-sheet { background: var(--pg-red); }
+.day--pilot .day-head, .day--pilot .day-do { color: #fff; }
+.day--pilot .day-mon i, .day--pilot .day-dow i { color: rgba(255, 255, 255, .72); }
+.day--pilot .day-do { border-top-color: rgba(255, 255, 255, .34); font-weight: 700; }
+
+/* ── 5 · 7 · 영상 ───────────────────────────────────────────────
+   **누르기 전에는 남의 서버에 아무것도 요청하지 않는다.** 유튜브 썸네일을 깔면
+   페이지를 열기만 해도 그쪽에 요청이 나가므로, 재생 카드를 브랜드 색으로 직접 그렸다.
+   누르면 그때 youtube-nocookie로 바꿔 끼운다 (playgrown.js).
+   JS가 없으면 이 카드는 그냥 유튜브로 가는 링크다 */
+
+.film { margin: 0; display: grid; justify-items: center; gap: 12px; }
+.film-card {
+  position: relative; display: grid; align-content: end; gap: 10px;
+  width: min(300px, 78vw); aspect-ratio: 9 / 16;
+  padding: 20px; border-radius: 16px;
+  background: var(--pg-black); color: #fff; text-decoration: none;
+  box-shadow: var(--pg-lift); overflow: hidden;
+}
+.film-card--pilot { background: var(--pg-red); }
+/* 가운데 재생 삼각형. 테두리 트릭으로 만든다 — 아이콘 파일을 하나 더 받지 않으려고 */
+.film-play {
+  position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
+  width: 62px; height: 62px; border-radius: 50%;
+  background: rgba(255, 255, 255, .16);
+  transition: transform .18s, background .18s;
+}
+.film-play::after {
+  content: ''; position: absolute; left: 54%; top: 50%; transform: translate(-50%, -50%);
+  border: 13px solid transparent; border-left: 20px solid #fff; border-right: 0;
+}
+.film-card:hover .film-play, .film-card:focus-visible .film-play {
+  transform: translate(-50%, -50%) scale(1.08); background: rgba(255, 255, 255, .26);
+}
+/* 검은 카드가 너무 비어 보여서 하나 얹었다. 유튜브 썸네일을 못 쓰기로 한 이상
+   이 카드가 브랜드의 것으로 읽혀야 앞뒤 절과 따로 놀지 않는다 */
+.film-brand {
+  position: absolute; left: 20px; top: 18px;
+  font-size: 12px; font-weight: 800; letter-spacing: .16em;
+  color: var(--pg-red);
+}
+.film-card--pilot .film-brand { color: rgba(255, 255, 255, .85); }
+.film-label { font-size: 15px; font-weight: 800; display: grid; gap: 3px; }
+.film-label i {
+  font-style: normal; font-size: 11.5px; font-weight: 600;
+  color: rgba(255, 255, 255, .72);
+}
+/* 바꿔 끼운 유튜브 틀. 카드와 같은 자리·같은 크기라 눌러도 화면이 안 튄다 */
+.film-frame {
+  width: min(300px, 78vw); aspect-ratio: 9 / 16;
+  border: 0; border-radius: 16px; box-shadow: var(--pg-lift);
+}
+.film figcaption { font-size: 12.5px; color: var(--faint); }
+
+/* ── 8 · 노트 ───────────────────────────────────────────────────
+   **여기만은 무조건 정적이다.** 앞의 일곱 절이 잔뜩 차려진 뒤 마지막에 꾸밈이
+   전부 사라지는 대비 자체가 「접었다」의 정서다. 연출로 만들 것을 구조로 만든다.
+   그래서 이 절에는 .stage가 없다 — 등장 연출이 아예 안 걸린다 */
+
+.room--last { border-top-color: var(--pg-black); }
+.note {
+  max-width: 620px; margin: 0 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, "Noto Sans Mono", monospace;
+  font-size: 13.5px; line-height: 1.95; color: var(--ink);
+}
+.note p { margin: 0 0 16px; }
+.note strong { font-weight: 700; color: var(--pg-black); }
+.note-rule {
+  margin: 30px 0 10px; padding-top: 16px;
+  border-top: 1px solid var(--pg-line);
+  font-size: 12px; color: var(--faint);
+}
+.note-list { margin: 0; padding-left: 20px; }
+.note-list li { margin: 0 0 6px; }
+
+
 /* ── 1 · 리서치 메모 ────────────────────────────────────────────────
    찢어 붙인 노트지 한 장. 종이는 그림이 아니라 CSS다 — 글이 이미지 안에 들어가면
    검색엔진도 스크린리더도 못 읽는다. 그래서 톱니도 구멍도 테이프도 전부 규칙으로 만든다 */
@@ -389,7 +552,16 @@
   .map-pin i { width: 20px; height: 20px; font-size: 11px; }
 }
 
+@media (max-width: 760px) {
+  /* 일력은 폰에서 두 줄. 한 줄로 세우면 열여덟 장이 그냥 긴 목록이 되어
+     「기간이 부피로 보인다」는 이 절의 뜻이 사라진다 */
+  .days { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 22px 10px; }
+  .day-num { font-size: 34px; }
+  .day-sheet { min-height: 104px; padding: 13px 9px 12px; }
+}
+
 @media (max-width: 420px) {
   .pos-ring { grid-template-columns: 1fr; }
   .swatches { grid-template-columns: repeat(2, 1fr); }
+  .days { grid-template-columns: 1fr 1fr; }
 }

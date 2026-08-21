@@ -70,15 +70,14 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
 
 ## 지금 짓고 있는 것 (끝나면 이 절을 지운다)
 
-**PlayGrown 케이스 스터디** — `/case/playgrown.html`. **여덟 절 중 넷을 지었다**
-(리서치 메모 · 포지셔닝 · 브랜드 보드 · 공간). 무엇을 만들지는 PLAN.md
-「전시 세션 — 여덟 개의 방」에 있다.
+**PlayGrown 케이스 스터디** — `/case/playgrown.html`. **여덟 절을 다 지었다.**
+설계와 이유는 PLAN.md §5.
 
 - **아직 아무 데서도 못 들어간다.** `noindex` 한 줄 + sitemap 미등록 +
-  `mascot.item` 비어 있음. 절이 다 차면 **셋을 같이** 푼다.
+  `mascot.item` 비어 있음. 열 때는 **셋을 같이** 푼다.
   `node tests/smoke.mjs 아직` 이 셋이 어긋나면 잡는다
-- 못 지은 넷은 **재료가 0바이트로 올라왔다** — 일력 18일치 · 유튜브 링크 ·
-  파일럿 영상 · 결론. 다시 받아야 한다
+- 여는 것은 다원님이 정한다. 그 전에 채울지 말지 남은 것 둘 —
+  **사업성 판단의 근거 두세 문장**, **건강 한 문장**(민감정보라 일부러 비워 뒀다)
 - 그림 자르기는 `node tools/cut_case.mjs` (원본은 `_material/`, gitignore에 있다).
   자리를 잴 때는 `node tools/cut_case.mjs --grid 6.map.png`
 

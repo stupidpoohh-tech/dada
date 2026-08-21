@@ -1226,10 +1226,15 @@ const CASE = '/case/playgrown.html';
 if (head('케이스 스터디 — 뼈대')) {
   const p = await desktop();
   await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
-  ok(await p.locator('main.case section.room').count() === 4,
-    '절이 넷 있다 (재료가 오면 여덟이 되고, 그때 이 숫자를 고친다)');
-  ok(await p.locator('.room .room-title').count() === 4,
+  ok(await p.locator('main.case section.room').count() === 8, '절이 여덟 있다');
+  ok(await p.locator('.room .room-title').count() === 8,
     '절마다 표제가 같은 자리에 있다');
+  /* 점은 표제를 가리키고 지켜보는 것은 절이다. 앵커가 없는 곳을 가리키면
+     눌러도 아무 데도 안 가는데, 화면에는 티가 안 난다 */
+  const dots = await p.$$eval('.case-dots a', (as) => as.map((a) => a.hash.slice(1)));
+  ok(dots.length === 8, '절 바로가기 점이 여덟이다', String(dots.length));
+  const lost = await p.evaluate((ids) => ids.filter((i) => !document.getElementById(i)), dots);
+  ok(lost.length === 0, '점이 가리키는 표제가 전부 실제로 있다', lost.join(', '));
 
   /* **그림이 실제로 뜨는지는 눈으로 못 본다.** 경로 하나만 틀려도 자리는 그대로
      남고 그림만 안 오는데, 스크린샷에서는 그것이 「원래 흰 칸」과 구별되지 않는다 */
@@ -1255,6 +1260,41 @@ if (head('케이스 스터디 — 뼈대')) {
     const d = document.querySelector('dialog.lightbox');
     return d.open && !!d.querySelector('img').getAttribute('src');
   }), '타일을 누르면 크게 열린다');
+  await p.close();
+}
+
+if (head('케이스 스터디 — 일력')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  ok(await p.locator('.days .day').count() === 18, '낱장이 열여덟 장이다');
+  /* 열일곱 장은 준비고 마지막 한 장이 그날이다. 이 표시가 빠지면 일력이
+     그냥 할 일 목록이 된다 */
+  ok(await p.locator('.days .day:last-child.day--pilot').count() === 1,
+    '마지막 장만 파일럿으로 표시된다');
+  const dates = await p.$$eval('.days time', (ts) => ts.map((t) => t.dateTime));
+  ok(dates[0] === '2025-07-01' && dates[17] === '2025-07-18' && dates.length === 18,
+    '7월 1일부터 18일까지 하루도 안 빠진다', `${dates[0]} … ${dates[dates.length - 1]}`);
+  await p.close();
+}
+
+if (head('케이스 스터디 — 영상')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  /* **누르기 전에는 유튜브에 아무것도 요청하지 않는다.** 썸네일을 깔면 페이지를
+     열기만 해도 그쪽에 요청이 나간다 (§4 「영상을 넣을 때 지킬 것」) */
+  ok(await p.locator('iframe').count() === 0, '누르기 전에는 유튜브 틀이 없다');
+  ok(await p.evaluate(() => ![...document.querySelectorAll('[src], [href]')]
+    .some((e) => /ytimg|youtube\.com\/embed/.test(e.getAttribute('src') || ''))),
+    '누르기 전에는 유튜브 썸네일도 안 받아온다');
+  ok(await p.locator('.film-card').count() === 2, '재생 카드가 둘이다 (홍보 · 파일럿)');
+
+  const src = await p.evaluate(() => {
+    document.querySelector('.film-card').click();   // locator로 누르면 안 된다
+    const f = document.querySelector('iframe.film-frame');
+    return f && f.src;
+  });
+  ok(!!src && src.includes('youtube-nocookie.com/embed/'),
+    '누르면 그때 youtube-nocookie로 바꿔 끼운다', String(src));
   await p.close();
 }
 
@@ -1293,6 +1333,21 @@ if (head('케이스 스터디 — 폰')) {
   await p.close();
 }
 
+if (head('케이스 스터디 — 노트는 정적')) {
+  /* 앞의 일곱 절이 잔뜩 차려진 뒤 **마지막에 꾸밈이 전부 사라지는 대비**가
+     이 절의 정서다. 연출로 만들 것을 구조로 만들었으므로, 등장 연출이 걸리는
+     .stage를 이 절에는 두지 않는다 — 나중에 무심코 감싸면 그 대비가 사라진다 */
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  ok(await p.locator('.room--last .stage').count() === 0,
+    '노트 절에는 등장 연출이 안 걸린다');
+  ok(await p.evaluate(() => {
+    const f = getComputedStyle(document.querySelector('.note')).fontFamily;
+    return /mono/i.test(f);
+  }), '노트는 고정폭이다');
+  await p.close();
+}
+
 if (head('케이스 스터디 — JS 없이')) {
   /* 이 문서를 뷰어가 아니라 스크롤 페이지로 정한 이유가 「검색엔진과 스크린리더가
      읽는다」였다. JS를 끈 채로도 본문이 다 있어야 그 이유가 지켜진다 */
@@ -1300,8 +1355,10 @@ if (head('케이스 스터디 — JS 없이')) {
   const p = await ctx.newPage();
   await p.goto(BASE + CASE, { waitUntil: 'domcontentloaded' });
   const text = await p.locator('main.case').innerText();
-  ok(text.includes('제3의 공간') && text.includes('어른들의') && text.includes('아트존'),
-    'JS 없이도 세 절의 본문이 읽힌다');
+  ok(['제3의 공간', '어른들의', '파일럿', '아트존', '행정가'].every((t) => text.includes(t)),
+    'JS 없이도 여덟 절의 본문이 읽힌다');
+  ok(await p.locator('.film-card[href*="youtube"]').count() === 2,
+    'JS 없으면 재생 카드는 그냥 유튜브로 가는 링크다');
   ok(await p.locator('.tile-zoom[href$=".jpg"]').count() >= 6,
     'JS 없으면 확대는 그냥 그림 파일이 열린다 (링크로 두었다)');
   await ctx.close();
