@@ -1382,6 +1382,25 @@ if (head('케이스 스터디 — 아직 안 걸었다')) {
   await p.close();
 }
 
+if (head('케이스 스터디 — B안 견본')) {
+  /* 비교가 끝나면 지울 파일이다. **지우는 것을 잊어도 새어 나가지는 않게** 묶어 둔다 */
+  const p = await desktop();
+  const r = await p.goto(BASE + '/case/playgrown-b.html', { waitUntil: 'domcontentloaded' });
+  if (r && r.status() === 404) {
+    ok(true, '견본을 지웠다 (비교가 끝났다)');
+  } else {
+    /* `~=`는 공백으로 끊어 맞추므로 `content="noindex, nofollow"`의 쉼표에 걸려
+       안 잡힌다. 견본 쪽은 쉼표를 쓰므로 `*=`로 본다 */
+    ok(await p.locator('meta[name="robots"][content*="noindex"]').count() === 1,
+      '견본은 색인되지 않는다');
+    ok(await p.locator('.vw-note').count() === 1, '견본이라고 화면에 적혀 있다');
+    const map = await p.evaluate((u) => fetch(u).then((x) => x.text()), BASE + '/sitemap.xml');
+    ok(!map.includes('playgrown-b'), '견본은 sitemap에 없다');
+    ok(await p.locator('.vw-panel').count() === 3, '견본은 세 절이다');
+  }
+  await p.close();
+}
+
 /* ── 마무리 ─────────────────────────────────────────────── */
 if (head('JS 오류')) {
   ok(errors.length === 0, '콘솔 오류 없음', errors.slice(0, 3).join(' / '));
