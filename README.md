@@ -785,28 +785,26 @@ python3 tools/cut_crow.py      # assets/sprites/crow.png → cut/crow-side · cr
 하나뿐이다** — 나머지 주소는 예전 그대로 정적 에셋으로 나간다 (Workers 정적 에셋은
 파일이 있는 주소를 Worker에 물어보지 않는다. 없는 주소인 `/api/word`만 `worker.js`로 온다).
 
-### 켜기 — 필요한 것은 **네임스페이스 id 하나**
+### 켜져 있다
 
-이 저장소는 **기본 브랜치에 올라가면 Cloudflare가 알아서 다시 배포한다**
-(`git remote show origin`의 `HEAD branch`). 그래서 배포 명령은 따로 없고,
-터미널 없이 대시보드만으로도 켤 수 있다.
+`wrangler.jsonc`의 `kv_namespaces`에 `WORDS` 네임스페이스가 붙어 있다.
+이 저장소는 **기본 브랜치에 올라가면 Cloudflare가 알아서 다시 배포하므로**
+(`git remote show origin`의 `HEAD branch`) 배포 명령은 따로 없다.
 
-1. **KV 만들기** — Cloudflare 대시보드 → Storage & Databases → KV →
-   Create namespace → 이름 `WORDS`. 목록에 뜨는 **id를 복사한다.**
+네임스페이스 **id는 비밀이 아니다** — 계정에 로그인하지 않으면 아무것도 못 하는
+이름표라 Cloudflare 문서도 설정 파일에 그대로 적는다. 진짜 비밀인 `ADMIN_KEY`는
+시크릿으로 따로 넣으므로 이 파일에 남지 않는다.
+
+새로 만들거나 옮길 일이 생기면:
+
+1. Cloudflare 대시보드 → Storage & Databases → KV → Create namespace → 이름 `WORDS`
    (터미널이면 `npx wrangler kv namespace create WORDS`)
-2. **id 붙이기** — `wrangler.jsonc`의 주석 안에 있는 블록을 꺼내 id를 넣는다.
+2. 나온 id를 `wrangler.jsonc`의 `kv_namespaces`에 넣는다
+3. 기본 브랜치에 올리면 끝
 
-   ```jsonc
-   "kv_namespaces": [
-     { "binding": "WORDS", "id": "복사한-id" }
-   ],
-   ```
-
-   **빈 `id`를 남겨 두면 배포가 통째로 막히므로** 붙이기 전에는 주석인 채로 둔다.
-3. 기본 브랜치에 올리면 끝. 다시 배포되면 폼이 살아난다.
-
-붙이기 전에도 사이트는 그대로 돈다 — 서버가 503과 함께 「아직 받을 준비가 안 됐다」고
-말하고, 화면은 그 말을 그대로 띄운다.
+**빈 `id`를 남겨 두면 배포가 통째로 막힌다.** 떼어낼 일이 생기면 블록을 통째로
+주석 안으로 되돌린다 — 그때는 서버가 503과 함께 「아직 받을 준비가 안 됐다」고
+말하고, 마을의 나머지는 그대로 돈다.
 
 ### 읽기
 

@@ -15,25 +15,23 @@
   "assets": { "directory": ".", "binding": "ASSETS" },
 
   /* ── 남긴 말을 담을 KV ────────────────────────────────
-     **아직 안 붙어 있다.** 붙이기 전까지 폼은 「받을 준비가 안 됐다」고 말하고
-     마을의 나머지는 그대로 돈다 — 조용히 성공한 척하면 방문자는 남겼다고 믿고
-     나는 못 받으므로, 그 편이 낫다.
+     푸터의 👋가 받아 온 한마디가 여기 쌓인다 (worker.js의 `/api/word`).
 
-     붙이려면 **네임스페이스 id 하나**가 필요하다. 만드는 길은 둘 다 된다.
+     **id는 비밀이 아니다.** 계정에 로그인하지 않으면 아무것도 못 하는 이름표라,
+     Cloudflare 문서도 설정 파일에 그대로 적는다. 진짜 비밀인 ADMIN_KEY는
+     시크릿으로 따로 넣으므로 이 파일에 남지 않는다.
 
-       대시보드: Cloudflare → Storage & Databases → KV → Create namespace
-                 이름을 WORDS로 하고, 목록에 뜨는 id를 복사한다
-       터미널  : npx wrangler kv namespace create WORDS
+     **빈 id를 남기면 배포가 통째로 막힌다** — 나중에 떼어낼 일이 생기면
+     블록을 통째로 주석 안으로 되돌린다.
 
-     그 id를 아래 블록에 넣고 주석을 벗기면 끝이다. 이 저장소는 **기본 브랜치에
-     올라가면 Cloudflare가 알아서 다시 배포**하므로 배포 명령은 따로 없다.
-     빈 id를 남겨 두면 배포가 통째로 막히므로 **주석인 채로 둔다.**
+     새로 만들 때:
+       대시보드: Storage & Databases → KV → Create namespace (이름 WORDS)
+       터미널  : npx wrangler kv namespace create WORDS  */
+  "kv_namespaces": [
+    { "binding": "WORDS", "id": "2382388310714ae2940b5d0d94b20733" }
+  ]
 
-       "kv_namespaces": [
-         { "binding": "WORDS", "id": "여기에-붙인다" }
-       ],
-
-     ── 읽기 ──────────────────────────────────────────
+  /* ── 읽기 ──────────────────────────────────────────────
      대시보드에서 그냥 볼 수 있다: Storage & Databases → KV → WORDS → 항목 보기.
      주소로 받고 싶으면 시크릿을 하나 넣는다 (선택):
 
@@ -42,5 +40,5 @@
        터미널  : npx wrangler secret put ADMIN_KEY
 
      그러면 /api/word?key=<ADMIN_KEY> 로 최근 200개가 JSON으로 나온다.
-     시크릿은 wrangler.jsonc에 적히지 않으므로 다시 배포해도 지워지지 않는다.  */
+     시크릿은 이 파일에 적히지 않으므로 다시 배포해도 지워지지 않는다.  */
 }
