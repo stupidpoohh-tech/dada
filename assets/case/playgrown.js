@@ -12,6 +12,18 @@
    **누르기 전에는 유튜브에 아무 요청도 안 나간다** — 썸네일조차 안 받아온다.
    `youtube-nocookie.com`을 쓰는 것도 같은 이유다 (§4 「영상을 넣을 때 지킬 것」).
    이 코드가 안 돌면 카드는 그냥 유튜브로 가는 링크다. */
+const playing = new Map();   // 지금 틀이 끼워진 자리 → 원래 카드
+
+/** 끼워 둔 유튜브 틀을 걷고 카드를 도로 세운다.
+ *  **떠난 화면의 영상은 반드시 걷어야 한다.** 안 걷으면 화면을 넘긴 뒤에도 소리가
+ *  계속 나는데, 그 화면은 `inert`라 멈출 단추에 손이 닿지도 않는다. */
+const stopFilm = (frame) => {
+  const card = playing.get(frame);
+  if (!card) return;
+  playing.delete(frame);
+  frame.replaceWith(card);      // 카드는 떼어 뒀을 뿐 살아 있는 노드다
+};
+
 document.querySelectorAll('.film-card[data-yt]').forEach((a) => {
   a.addEventListener('click', (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;   // 새 탭은 그대로 둔다
@@ -22,7 +34,12 @@ document.querySelectorAll('.film-card[data-yt]').forEach((a) => {
     f.title = a.dataset.title || '영상';
     f.allow = 'accelerometer; autoplay; encrypted-media; picture-in-picture';
     f.allowFullscreen = true;
+    f.tabIndex = 0;
+    playing.set(f, a);
     a.replaceWith(f);
+    /* **초점을 새로 온 것에 옮긴다.** 안 옮기면 누르던 것이 사라지면서 초점이
+       문서 맨 위로 떨어져, 키보드로 누른 사람이 탭 순서를 처음부터 다시 탄다 */
+    f.focus({ preventScroll: true });
   });
 });
 
@@ -95,12 +112,26 @@ if (track && panels.length > 1) {
      그 문의 표시이고, 한 번 더 미는 동작이 그 문을 여는 것이다. */
   const home = () => { location.href = '/'; };
 
+  /** 트랙을 제자리에 다시 앉히기만 한다. **화면을 바꾸는 것과 갈라 둔다** —
+   *  확대했다 돌아왔을 때 필요한 것은 자리 되돌리기뿐인데, go()를 부르면
+   *  읽던 자리(scrollTop)까지 같이 지워진다 */
+  const place = () => { track.style.transform = `translateX(${-at * 100}%)`; };
+
+  let arrived = 0;   // 지금 화면에 언제 닿았나 (마지막 화면에서 나갈 때 쓴다)
+
   function go(i, opt = {}) {
-    if (i >= panels.length) return home();
+    /* **마지막을 지나치는 것은 문 밖으로 나가는 일이라 실수로 되면 안 된다.**
+       화살표를 누르고 있으면 자동 반복으로 아홉 장을 훑고 그대로 마을까지 나갔다.
+       마지막 화면에 잠깐이라도 머문 뒤에야 문이 열린다 */
+    if (i >= panels.length) {
+      if (at === panels.length - 1 && Date.now() - arrived > 400) home();
+      return;
+    }
     const to = Math.max(0, Math.min(panels.length - 1, i));
-    if (to === at && !opt.force) return;
+    if (to === at) return;
     at = to;
-    track.style.transform = `translateX(${-at * 100}%)`;
+    arrived = Date.now();
+    place();
 
     panels.forEach((p, n) => {
       /* **안 보이는 화면은 훑기에서 뺀다.** 안 그러면 탭을 누를 때마다 화면 밖
@@ -123,6 +154,11 @@ if (track && panels.length > 1) {
        다음 화면도 중간부터 보인다 */
     panels[at].scrollTop = 0;
 
+    /* 떠나는 화면의 영상을 걷는다 (위 stopFilm 설명) */
+    document.querySelectorAll('.film-frame').forEach((f) => {
+      if (!panels[at].contains(f)) stopFilm(f);
+    });
+
     if (opt.focus !== false) panels[at].focus({ preventScroll: true });
     live.textContent = `${panels.length}개 화면 중 ${at + 1} — ${nameOf(panels[at])}`;
 
@@ -144,18 +180,26 @@ if (track && panels.length > 1) {
      위아래는 안 건드린다 — 절 안을 굴리는 데 쓰이기 때문이다 */
   addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    /* **누르고 있는 것은 한 번으로 친다.** 자동 반복을 그대로 받으면 1초도 안 되어
+       아홉 장을 지나 마을까지 나가 버린다 — 한 장 한 장 눌러야 한 장씩 넘어간다 */
+    if (e.repeat) return;
     if (e.key === 'ArrowRight') go(at + 1);
     if (e.key === 'ArrowLeft') go(at - 1);
   });
 
   /* 손가락 쓸기. **세로로 쓴 것은 넘기지 않는다** — 절 안을 굴리는 동작이라
      가로보다 세로가 크면 그대로 둔다. 안 가르면 일력을 훑다가 화면이 넘어간다 */
-  let x0 = null, y0 = null;
+  let x0 = null, y0 = null, multi = false;
   addEventListener('touchstart', (e) => {
+    /* **두 손가락이 닿았으면 넘기는 동작이 아니다.** 「눌러서 크게」를 걷고 확대를
+       두 손가락에 맡겼는데, 벌렸다 떼는 순간의 좌표차가 쓸기 판정을 통과해
+       화면이 넘어갔다 — 마지막 화면에서는 그대로 마을로 나가 버렸다 */
+    if (e.touches.length > 1) { multi = true; x0 = null; return; }
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
   }, { passive: true });
   addEventListener('touchend', (e) => {
-    if (x0 === null) return;
+    if (e.touches.length === 0 && multi) { multi = false; x0 = null; return; }
+    if (multi || x0 === null) return;
     const dx = e.changedTouches[0].clientX - x0;
     const dy = e.changedTouches[0].clientY - y0;
     if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4) go(at + (dx < 0 ? 1 : -1));
@@ -175,22 +219,26 @@ if (track && panels.length > 1) {
      확대하고 있는 중에는 건드리지 않는다(그러면 확대 자체가 안 된다). */
   const vv = window.visualViewport;
   if (vv) {
+    let zoomed = false;
     const settle = () => {
-      if (vv.scale > 1.01) return;
+      if (vv.scale > 1.01) { zoomed = true; return; }
+      /* **확대했다 돌아온 경우에만 손댄다.** 모든 크기 변화에 반응하게 뒀더니
+         창 크기를 바꾸거나 폰을 돌리기만 해도 읽던 자리가 맨 위로 튀었다 —
+         일력·브랜드처럼 긴 화면에서는 읽던 데를 잃는다는 뜻이다 */
+      if (!zoomed) return;
+      zoomed = false;
       if (scrollX || scrollY) scrollTo(0, 0);
-      go(at, { push: false, focus: false, force: true });
+      place();                     // 자리만 되돌린다 (scrollTop은 그대로 둔다)
     };
     vv.addEventListener('resize', settle);
     vv.addEventListener('scroll', settle);
   }
 
-  /* 목차(굴려서 읽을 때의 것)를 눌러도 그 화면으로 간다 */
-  document.querySelectorAll('.case-dots a').forEach((a) => {
-    a.addEventListener('click', (e) => {
-      const i = ids.indexOf(a.hash.slice(1));
-      if (i < 0) return;
-      e.preventDefault();
-      go(i);
-    });
-  });
+  /* 창 크기가 바뀌면 트랙도 다시 앉혀야 한다 — %로 밀어 두었으므로 폭이 바뀌면
+     계산이 달라진다. 여기서도 읽던 자리는 건드리지 않는다 */
+  addEventListener('resize', place);
+
+  /* **목차에는 아무것도 걸지 않는다.** 그것은 JS가 없을 때만 보이는 것이라
+     (뷰어 모드에서는 `display: none`) 여기서 누르는 것을 붙여 봐야 닿지 않는다 —
+     한동안 붙어 있던 죽은 코드였다 (2026-08-22에 걷었다). */
 }

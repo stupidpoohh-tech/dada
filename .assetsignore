@@ -43,3 +43,15 @@ assets/sprites/cut/person-3.png
 assets/sprites/cut/person-4.png
 assets/sprites/cut/person-5.png
 assets/sprites/cut/person-8.png
+
+# 케이스 스터디 편집용 원본 — **지우지 않고 배포에서만 뺀다.**
+# 루트가 통째로 에셋 디렉터리라 여기 안 적으면 `/1.column.png` 같은 주소로
+# 누구나 받아간다. 그러면 잘라 쓸 때 덮은 것이 무력해진다 —
+# 칼럼 원본에는 인터뷰이의 실명과 나이가 그대로 남아 있고,
+# 배포본(assets/case/playgrown/column.jpg)은 그 부분을 아예 잘라 냈는데
+# **주소만 알면 잘라 내기 전 것을 받을 수 있었다.**
+# mp4 하나만 5.5MB라 배포 무게로도 뺄 이유가 있다.
+# 앞에 슬래시를 붙여 **루트에 있는 것만** 잡는다. 안 붙이면 gitignore 규칙상
+# 어느 깊이에서나 걸려서, 나중에 assets 아래에 숫자로 시작하는 파일을 두면
+# 그것까지 조용히 배포에서 빠진다
+/[0-9].*

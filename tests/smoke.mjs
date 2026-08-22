@@ -1315,13 +1315,49 @@ if (head('케이스 스터디 — 영상')) {
     '누르기 전에는 유튜브 썸네일도 안 받아온다');
   ok(await p.locator('.film-card').count() === 2, '재생 카드가 둘이다 (홍보 · 파일럿)');
 
+  /* **재생 카드가 있는 화면으로 먼저 간다.** 다른 화면의 카드는 `inert`라
+     초점도 안 가고 눌러도 그 화면에서 일어난 일이 아니다 — 실제 사용자도
+     보이는 화면의 카드만 누른다 */
+  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[5].click());
+  await p.waitForTimeout(600);
   const src = await p.evaluate(() => {
-    document.querySelector('.film-card').click();   // locator로 누르면 안 된다
+    document.querySelector('.vw-panel:not([inert]) .film-card').click();   // locator로 누르면 안 된다
     const f = document.querySelector('iframe.film-frame');
     return f && f.src;
   });
   ok(!!src && src.includes('youtube-nocookie.com/embed/'),
     '누르면 그때 youtube-nocookie로 바꿔 끼운다', String(src));
+  /* 누르던 것이 사라지면 초점이 문서 맨 위로 떨어진다 — 키보드로 누른 사람이
+     탭 순서를 처음부터 다시 탄다 */
+  ok(await p.evaluate(() => document.activeElement?.classList.contains('film-frame')),
+    '틀을 끼우면 초점도 거기로 간다');
+
+  /* **떠난 화면의 영상은 걷는다.** 안 걷으면 넘어간 뒤에도 소리가 나는데
+     그 화면은 inert라 멈출 단추에 손이 닿지 않는다 */
+  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[0].click());
+  await p.waitForTimeout(600);
+  ok(await p.locator('iframe.film-frame').count() === 0, '화면을 떠나면 영상이 걷힌다');
+  ok(await p.locator('.film-card[data-yt]').count() === 2, '카드가 도로 서 있다');
+  await p.close();
+}
+
+if (head('케이스 스터디 — 읽던 자리')) {
+  /* 창 크기가 바뀌었다고 읽던 자리가 맨 위로 튀면 안 된다 — 긴 화면(일력·브랜드)
+     에서는 읽던 데를 잃는다는 뜻이다 */
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(500);
+  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[4].click());
+  await p.waitForTimeout(600);
+  const moved = await p.evaluate(() => {
+    const el = document.querySelectorAll('.vw-panel')[4];
+    el.scrollTop = 60;
+    return el.scrollTop;
+  });
+  await p.setViewportSize({ width: 1180, height: 820 });
+  await p.waitForTimeout(500);
+  const kept = await p.evaluate(() => document.querySelectorAll('.vw-panel')[4].scrollTop);
+  ok(moved > 0 && kept === moved, '창 크기가 바뀌어도 읽던 자리가 그대로다', `${moved} → ${kept}`);
   await p.close();
 }
 
@@ -1394,10 +1430,40 @@ if (head('케이스 스터디 — 마지막에서 나간다')) {
     '마지막에서도 오른쪽 단추는 살아 있다');
   ok(await p.evaluate(() => document.querySelector('.vw-arrow--next').classList.contains('vw-arrow--out')),
     '「다음」이 아니라 「나가기」로 보인다');
-  await p.evaluate(() => document.querySelector('.vw-arrow--next').click());
-  await p.waitForLoadState('domcontentloaded');
-  await p.waitForTimeout(400);
+  /* **이동을 evaluate 안에서 일으키면 그 실행 맥락이 사라지면서 깨질 수 있다.**
+     기다리는 쪽을 먼저 걸어 두고 누른다 (CLAUDE.md가 경고한 그 흔들림) */
+  await p.waitForTimeout(500);   // 마지막 화면에 잠깐 머물러야 문이 열린다
+  await Promise.all([
+    p.waitForURL((u) => new URL(u).pathname === '/', { timeout: 8000 }),
+    p.evaluate(() => document.querySelector('.vw-arrow--next').click()).catch(() => {}),
+  ]);
   ok(new URL(p.url()).pathname === '/', '한 번 더 넘기면 마을로 돌아간다', p.url());
+  await p.close();
+}
+
+if (head('케이스 스터디 — 실수로 안 나가진다')) {
+  /* 마지막을 지나치는 것은 문 밖으로 나가는 일이라 실수로 되면 안 된다 */
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(500);
+  /* **누르고 있는 것은 한 장으로 친다.** 자동 반복을 그대로 받았더니 1초도 안 되어
+     아홉 장을 지나 마을까지 나갔다 */
+  await p.evaluate(() => {
+    for (let n = 0; n < 14; n++) {
+      dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', repeat: n > 0 }));
+    }
+  });
+  await p.waitForTimeout(500);
+  ok(new URL(p.url()).pathname === CASE, '화살표를 눌러도 문서 밖으로 안 나간다', p.url());
+  ok((await p.textContent('.vw-count')).startsWith('2 /'),
+    '자동 반복은 한 장으로 친다', await p.textContent('.vw-count'));
+
+  /* 마지막에 닿자마자 미는 것도 안 통한다 — 잠깐 머물러야 문이 열린다 */
+  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[8].click());
+  await p.evaluate(() => document.querySelector('.vw-arrow--next').click());
+  await p.waitForTimeout(400);
+  ok(new URL(p.url()).pathname === CASE,
+    '마지막에 닿자마자 밀면 안 나간다', p.url());
   await p.close();
 }
 
