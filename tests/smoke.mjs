@@ -643,6 +643,43 @@ if (head('게임 안내서')) {
   await p.close();
 }
 
+/* **한 화면에 한 면이 통째로 들어가야 한다.** 이 안내서는 46면짜리 슬라이드를
+   한 장씩 넘겨 보는 것이라, 아래가 잘리면 날짜 · 로고 · 마지막 줄이 그냥 사라진다.
+
+   한 번 놓친 자리다. 카드는 `display: grid`인데 **행 크기를 안 적으면 행이 `auto`**라
+   그림만큼 커지고, 그러면 그림의 `max-height: 100%`가 제 높이를 자기 기준으로
+   재는 꼴이 되어 아무것도 제한하지 못한다. 좁은 화면에서는 `max-width`가 먼저
+   걸려 티가 안 났고, **1600px 넘는 데스크톱과 가로로 돌린 폰에서만** 잘려 나갔다
+   (2026-08-23에 다원님이 발견). 개발하며 쓰는 1440px에서는 멀쩡해 보인다.
+
+   그래서 **여러 폭에서 재야 한다.** 한 벌만 보면 이 종류는 영영 안 잡힌다. */
+if (head('게임 안내서 — 한 면이 통째로 들어간다')) {
+  /* 16:9 원본이 잘리기 시작하는 언저리를 고루 짚는다. 마지막 둘은 가로로 돌린 폰 */
+  const SIZES = [[1280, 800], [1440, 950], [1600, 900], [1920, 950], [1920, 1080],
+    [2560, 1400], [844, 390], [390, 844]];
+  for (const [w, h] of SIZES) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+    const p = await ctx.newPage();
+    await p.goto(BASE + '/game/', { waitUntil: 'networkidle' });
+    await p.waitForTimeout(400);
+    const over = await p.evaluate(() => {
+      document.querySelectorAll('img[loading="lazy"]').forEach((i) => { i.loading = 'eager'; });
+      const bad = [];
+      document.querySelectorAll('.card').forEach((c, i) => {
+        const img = c.querySelector('img');
+        if (!img) return;
+        const ch = c.getBoundingClientRect().height;
+        const ih = img.getBoundingClientRect().height;
+        /* 카드에는 넘길 때 기우는 transform이 걸려 있어 1px 남짓은 늘 어긋난다 */
+        if (ih - ch > 2) bad.push(`${i}면 ${Math.round(ih - ch)}px`);
+      });
+      return bad;
+    });
+    ok(over.length === 0, `${w}×${h}에서 면이 안 잘린다`, over.join(', '));
+    await ctx.close();
+  }
+}
+
 /* ── 11. 카페 앞 까마귀 Croww ─────────────────────────────
    **물건마다 문이 하나씩**이다 — 카페 건물을 누르면 항목이 다 나오고, 카페 앞에 선
    까마귀를 누르면 PlayGrown 기록만 열린다. 문이 갈려도 어수선하지 않은 이유는

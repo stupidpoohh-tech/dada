@@ -126,14 +126,25 @@ html, body {
   pointer-events: none;                  /* 위에 놓인 간지 카드가 클릭을 받는다 */
 }
 .chapter-bg img {
-  display: block; max-width: 100%; max-height: 100%;
+  display: block; max-width: 100%; max-height: var(--card-h);
   width: auto; height: auto; object-fit: contain;
 }
 .card--divider { background: transparent; }   /* 뒤의 간지가 그대로 비쳐야 한다 */
 
+/* **그림의 최대 높이는 `100%`가 아니라 `var(--card-h)`다.** 여기가 한 번 깨졌던
+   자리다 — 카드는 `display: grid`인데 **행 크기를 안 적으면 행이 `auto`**라
+   그림만큼 커진다. 카드 자신의 `height`가 904px로 못 박혀 있어도 행은 1080px이
+   되고, 그러면 그림의 `max-height: 100%`가 **제 높이를 자기 기준으로 재는 꼴**이라
+   아무것도 제한하지 못한다. 카드 밖으로 넘친 만큼이 그냥 잘린다.
+
+   폭이 좁을 때는 `max-width`가 먼저 걸려 티가 안 났다. 1600px 넘는 데스크톱과
+   **가로로 돌린 폰**에서만 아래가 잘려 나갔다(2026-08-23에 다원님이 발견).
+   행을 못 박는 방법도 있지만, 목차처럼 그림이 상자(.toc-frame) 안에 한 겹 더
+   들어가는 경우에는 그 상자의 높이가 다시 `auto`라 같은 일이 되풀이된다.
+   **길이를 직접 주면 몇 겹으로 싸여 있든 카드 높이를 못 넘는다.** */
 .card img {
   display: block;
-  max-width: 100%; max-height: 100%;
+  max-width: 100%; max-height: var(--card-h);
   width: auto; height: auto;
   object-fit: contain;                   /* 잘라내지 않는다 */
 }
