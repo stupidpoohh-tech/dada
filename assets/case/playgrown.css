@@ -66,6 +66,34 @@
   max-width: 500px; margin: 24px auto 0;
   font-size: 15.5px; color: var(--sub); line-height: 1.8;
 }
+/* 문단 안에서 「파일럿」만 굵게. 색까지 주면 누를 수 있는 것으로 보인다 */
+.case-sub strong { font-weight: 700; color: var(--pg-black); }
+
+/* 표지 밑에 작은 줄이 둘이다 — **맡은 일**과 **사실**.
+   둘 다 점으로 나눈 목록이라 같은 꼴로 두면 한 덩어리로 뭉개져 읽힌다.
+   그래서 위는 검정에 이름표를 달고, 아래는 흐린 회색으로 내린다.
+   위가 답하는 것은 「이 사람이 무엇을 했나」, 아래는 「언제 어디서」다. */
+
+.case-role {
+  max-width: 460px; margin: 26px auto 0;
+  font-size: 13px; line-height: 1.9; font-weight: 700; text-wrap: balance;
+  color: var(--pg-black);
+}
+/* 이름표. 붙여 놓으면 목록과 한 줄로 읽히므로 빨강 · 작게 · 자간을 벌려
+   **다른 종류의 글자**로 만든다 */
+.case-role span {
+  margin-right: 10px;
+  font-size: 11px; letter-spacing: .18em; color: var(--pg-red);
+}
+
+/* **폭을 문단보다 좁게 못 박고 balance를 준다** — 좁은 폰에서 한 줄로 버티게 두면
+   가장자리에 딱 붙고, 그냥 넘기면 「센버스」 세 글자만 다음 줄에 남는다.
+   미리 두 줄로 나뉘게 해서 어느 폭에서든 덩어리로 보이게 한다 */
+.case-meta {
+  max-width: 420px; margin: 8px auto 0;
+  font-size: 12px; line-height: 1.8; text-wrap: balance;
+  color: var(--sub);
+}
 
 /* ── 절 ── */
 

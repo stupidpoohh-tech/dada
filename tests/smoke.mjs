@@ -1251,6 +1251,35 @@ if (head('케이스 스터디 — 뼈대')) {
   await p.close();
 }
 
+/* **한 번 사고가 난 자리라 시험으로 못 박는다.** 2026-08-22에 표지를 정리하면서
+   사실 표를 걷었는데 「파일럿 1회」가 같이 지워졌다. 그러면 읽는 사람은 여덟째
+   화면에서 「파일럿」이 나올 때까지 **계속 운영한 가게인 줄 알고** 읽고, 마지막 절의
+   「접었다」가 실패담이 된다. 문서 전체의 뜻이 뒤집히는데 화면에는 티가 안 난다.
+
+   역할도 같다 — 이 사이트는 링크드인을 대신하므로 「이 사람이 무엇을 하는 사람인가」가
+   없으면 잘 만든 룩북이지 케이스 스터디가 아니다. 둘 다 지우기 쉬운 한 줄이라
+   여기서 지킨다. */
+if (head('케이스 스터디 — 표지가 말하는 것')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+
+  const cover = (await p.locator('.vw-cover').innerText()).replace(/\s+/g, ' ');
+  ok(/파일럿/.test(cover), '표지에 「파일럿」이 있다 — 상시 운영이 아니었다', cover);
+  ok(/1회/.test(cover), '표지에 「1회」가 있다 — 하루였다', cover);
+  ok(/2025\.07\.18/.test(cover), '표지에 연 날짜가 있다', cover);
+
+  const role = await p.locator('.case-role').innerText();
+  for (const job of ['기획', '브랜딩', '공간', '마케팅', '현장 운영'])
+    ok(role.includes(job), `표지의 맡은 일에 「${job}」이 있다`, role);
+
+  /* 접은 이유. PLAN.md §5가 이 문서에서 가장 값나가는 자리로 꼽은 두세 문장이고,
+     이것이 없으면 「왜 지금은 안 하지?」를 독자가 가장 나쁜 쪽으로 짐작한다 */
+  const pilot = (await p.locator('.room--dim2').innerText()).replace(/\s+/g, ' ');
+  ok(/체험 동선/.test(pilot), '파일럿 절에 접은 이유가 적혀 있다', pilot);
+  ok(/확장하지 않/.test(pilot), '그래서 무엇을 정했는지까지 적혀 있다', pilot);
+  await p.close();
+}
+
 if (head('케이스 스터디 — 넘기는 화면')) {
   const p = await desktop();
   await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
