@@ -1503,8 +1503,12 @@ if (head('케이스 스터디 — JS 없이')) {
   const p = await ctx.newPage();
   await p.goto(BASE + CASE, { waitUntil: 'domcontentloaded' });
   const text = await p.locator('main.case').innerText();
-  ok(['어른이 놀 곳이', '어른들의 키즈카페', '뜯어낸', '파일럿', '아트존', '행정가'].every((t) => text.includes(t)),
-    'JS 없이도 여덟 절의 본문이 읽힌다');
+  /* **절마다 그 절에만 있는 말로 고른다.** 「파일럿」처럼 표지에도 있는 낱말을
+     쓰면 절 하나가 통째로 빠져도 시험이 통과한다 */
+  const marks = ['어른이 놀 곳이', '비어 있던 가운데', '18일의 기록', 'Playgrown의 모습',
+    '인스타 홍보 영상', '아트존', '체험 동선', '행정가'];
+  const missing = marks.filter((t) => !text.includes(t));
+  ok(missing.length === 0, 'JS 없이도 여덟 절의 본문이 읽힌다', missing.join(', '));
   ok(await p.locator('.film-card[href*="youtube"]').count() === 2,
     'JS 없으면 재생 카드는 그냥 유튜브로 가는 링크다');
   /* **넘기는 쪽을 골랐어도 못 넘기는 상황에서 통째로 안 읽히면 안 된다.**

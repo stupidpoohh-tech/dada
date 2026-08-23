@@ -107,7 +107,10 @@
   background: var(--ground, transparent);
 }
 .vw-panel > * { grid-column: content; }
-.vw-cover { --ground: var(--pg-paper); }
+/* 표지 바탕은 **리서치 방에서 물려받았다**(2026-08-23, 쓰는 사람). 종이색은
+   브랜드 보드 방(.room--paper)에도 쓰이는데, 표지가 그 색이면 첫 장과 다섯째 장이
+   같은 방으로 읽혔다. 크래프트색은 이제 표지 하나만 쓴다 */
+.vw-cover { --ground: #EAE0CB; }
 .room { margin: 0; }
 
 /* ── 방마다 다른 바탕 ───────────────────────────────────────────
@@ -119,8 +122,15 @@
    `--ink`·`--sub`·`--faint`·`--pg-black`만 보고 그려지므로, **그 넷을 방에서
    다시 정의하면 안에 있는 것이 통째로 따라온다.** 토큰을 쓴 값이 여기서 돌아온다. */
 
-.room--desk  { --ground: #EAE0CB; }   /* 크래프트 책상 — 메모지가 놓인 자리 */
-.room--board { --ground: #F3F4F5; }   /* 흰 보드 벽. 순백으로 하면 원의 옅은 색이 안 보인다 */
+/* **리서치와 포지셔닝은 둘 다 순백이다**(2026-08-23, 쓰는 사람이 골랐다).
+   「방마다 바탕이 바뀐다」는 규칙에서 둘이 예외가 된 셈인데, 표지가 크래프트색을
+   가져갔으므로 첫 장에서 둘째 장으로 넘어간 것은 그대로 보인다. 셋째에서 넷째로
+   넘어가는 것은 짙은 벽(.room--wall)이 받는다 — 흰 둘이 이어져도 문서 전체에서
+   바닥이 멎는 구간은 여기 한 번뿐이다.
+   보드 벽을 순백으로 하면 원의 옅은 색이 묻힐 것을 걱정했는데, 그림이 제 카드
+   (.board) 위에 크림색 바탕을 데리고 앉아서 실제로는 경계가 살아 있다 */
+.room--desk  { --ground: #FFFFFF; }
+.room--board { --ground: #FFFFFF; }
 .room--paper { --ground: var(--pg-paper); }
 .room--plan  {                        /* 도면 — 옅은 모눈 */
   --ground: #E7ECEF;
@@ -170,6 +180,16 @@
 }
 .room-title { margin: 0; font-size: clamp(20px, 2.6vw, 25px); font-weight: 800; color: var(--pg-black); }
 .room-lead { margin: 9px 0 0; font-size: 14.5px; line-height: 1.75; color: var(--sub); }
+
+/* **노트 절의 표제만 라벨 꼴로 앉는다.** 그 절은 라벨(「노트」)과 표제(「배운 것」)가
+   같은 말을 두 번 해서 라벨을 걷었는데, 남은 표제를 큰 글씨로 두면 목록보다
+   표제가 세진다 — 꾸밈이 사라지는 것이 이 절의 정서라 반대다.
+   **걷은 것은 라벨이고 남긴 것은 표제다** — 목차의 점과 aria-labelledby가
+   이 표제를 가리키므로 반대로 하면 이 절만 표제 없는 절이 된다.
+   그래서 마크업은 h2 그대로 두고 그리기만 라벨을 따른다 (.room-no와 같은 값) */
+.room-title--label {
+  font-size: 11.5px; letter-spacing: .12em; color: var(--pg-red);
+}
 .room-note { max-width: 680px; margin: 22px auto 0; font-size: 13.5px; line-height: 1.75; color: var(--sub); }
 .room-note strong { color: var(--ink); }
 
