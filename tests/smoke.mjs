@@ -721,6 +721,22 @@ if (head('미리보기 그림')) {
   await p.close();
 }
 
+/* **같은 것의 이름이 두 군데 적힌다.** 쪽지 묶음(`floater.bundle`)에도 `items`에도
+   이름이 있는데, 화면에 나오는 것은 **주소가 있으면 `items` 쪽**이다. 그래서 쪽지
+   쪽 이름이 낡아도 **화면에는 티가 안 난다** — 조용히 틀린 데이터로 남는다.
+   실제로 「캘린더」를 「캘린더X」로 고칠 때 한쪽만 고칠 뻔했다 (2026-08-24). */
+if (head('이름이 두 군데 — 어긋나지 않는다')) {
+  const p = await desktop();
+  await p.goto(BASE + '/', { waitUntil: 'networkidle' });
+  const data = await p.evaluate(() => fetch('/services.json').then((r) => r.json()));
+  const off = (data.floater?.bundle?.items || [])
+    .map((e) => ({ e, it: data.items.find((i) => i.id === e.id) }))
+    .filter(({ e, it }) => it && it.name !== e.name)
+    .map(({ e, it }) => `${e.id}: 쪽지「${e.name}」 items「${it.name}」`);
+  ok(off.length === 0, '쪽지 묶음과 items의 이름이 같다', off.join(' / '));
+  await p.close();
+}
+
 /* **아직 주소가 없는 것도 목록에는 선다** (2026-08-24). 캘린더와 트래커는 쪽지
    묶음에만 있어서 「만든 것 전부」를 보여주는 자리에서 통째로 빠져 있었다.
    다만 **누를 수 있으면 안 된다** — 없는 곳으로 가는 링크를 두지 않는 것이
@@ -1105,8 +1121,19 @@ if (head('날아다니는 쪽지')) {
     names: [...document.querySelectorAll('#panel .card-name')].map((n) => n.firstChild.textContent),
     held: getComputedStyle(document.querySelector('.note-spot')).animationPlayState,
   }));
-  ok(panel.cards === 3 && panel.names.join(',') === '캘린더,클리어 위크,트래커',
-    '세 자리가 한 묶음으로 열린다', JSON.stringify(panel.names));
+  /* **이름을 여기 박아 두지 않는다.** 항목 이름이 바뀔 때마다 검사가 같이 깨지는데,
+     그건 「깨진 것」이 아니라 「바뀐 것」이다. 무엇이 뜰지는 데이터가 정하고,
+     검사는 **데이터대로 떴는가**만 본다.
+
+     묶음의 이름은 두 군데에 적힌다 — 쪽지(`floater.bundle`)와 `items`. 주소가
+     있으면 `items` 쪽이, 없으면 쪽지 쪽이 화면에 나온다. 그래서 어느 쪽이든
+     맞는 것을 골라 견준다 (둘이 어긋나지 않는지는 아래 「이름이 두 군데」가 본다). */
+  const bundleNames = await p.evaluate(() => fetch('/services.json').then((r) => r.json())
+    .then((d) => d.floater.bundle.items.map((e) =>
+      (d.items.find((i) => i.id === e.id && i.url) || e).name)));
+  ok(panel.cards === bundleNames.length && panel.names.join(',') === bundleNames.join(','),
+    `묶음이 데이터대로 열린다 (${bundleNames.length}자리)`,
+    `${JSON.stringify(panel.names)} / 데이터 ${JSON.stringify(bundleNames)}`);
   ok(/paused/.test(panel.held), '열려 있는 동안 쪽지는 날아가지 않는다', panel.held);
   // 주소가 있는 것만 링크가 된다. 없는 것은 누를 수 없어야 한다 — 죽은 링크를 만들지 않는다
   const withUrl = await p.evaluate(async () => {

@@ -379,7 +379,7 @@
       "items": [
         {
           "id": "calendar",
-          "name": "캘린더",
+          "name": "캘린더X",
           "icon": "🗓",
           "date": "2026-05"
         },
@@ -553,14 +553,15 @@
     {
       "id": "calendar",
       "no": 29,
-      "name": "캘린더",
+      "name": "캘린더X",
       "district": "me",
       "group": "매일 쓰는 것들",
       "type": "app",
-      "description": "",
+      "url": "https://calendar-x.pages.dev/",
+      "description": "할 일, 아이디어, 그리고 자금까지 한 캘린더 안에서",
       "date": "2026-05",
       "icon": "🗓",
-      "status": "soon",
+      "status": "live",
       "needsReview": false
     },
     {
