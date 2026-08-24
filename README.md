@@ -914,6 +914,37 @@ Cloudflare Workers. 빌드 명령 없이 **저장소 루트를 통째로 올린�
 사이트에 나타나지 않는다 — "고쳤는데 왜 그대로지?" 싶으면 여기부터 확인한다.
 `git remote show origin`의 `HEAD branch`가 지금 게시 중인 브랜치다.
 
+### 주소 — dada-town.com
+
+**커스텀 도메인은 대시보드에서 붙였다** (2026-08-24). Cloudflare Registrar에서 산
+도메인이라 네임서버를 바꿀 일이 없었다 — 이미 Cloudflare 존이라 Custom Domain으로
+바로 붙는다.
+
+```
+Workers & Pages → dada-portfolio → Settings → Domains & Routes → Add → Custom Domain
+```
+
+DNS 레코드와 인증서는 Cloudflare가 만든다. **`wrangler.jsonc`에 `routes`를 적지
+않는다** — 기본 브랜치에 올라가면 Cloudflare가 알아서 배포하는데, 그때 이 파일의
+라우트가 진실이 되어 대시보드에서 붙인 것을 덮어쓸 수 있다. 한쪽에서만 관리한다.
+
+**Custom Domain은 주소가 글자까지 똑같아야 받는다.** `dada-town.com`에 붙였다고
+`www.dada-town.com`이 따라오지 않아 **따로 한 번 더 붙여야 한다.**
+
+주소를 바꾸면 함께 가는 것이 넷이다. 하나만 고치고 넘어가면 나머지가 예전 주소를
+가리킨 채 남는다.
+
+| 어디 | 무엇 |
+|---|---|
+| `services.json`의 `site.url` | 여기 하나가 `list.html`·`sitemap.xml`·`robots.txt`를 만든다 (`build_list.py`) |
+| `index.html`·`game/index.html`·`case/playgrown.html` | `canonical`·`og:url`·`og:image` — 손으로 쓴 세 장이라 각자 박혀 있다 |
+| `ga.js`의 `HOSTS` | **여기 없는 주소에서는 통계가 통째로 안 켜진다** |
+| `wrangler.jsonc`의 주석 | 어디서 관리하는지를 적어 둔 자리 |
+
+예전 주소(`dada-portfolio.stupidpoohh.workers.dev`)도 아직 살아 있고 `HOSTS`에
+남겨 뒀다 — 그리로 들어오는 사람도 세어야 「옮겨 갔는가」를 알 수 있다.
+정리하려면 같은 자리에서 `workers.dev` 줄을 **Disable** 한다.
+
 ### 루트를 통째로 올린다는 것의 함정
 
 에셋 디렉터리가 `.`이라 **저장소에 있는 모든 파일이 업로드 대상**이다. 두 번 데였다.

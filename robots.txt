@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dada-portfolio.stupidpoohh.workers.dev/sitemap.xml
+Sitemap: https://dada-town.com/sitemap.xml
