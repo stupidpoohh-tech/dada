@@ -44,6 +44,14 @@ assets/sprites/cut/person-4.png
 assets/sprites/cut/person-5.png
 assets/sprites/cut/person-8.png
 
+# 마을 지도의 편집용 원본 — **지우지 않고 배포에서만 뺀다.**
+# `tools/cut_buildings.py`가 이것과 건물 시트에서 건물을 떠낸다. 사이트는 안 쓰는데
+# 루트에 있어서 `/town-background.png`로 **2.7MB가 그대로 배포되고 있었다**
+# (2026-08-24에 알았다 — og 그림을 넣으며 루트를 훑다 나왔다).
+# 지우지 않는 이유는 스프라이트 시트와 같다: 이것이 곧 원본이라 한 번 지우면
+# 되돌릴 때 다시 받아야 한다. 저장소에 남겨 두고 배포에서만 뺀다.
+town-background.png
+
 # 케이스 스터디 편집용 원본 — **파일은 2026-08-23에 지웠다. 이 규칙은 남긴다.**
 #
 # 루트가 통째로 에셋 디렉터리라 여기 안 적으면 `/1.column.png` 같은 주소로

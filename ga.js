@@ -52,7 +52,14 @@
      존(zone)도 아니라 Web Analytics 목록에 뜨지 않으므로, 호스트 이름을 직접
      적고 **"which does not belong to Cloudflare websites"**를 골라 만든다.
      그러면 비콘 스니펫과 토큰이 나오고, 그 토큰만 여기 적으면 된다.
-     비어 있으면 비콘을 부르지 않는다. */
+     비어 있으면 비콘을 부르지 않는다.
+
+     **도메인을 바꿔도 이 토큰은 그대로다.** 대시보드의 Web Analytics에서
+     그 사이트의 **Manage site → 호스트명만** 새 도메인으로 고치면 된다.
+     Cloudflare는 비콘이 보낸 호스트를 **뒤에서부터 맞춰 보므로**(postfix match),
+     `dada-town.com`으로 적어 두면 `www.dada-town.com`도 같은 토큰으로 함께 세어진다.
+     다만 뿌리가 다른 예전 주소(`*.workers.dev`)는 그 순간부터 안 세어진다 —
+     그쪽은 GA4가 계속 센다. */
   var CF_TOKEN = 'ed38c88f57cb4fbf9c126f8ba5e69be5';
 
   /* **통계를 켤 도메인.** 여기 없는 주소에서는 아무것도 수집하지 않는다 —

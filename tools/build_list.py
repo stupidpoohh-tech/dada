@@ -135,7 +135,9 @@ page = f'''<!doctype html>
 <meta property="og:title" content="작업물 전체 목록 — DADA TOWN">
 <meta property="og:description" content="{e(desc)}">
 <meta property="og:url" content="{SITE}/list.html">
-<meta property="og:image" content="{SITE}/assets/map/town-web.jpg">
+<meta property="og:image" content="{SITE}/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="900">
 <meta property="og:site_name" content="DADA TOWN">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">

@@ -680,6 +680,47 @@ if (head('게임 안내서 — 한 면이 통째로 들어간다')) {
   }
 }
 
+/* **미리보기 그림은 화면에 안 보이는 것이라 깨져도 티가 안 난다.**
+   경로 하나가 틀리면 카톡·슬랙에 붙여 넣었을 때 그림이 통째로 안 뜨는데,
+   사이트를 아무리 열어 봐도 멀쩡해 보인다. 그래서 검사가 대신 본다.
+
+   무게도 함께 본다 — og:image는 **남의 서버가 대신 받아 가는 그림**이라
+   무거우면 미리보기가 늦게 뜨거나 아예 안 뜬다. */
+if (head('미리보기 그림')) {
+  const p = await desktop();
+  const PAGES = ['/', '/list.html', '/game/', '/case/playgrown.html'];
+  for (const path of PAGES) {
+    await p.goto(BASE + path, { waitUntil: 'domcontentloaded' });
+    const og = await p.evaluate(() => {
+      const g = (prop) => document.querySelector(`meta[property="${prop}"]`)?.content || '';
+      return { img: g('og:image'), w: g('og:image:width'), h: g('og:image:height') };
+    });
+    ok(/^https:\/\//.test(og.img), `${path} — og:image가 절대 주소다`, og.img);
+
+    /* 주소는 배포 도메인이지만 파일은 저장소에 있다. 경로만 떼어 여기서 받아 본다 */
+    const rel = og.img.replace(/^https?:\/\/[^/]+/, '');
+    const res = await p.request.get(BASE + rel);
+    ok(res.ok(), `${path} — 그 그림이 실제로 있다`, `${rel} → ${res.status()}`);
+
+    const kb = Math.round((await res.body()).length / 1024);
+    /* 1MB를 넘으면 미리보기를 만드는 쪽이 포기하기도 한다 */
+    ok(kb < 1024, `${path} — 미리보기 그림이 1MB 아래다 (${kb}KB)`);
+
+    /* 크기를 적어 뒀으면 실제와 맞아야 한다 — 틀리면 카드 비율이 어긋난다 */
+    if (og.w && og.h) {
+      const real = await p.evaluate((u) => new Promise((res) => {
+        const i = new Image();
+        i.onload = () => res(`${i.naturalWidth}x${i.naturalHeight}`);
+        i.onerror = () => res('안 뜸');
+        i.src = u;
+      }), BASE + rel);
+      ok(real === `${og.w}x${og.h}`,
+        `${path} — 적어 둔 크기가 실제와 같다`, `적음 ${og.w}x${og.h} / 실제 ${real}`);
+    }
+  }
+  await p.close();
+}
+
 /* **아직 주소가 없는 것도 목록에는 선다** (2026-08-24). 캘린더와 트래커는 쪽지
    묶음에만 있어서 「만든 것 전부」를 보여주는 자리에서 통째로 빠져 있었다.
    다만 **누를 수 있으면 안 된다** — 없는 곳으로 가는 링크를 두지 않는 것이
