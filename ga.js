@@ -16,10 +16,8 @@
  * 손으로 확인할 때는 주소 끝에 `?gadebug`를 붙인다. 실제로 보내는 대신
  * 콘솔에 찍히므로, 어느 자리에서 무엇이 나가는지 로컬에서 그대로 볼 수 있다.
  *
- * Cloudflare Web Analytics 비콘도 같은 가드 아래에서 함께 붙인다 (CF_TOKEN).
- * 「대시보드에서 켜면 알아서 끼워 넣기」는 Pages 프로젝트 얘기라 여기엔 없다 — 이
- * 사이트는 Workers 정적 에셋이고 `*.workers.dev`는 Cloudflare가 관리하는 존도
- * 아니라, 호스트 이름을 직접 적어 만든 뒤 토큰을 받아 와야 한다 (README 「방문 통계」).
+ * **Cloudflare Web Analytics는 여기서 손을 뗐다** (2026-08-24). 아래 CF_TOKEN 참고 —
+ * 도메인이 Cloudflare 존이 되면서 대시보드가 알아서 비콘을 넣어 준다.
  *
  * 보내는 것 (이벤트 이름 · 부르는 자리)
  *   district_open   구역을 열었다            app.js openPanel
@@ -46,21 +44,26 @@
   /* GA4 측정 ID — 관리 → 데이터 스트림 → 웹 → 측정 ID (`G-`로 시작한다). */
   var ID = 'G-62X7QQW0GM';
 
-  /* Cloudflare Web Analytics 토큰 (16진수 32자).
-     Workers 정적 에셋에는 「Settings에서 켜면 알아서 끼워 넣기」가 없다 —
-     그건 Pages 프로젝트에만 있다. `*.workers.dev`는 Cloudflare가 관리하는
-     존(zone)도 아니라 Web Analytics 목록에 뜨지 않으므로, 호스트 이름을 직접
-     적고 **"which does not belong to Cloudflare websites"**를 골라 만든다.
-     그러면 비콘 스니펫과 토큰이 나오고, 그 토큰만 여기 적으면 된다.
-     비어 있으면 비콘을 부르지 않는다.
+  /* Cloudflare Web Analytics 토큰. **비워 뒀다 — 이제 손으로 넣지 않는다** (2026-08-24).
 
-     **도메인을 바꿔도 이 토큰은 그대로다.** 대시보드의 Web Analytics에서
-     그 사이트의 **Manage site → 호스트명만** 새 도메인으로 고치면 된다.
-     Cloudflare는 비콘이 보낸 호스트를 **뒤에서부터 맞춰 보므로**(postfix match),
-     `dada-town.com`으로 적어 두면 `www.dada-town.com`도 같은 토큰으로 함께 세어진다.
-     다만 뿌리가 다른 예전 주소(`*.workers.dev`)는 그 순간부터 안 세어진다 —
-     그쪽은 GA4가 계속 센다. */
-  var CF_TOKEN = 'ed38c88f57cb4fbf9c126f8ba5e69be5';
+     예전에는 여기에 토큰을 적어 비콘을 직접 붙였다. `*.workers.dev`가 Cloudflare가
+     관리하는 존(zone)이 아니라서, 호스트 이름을 직접 적고 **"which does not belong
+     to Cloudflare websites"**를 골라 토큰을 받아 오는 것이 유일한 길이었다.
+
+     **`dada-town.com`을 붙이면서 그 전제가 사라졌다.** 이 도메인은 존이므로
+     대시보드의 Web Analytics에 「Automatic setup」으로 저절로 올라오고,
+     Cloudflare가 지나가는 HTML에 비콘을 알아서 끼워 넣는다.
+     (여기 「Workers 정적 에셋에는 자동 삽입이 없다」고 적어 뒀던 것은 **틀린
+     말이었다** — 존이 아니라서 안 됐던 것이지 Workers라서 안 된 것이 아니었다.)
+
+     그대로 뒀으면 **한 페이지에서 비콘이 둘** 붙었다. 예전 토큰은 workers.dev
+     사이트의 것이라 Cloudflare가 호스트를 맞춰 보고 버리므로 숫자가 겹치지는
+     않지만, 버려질 요청을 방문자마다 하나씩 더 보내는 셈이었다.
+
+     되살릴 일이 생기면 이 값을 도로 적으면 된다 (토큰은 비밀이 아니다 —
+     비콘 스니펫에 그대로 박히는 값이라 Cloudflare 문서도 공개해 적는다):
+       예전 workers.dev 사이트의 토큰 = ed38c88f57cb4fbf9c126f8ba5e69be5 */
+  var CF_TOKEN = '';
 
   /* **통계를 켤 도메인.** 여기 없는 주소에서는 아무것도 수집하지 않는다 —
      개발하며 여는 localhost와 미리보기 주소가 숫자를 더럽히지 않게 하려는 것이다.
@@ -106,9 +109,13 @@
     };
   }
 
-  /* Cloudflare Web Analytics 비콘. GA와 겹쳐도 되지만 세는 값이 다르다 —
-     쿠키를 심지 않아 차단기에 덜 걸리므로 「몇 명이 왔나」는 이쪽이 정확하고,
-     「무엇을 눌렀나」는 커스텀 이벤트가 있는 GA만 안다. 여기도 HOSTS 안에서만. */
+  /* Cloudflare Web Analytics 비콘. **지금은 CF_TOKEN이 비어 있어 안 붙는다** —
+     존이 알아서 넣어 주므로 손으로 넣을 것이 없다. 코드는 남긴다: 존이 아닌
+     주소에 다시 걸 일이 생기면 토큰만 도로 적으면 된다.
+
+     GA와 겹쳐도 되지만 세는 값이 다르다 — 쿠키를 심지 않아 차단기에 덜 걸리므로
+     「몇 명이 왔나」는 이쪽이 정확하고, 「무엇을 눌렀나」는 커스텀 이벤트가 있는
+     GA만 안다. 그래서 자동 설정으로 옮긴 뒤에도 GA4는 그대로 둔다. */
   if (onHost && CF_TOKEN) {
     var b = document.createElement('script');
     b.type = 'module';                 // Cloudflare가 주는 스니펫 그대로

@@ -12,7 +12,7 @@
 
 ## 지금 상태
 
-**두 브랜치 모두 같은 자리.** 작업 트리 깨끗하고 `npm test` 230개 전부 통과.
+**두 브랜치 모두 같은 자리.** 작업 트리 깨끗하고 `npm test` 244개 전부 통과.
 손에 들고 있는 것 없음 — 아무 데서나 이어받아도 된다.
 
 **주소가 `dada-town.com`이 됐다** (2026-08-24). Cloudflare Registrar에서 산
@@ -20,6 +20,11 @@
 넷 — `services.json`의 `site.url`, 세 페이지의 `canonical`·`og:*`, `ga.js`의
 `HOSTS`, `wrangler.jsonc` 주석. 표는 README 「주소 — dada-town.com」에 있다.
 **`www.`는 아직 못 붙였다** (아래 「다음에 할 일」).
+
+**Cloudflare Web Analytics에서 손을 뗐다** (2026-08-24). 도메인이 존이 되면서
+대시보드에 「Automatic setup」으로 저절로 올라와, 손으로 넣던 비콘(`ga.js`의
+`CF_TOKEN`)은 할 일이 없어졌다 — 비웠다. **GA4는 그대로 둔다** (세는 것이 다르다).
+README 「방문 통계」 참고.
 
 **카톡 미리보기 그림을 갈았다** (2026-08-24). 지도만 걸려 있던 것을 이름 · 한 줄
 소개 · 지도가 한 장에 든 것으로 바꿨다 (다원님이 준 `OG.png` → `tools/cut_og.mjs`로
@@ -65,9 +70,18 @@
 ## 다음에 할 일
 
 **`www.dada-town.com`을 붙이는 것이 남았다.** apex(`dada-town.com`)는 Active인데
-www를 Custom Domain으로 넣으면 「No zones match」가 났다 (2026-08-24).
-`ga.js`의 `HOSTS`에는 미리 적어 뒀으므로 **붙는 순간 통계는 저절로 켜진다** —
-저장소 쪽에서 더 할 일은 없다. 안 붙어도 사이트는 멀쩡하다.
+www를 Custom Domain으로 넣으면 「No zones match」가 났다 (2026-08-24) —
+**계정을 잘못 보고 있어서였다.** 맞는 계정(Domains에 `dada-town.com`과 Workers에
+`dada-portfolio`가 같이 보이는 쪽)에서 다시 하면 된다.
+`ga.js`의 `HOSTS`에는 미리 적어 뒀고 Cloudflare 쪽은 존이 알아서 세므로,
+**저장소에서 더 할 일은 없다.** 안 붙어도 사이트는 멀쩡하다.
+
+**예전 주소(`*.workers.dev`) 정리는 며칠 뒤에 한다.** 새 주소가 자리 잡는 것을
+지켜본 뒤 차례대로:
+1. Workers → dada-portfolio → Settings → Domains & Routes에서 `workers.dev` 줄 **Disable**
+2. Web Analytics의 `dada-portfolio.stupidpoohh.workers.dev` 사이트 삭제
+   (**지우면 그 데이터도 사라진다** — 남길 것이 있으면 먼저 적어 둔다)
+3. `ga.js`의 `HOSTS`에서 그 줄 빼기 ← 이것만 저장소 일이다
 
 그 밖에는 **정해진 것 없음.** 다음 일은 다원님이 정한다. 고를 거리가 필요하면
 PLAN.md §10 「남은 일」을 본다.
