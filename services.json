@@ -122,7 +122,7 @@
       "building": {
         "src": "building-company.webp",
         "at": [
-          43.6,
+          45.2,
           68.3
         ],
         "w": 9.7
@@ -418,6 +418,20 @@
       }
     },
     {
+      "id": "everyday-ai",
+      "no": 20,
+      "name": "매일 AI 한장",
+      "district": "school",
+      "type": "app",
+      "url": "https://everyday-ai-school.com",
+      "description": "AI입문강의",
+      "date": "2026-07",
+      "icon": "🤖",
+      "status": "beta",
+      "needsReview": false,
+      "featured": 3
+    },
+    {
       "id": "grammar",
       "no": 1,
       "name": "고등영어문법",
@@ -455,20 +469,6 @@
       "icon": "🇨🇳",
       "status": "live",
       "needsReview": false
-    },
-    {
-      "id": "everyday-ai",
-      "no": 20,
-      "name": "매일 AI 한장",
-      "district": "school",
-      "type": "app",
-      "url": "https://everyday-ai-school.com",
-      "description": "AI입문강의",
-      "date": "2026-07",
-      "icon": "🤖",
-      "status": "beta",
-      "needsReview": false,
-      "featured": 3
     },
     {
       "id": "nangman-otter",
@@ -551,6 +551,19 @@
       "featured": 1
     },
     {
+      "id": "calendar",
+      "no": 29,
+      "name": "캘린더",
+      "district": "me",
+      "group": "매일 쓰는 것들",
+      "type": "app",
+      "description": "",
+      "date": "2026-05",
+      "icon": "🗓",
+      "status": "soon",
+      "needsReview": false
+    },
+    {
       "id": "planner",
       "no": 25,
       "name": "클리어 위크",
@@ -564,6 +577,19 @@
       "status": "live",
       "needsReview": false,
       "featured": 2
+    },
+    {
+      "id": "tracker",
+      "no": 30,
+      "name": "트래커",
+      "district": "me",
+      "group": "매일 쓰는 것들",
+      "type": "app",
+      "description": "",
+      "date": "2026-05",
+      "icon": "📈",
+      "status": "soon",
+      "needsReview": false
     },
     {
       "id": "house-theme",

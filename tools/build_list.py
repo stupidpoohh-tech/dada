@@ -21,7 +21,7 @@ data = json.loads((ROOT / 'services.json').read_text(encoding='utf-8'))
 
 SITE = data['site']['url'].rstrip('/')
 TYPE_LABEL = {'app': '앱', 'doc': '문서', 'video': '영상', 'external': '외부'}
-STATUS_LABEL = {'beta': '베타', 'demo': 'demo'}
+STATUS_LABEL = {'beta': '베타', 'demo': 'demo', 'soon': '준비 중'}
 
 e = html.escape
 
@@ -42,9 +42,20 @@ def month_label(s):
     return f'{s[:4]}년 {int(s[5:7])}월'
 
 
+def is_live(item):
+    """갈 곳이 있는가. **없으면 링크로 만들지 않는다.**
+
+    href()는 갈 곳이 없을 때 `/`를 내는데, 그러면 「준비 중」인 것을 눌렀을 때
+    마을로 튕겨 나간다 — 없는 곳을 가리키는 링크를 두지 않는다는 규칙(app.js와
+    같다)이 여기에도 걸린다. 구역 목록과 「만든 순서」 둘 다 이것을 본다.
+    """
+    return bool(item.get('url') or item.get('route') or item.get('open') == 'book')
+
+
 def item_html(item):
     ext = item['type'] in ('app', 'external', 'video')   # 영상도 남의 집이라 새 탭
     attrs = ' target="_blank" rel="noopener"' if ext else ''
+    live = is_live(item)
     badges = [f'<span class="badge">{e(TYPE_LABEL.get(item["type"], item["type"]))}</span>']
     if item.get('status') in STATUS_LABEL:
         badges.append(f'<span class="badge {item["status"]}">{e(STATUS_LABEL[item["status"]])}</span>')
@@ -53,10 +64,13 @@ def item_html(item):
                       f'{e(short_date(item["date"]))}</time>')
     # 설명에 줄바꿈을 넣으면 그대로 줄이 나뉜다 (지금 쓰는 항목은 없다)
     desc = '<br>'.join(e(line) for line in item['description'].split('\n'))
+    title = (f'<a href="{e(href(item))}"{attrs}>{e(item["icon"])} {e(item["name"])}</a>'
+             if live else f'{e(item["icon"])} {e(item["name"])}')
+    # 설명이 빈 항목은 빈 문단을 남기지 않는다 — 아직 한 줄을 못 받은 것뿐이다
+    body = f'\n        <p>{desc}</p>' if desc else ''
     return f'''      <article class="doc-item">
-        <h3><a href="{e(href(item))}"{attrs}>{e(item['icon'])} {e(item['name'])}</a>
-          {' '.join(badges)}</h3>
-        <p>{desc}</p>
+        <h3>{title}
+          {' '.join(badges)}</h3>{body}
       </article>'''
 
 
@@ -78,11 +92,17 @@ dated = sorted((i for i in data['items'] if i.get('date')),
                key=lambda i: i['date'], reverse=True)
 blocks = []
 for month, group in itertools.groupby(dated, key=lambda i: i['date']):
+    # 구역 목록과 같은 규칙이다 — 주소가 없으면 링크로 만들지 않는다.
+    # 여기를 빼먹어서 「준비 중」인 것이 `href="/"`로 새 탭에 마을을 여는
+    # 죽은 링크가 됐었다. 살아 있는지는 item_html과 똑같이 판정한다
     lis = '\n'.join(
-        '        <li><a href="{}"{}>{} {}</a></li>'.format(
+        ('        <li><a href="{}"{}>{} {}</a></li>'.format(
             e(href(i)),
             ' target="_blank" rel="noopener"' if i['type'] in ('app', 'external', 'video') else '',
             e(i['icon']), e(i['name']))
+         if is_live(i) else
+         '        <li>{} {} <span class="badge soon">{}</span></li>'.format(
+             e(i['icon']), e(i['name']), e(STATUS_LABEL['soon'])))
         for i in group)
     blocks.append(f'      <h3 class="doc-sub">{e(month_label(month))}</h3>\n'
                   f'      <ul class="doc-list">\n{lis}\n      </ul>')

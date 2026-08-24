@@ -106,10 +106,15 @@ if (track && panels.length > 1) {
 
   let at = -1;
 
-  /* **마지막 화면에서 한 번 더 넘기면 문서가 닫히고 마을로 돌아간다.**
+  /* **양 끝에서 한 번 더 넘기면 문서가 닫히고 마을로 돌아간다.**
      끝에 닿았는데 아무 일도 안 일어나면 「여기서 뭘 해야 하나」가 남는다 —
      읽던 사람이 스스로 뒤로 가기를 찾아야 했다. 마지막 장의 「다시 돌아온다」가
-     그 문의 표시이고, 한 번 더 미는 동작이 그 문을 여는 것이다. */
+     그 문의 표시이고, 한 번 더 미는 동작이 그 문을 여는 것이다.
+
+     **첫 화면의 왼쪽도 같은 문이다**(2026-08-24). 표지 앞에는 마을밖에 없는데
+     왼쪽 화살표만 흐리게 죽어 있어서, 되돌아 나가려면 왼쪽 위 고리를 따로
+     찾아야 했다. 아홉 장이 양쪽으로 열린 복도가 되는 셈이다 — 어느 끝으로
+     밀어도 마을로 나온다. */
   const home = () => { location.href = '/'; };
 
   /** 트랙을 제자리에 다시 앉히기만 한다. **화면을 바꾸는 것과 갈라 둔다** —
@@ -127,7 +132,13 @@ if (track && panels.length > 1) {
       if (at === panels.length - 1 && Date.now() - arrived > 400) home();
       return;
     }
-    const to = Math.max(0, Math.min(panels.length - 1, i));
+    /* 첫 화면에서 왼쪽으로 가는 것도 같다. `at`이 아직 -1인 첫 그리기에서는
+       아무 일도 일어나지 않아야 해서 `at === 0`을 함께 본다 */
+    if (i < 0) {
+      if (at === 0 && Date.now() - arrived > 400) home();
+      return;
+    }
+    const to = Math.min(panels.length - 1, i);
     if (to === at) return;
     at = to;
     arrived = Date.now();
@@ -144,9 +155,13 @@ if (track && panels.length > 1) {
       else d.removeAttribute('aria-current');
     });
     count.textContent = `${at + 1} / ${panels.length}`;
-    prev.disabled = at === 0;
-    /* 마지막에서도 오른쪽은 살아 있다 — 다만 가는 곳이 다음 화면이 아니라 마을이다 */
+    /* **양 끝에서도 화살표는 살아 있다** — 다만 가는 곳이 옆 화면이 아니라 마을이다.
+       빨갛게 물드는 것(`--out`)이 「이 문은 밖으로 난다」는 표시다 */
+    const first = at === 0;
     const last = at === panels.length - 1;
+    prev.disabled = false;
+    prev.classList.toggle('vw-arrow--out', first);
+    prev.setAttribute('aria-label', first ? '문서를 닫고 마을로' : '이전 화면');
     next.disabled = false;
     next.classList.toggle('vw-arrow--out', last);
     next.setAttribute('aria-label', last ? '문서를 닫고 마을로' : '다음 화면');
@@ -208,8 +223,8 @@ if (track && panels.length > 1) {
 
   /* 주소에 화면 이름표가 붙어 온 것이면 그 화면부터 편다.
      처음에는 초점을 옮기지 않는다 — 들어오자마자 화면이 스스로 움직이면 놀란다 */
-  const first = Math.max(0, ids.indexOf(location.hash.slice(1)));
-  go(first, { push: false, focus: false });
+  const startAt = Math.max(0, ids.indexOf(location.hash.slice(1)));
+  go(startAt, { push: false, focus: false });
 
   /* **두 손가락으로 벌렸다 놓으면 화면이 어긋난다.** 확대하는 동안 브라우저는
      보이는 창(visual viewport)을 따로 움직이는데, 다시 오므려도 그 어긋남이 남아

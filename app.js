@@ -36,7 +36,7 @@
   ];
 
   const TYPE_LABEL = { app: '앱', doc: '문서', video: '영상', external: '외부' };
-  const STATUS_LABEL = { beta: '베타', demo: 'demo' };
+  const STATUS_LABEL = { beta: '베타', demo: 'demo', soon: '준비 중' };
 
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => {
@@ -427,6 +427,23 @@
     $('hint').classList.add('gone');
   }
 
+  /** 목록·모달·구역 패널에 서는 「준비 중」 카드. 위 `card()`와 같은 것을 담되
+   *  누를 수 없는 상자다. 아래 `soonCard()`는 쪽지 묶음이 쓰는 것으로,
+   *  거기 적히는 것은 이름과 시기뿐이라 설명 줄이 없다. */
+  function soonItemCard(item) {
+    const box = el('div', 'card card--soon');
+    box.appendChild(el('span', 'card-ico', item.icon || '📦'));
+    const body = el('div', 'card-body');
+    if (item.date) body.appendChild(el('div', 'card-date', shortDate(item.date)));
+    const name = el('div', 'card-name');
+    name.append(item.name);
+    name.appendChild(el('span', 'badge soon', STATUS_LABEL.soon));
+    body.appendChild(name);
+    if (item.description) body.appendChild(el('div', 'card-desc', item.description));
+    box.appendChild(body);
+    return box;
+  }
+
   /** 아직 주소가 없는 항목. 누를 수 없는 카드로 둔다 — 죽은 링크보다 낫다.
    *  만든 시기는 알면 적는다 — 만들어는 뒀고 아직 안 걸었다는 뜻이 된다. */
   function soonCard(entry) {
@@ -721,6 +738,14 @@
   /* ── 카드 ────────────────────────────────── */
 
   function card(item) {
+    /* **주소가 없는 항목은 링크로 만들지 않는다.** 쪽지 묶음에서는 이미 그렇게
+       하고 있었는데(soonCard), 목록·모달·구역 패널에서는 `href="#"`가 물려
+       **눌리기는 하는데 페이지 맨 위로만 튀는 카드**가 됐다. 「준비 중」인 것을
+       items에 올리기로 하면서(2026-08-24) 여기도 같은 규칙으로 맞춘다 —
+       카드의 겉모습과 안에 담기는 것은 그대로 두고 태그만 갈린다 */
+    const open = item.url || item.route || item.open === 'book' || item.open === 'song';
+    if (!open) return soonItemCard(item);
+
     const a = el('a', 'card');
     a.href = item.url || item.route || '#';
     // 마을 밖으로 나가는 것은 새 탭으로 연다 — 영상도 그렇다(릴스·유튜브 모두

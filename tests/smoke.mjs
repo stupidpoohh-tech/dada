@@ -680,6 +680,82 @@ if (head('게임 안내서 — 한 면이 통째로 들어간다')) {
   }
 }
 
+/* **아직 주소가 없는 것도 목록에는 선다** (2026-08-24). 캘린더와 트래커는 쪽지
+   묶음에만 있어서 「만든 것 전부」를 보여주는 자리에서 통째로 빠져 있었다.
+   다만 **누를 수 있으면 안 된다** — 없는 곳으로 가는 링크를 두지 않는 것이
+   이 저장소의 규칙이고, 목록·모달·구역 패널은 그동안 `href="#"`를 물려
+   눌리기는 하는데 맨 위로만 튀는 카드를 만들고 있었다. */
+if (head('준비 중인 것도 목록에 선다')) {
+  const p = await desktop();
+  await p.goto(BASE + '/list.html', { waitUntil: 'load' });
+  const data = await p.evaluate(() => fetch('/services.json').then((r) => r.json()));
+  const soon = data.items.filter((i) => i.status === 'soon');
+  ok(soon.length > 0, `준비 중인 항목이 데이터에 있다 (${soon.length})`);
+
+  /* JS 없이 읽는 사람에게도 보여야 하므로 소스 HTML을 본다 */
+  const src = await p.content();
+  const gone = soon.filter((i) => !src.includes(i.name));
+  ok(gone.length === 0, '준비 중인 것도 정적 목록에 이름이 박혀 있다', gone.map((i) => i.id).join(', '));
+
+  /* **이름을 부분 문자열로 찾지 않는다** — 「캘린더」는 「잔고캘린더」에도 들어 있고
+     「클리어 위크」의 설명에도 나온다. 표제가 `아이콘 이름`으로 시작하는 것만 고른다 */
+  const heads = soon.map((i) => `${i.icon} ${i.name}`);
+  const found = await p.evaluate((hs) => [...document.querySelectorAll('.doc-item')]
+    .filter((n) => hs.some((h) => n.querySelector('h3').textContent.trim().startsWith(h)))
+    .map((n) => ({ head: n.querySelector('h3').textContent.trim().split('\n')[0],
+                   link: !!n.querySelector('h3 a'),
+                   soon: !!n.querySelector('.badge.soon') })), heads);
+  ok(found.length === soon.length,
+    `정적 목록에 준비 중인 것이 다 있다 (${found.length} / ${soon.length})`);
+  /* 링크가 되면 안 된다 — href()는 갈 곳이 없을 때 `/`를 내므로 마을로 튕긴다 */
+  ok(found.every((f) => !f.link), '준비 중인 것은 링크가 아니다',
+    found.filter((f) => f.link).map((f) => f.head).join(', '));
+  ok(found.every((f) => f.soon), '준비 중이라는 표가 붙어 있다',
+    found.filter((f) => !f.soon).map((f) => f.head).join(', '));
+
+  /* 「만든 순서」 절도 같은 규칙이다. 여기를 빼먹어서 `href="/"`가 새 탭에
+     마을을 여는 죽은 링크로 한 번 나갔다 — 주소가 `/`라 「링크가 살아 있는가」
+     검사에는 안 걸렸다 */
+  const timeLinks = await p.evaluate((names) => [...document.querySelectorAll('.doc-list li')]
+    .filter((n) => names.some((nm) => n.textContent.includes(nm)) && n.querySelector('a'))
+    .map((n) => n.textContent.trim()), soon.map((i) => `${i.icon} ${i.name}`));
+  ok(timeLinks.length === 0, '만든 순서 절에서도 링크가 아니다', timeLinks.join(', '));
+
+  /* 지도 쪽 모달에서도 같아야 한다 — 같은 데이터를 그리는 다른 코드라 따로 본다 */
+  await p.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(600);
+  await p.click('#openList');
+  await p.waitForTimeout(400);
+  const modal = await p.evaluate((names) => {
+    /* 카드 이름은 첫 텍스트 노드가 이름이고 그 뒤에 표가 붙는다 — 그것만 견준다 */
+    const hit = [...document.querySelectorAll('#modalBody .card')].filter((c) =>
+      names.includes((c.querySelector('.card-name')?.firstChild?.textContent || '').trim()));
+    return { n: hit.length, links: hit.filter((c) => c.tagName === 'A').length };
+  }, soon.map((i) => i.name));
+  ok(modal.n === soon.length, `모달 목록에도 다 있다 (${modal.n} / ${soon.length})`);
+  ok(modal.links === 0, '모달에서도 누를 수 없다', String(modal.links));
+  await p.close();
+}
+
+/* 학교 팝오버와 목록의 차례는 `items` 배열이 그대로 정한다 — 정렬하지 않는다.
+   맨 위에 무엇을 둘지는 쓰는 사람이 고르는 것이라, 그 뜻이 데이터에 남아 있는지 본다 */
+if (head('학교는 매일 AI 한장이 먼저다')) {
+  const p = await desktop();
+  await p.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(600);
+  const data = await p.evaluate(() => fetch('/services.json').then((r) => r.json()));
+  const school = data.items.filter((i) => i.district === 'school');
+  ok(school[0] && school[0].id === 'everyday-ai',
+    '데이터에서 학교의 첫 항목이다', school.map((i) => i.id).join(', '));
+
+  await p.click('.spot[data-district="school"]');
+  await p.waitForTimeout(400);
+  const names = await p.evaluate(() =>
+    [...document.querySelectorAll('#panel .card-name')].map((n) => n.firstChild.textContent.trim()));
+  ok(names[0] === '매일 AI 한장', '팝오버에서도 맨 위에 선다', names.join(', '));
+  await p.close();
+}
+
 /* ── 11. 카페 앞 까마귀 Croww ─────────────────────────────
    **물건마다 문이 하나씩**이다 — 카페 건물을 누르면 항목이 다 나오고, 카페 앞에 선
    까마귀를 누르면 PlayGrown 기록만 열린다. 문이 갈려도 어수선하지 않은 이유는
@@ -1530,6 +1606,57 @@ if (head('케이스 스터디 — 실수로 안 나가진다')) {
   await p.waitForTimeout(400);
   ok(new URL(p.url()).pathname === CASE,
     '마지막에 닿자마자 밀면 안 나간다', p.url());
+
+  /* 첫 화면의 왼쪽도 같은 문이라 같은 빗장이 걸려 있어야 한다 */
+  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[0].click());
+  await p.evaluate(() => document.querySelector('.vw-arrow--prev').click());
+  await p.waitForTimeout(400);
+  ok(new URL(p.url()).pathname === CASE,
+    '첫 화면에 닿자마자 밀어도 안 나간다', p.url());
+  await p.close();
+}
+
+/* **아홉 장은 양쪽으로 열린 복도다** (2026-08-24). 마지막에서 한 번 더 밀면
+   마을로 나가는 것은 처음부터 그랬는데, 첫 화면의 왼쪽만 흐리게 죽어 있어서
+   되돌아 나가려면 왼쪽 위 고리를 따로 찾아야 했다. 이제 어느 끝으로 밀어도 나온다.
+
+   손가락 방향이 헷갈리기 쉬워 여기 적어 둔다 — **첫 화면에서 나가는 것은
+   「오른쪽으로 끄는」 동작**이다(화면이 오른쪽으로 밀리며 왼쪽 것이 나오는 방향).
+   화살표로는 왼쪽(←), 키보드로는 ArrowLeft다. */
+if (head('케이스 스터디 — 양 끝이 다 문이다')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(600);
+
+  const look = () => p.evaluate(() => {
+    const a = document.querySelector('.vw-arrow--prev');
+    const z = document.querySelector('.vw-arrow--next');
+    return { at: document.querySelector('.vw-count').textContent.trim(),
+      prev: { off: a.disabled, out: a.classList.contains('vw-arrow--out'),
+              label: a.getAttribute('aria-label') },
+      next: { off: z.disabled, out: z.classList.contains('vw-arrow--out'),
+              label: z.getAttribute('aria-label') } };
+  });
+
+  let s = await look();
+  ok(!s.prev.off && s.prev.out && s.prev.label === '문서를 닫고 마을로',
+    '첫 화면의 왼쪽은 살아 있고 밖으로 난 문으로 보인다', JSON.stringify(s.prev));
+  ok(!s.next.out && s.next.label === '다음 화면',
+    '같은 화면에서 오른쪽은 평범한 다음 화면이다', JSON.stringify(s.next));
+
+  /* 가운데 화면에서는 양쪽 다 평범해야 한다 — 아무 데서나 나가지면 그것대로 사고다 */
+  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[4].click());
+  await p.waitForTimeout(300);
+  s = await look();
+  ok(!s.prev.out && !s.next.out && s.prev.label === '이전 화면',
+    '가운데 화면에서는 양쪽 다 그냥 화살표다', JSON.stringify(s));
+
+  /* 잠깐 머문 뒤 왼쪽으로 밀면 마을로 나간다 */
+  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[0].click());
+  await p.waitForTimeout(600);
+  await p.evaluate(() => document.querySelector('.vw-arrow--prev').click());
+  await p.waitForTimeout(600);
+  ok(new URL(p.url()).pathname === '/', '첫 화면에서 왼쪽으로 밀면 마을로 나간다', p.url());
   await p.close();
 }
 
