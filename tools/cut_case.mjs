@@ -6,7 +6,7 @@
  * 편집기다** — 잘라 내기(drawImage 원본 사각형)와 줄이기와 JPEG 인코딩이 다 된다.
  * 도구 하나 때문에 파이썬 의존을 새로 만들지 않는다.
  *
- *   node tools/cut_case.mjs --grid 4.brand-board.png   %눈금을 얹어 찍는다 (좌표 잴 때)
+ *   node tools/cut_case.mjs --grid 4.brand-board3.png  %눈금을 얹어 찍는다 (좌표 잴 때)
  *   node tools/cut_case.mjs                            아래 CUTS를 전부 뽑는다
  *
  * **두 벌로 뽑는 이유는 첫 로드다.** 격자에 깔리는 것은 긴 변 480px 썸네일이고,
@@ -45,7 +45,12 @@ const CUTS = [
   { src: '1.column.png', name: 'column', long: 1600, q: 0.9, thumb: 0,
     bands: [[0, 0, 100, 61], [0, 88.2, 100, 10]] },
   { src: '2.positioning-board.png', name: 'positioning', at: [0, 0, 100, 100], long: 1600, q: 0.9, thumb: 0 },
-  { src: '4.brand-board.png', name: 'brand-board', at: [0, 0, 100, 100], long: 1600, q: 0.9, thumb: 0 },
+  /* **`3`은 판 번호다.** 말풍선 글자 넷이 틀려서 다원님이 고쳐 다시 준 것이다
+     (2026-08-24) — 선배텡→스팀게임, 친쿡취→3D펜, 계컹→캐릭, 보드게임 다시 씀.
+     이름을 그대로 두고 덮어쓰지 않은 것은 **어느 판으로 뽑았는지가 남게 하려는 것**이다.
+     같은 이름으로 덮으면 「고친 것이 반영됐나」를 물을 때 견줄 것이 없어진다 —
+     실제로 한 번, 이름만 바꾼 같은 파일이 올라와 한참 헤맸다. */
+  { src: '4.brand-board3.png', name: 'brand-board', at: [0, 0, 100, 100], long: 1600, q: 0.9, thumb: 0 },
 
   /* 맵 — 조감도 한 장. 존 라벨은 이미지가 아니라 HTML로 얹는다.
      **투명을 살린 PNG는 1.5MB였다.** 대신 바탕을 깔고 JPEG로 뽑으면 1/10이 된다.
