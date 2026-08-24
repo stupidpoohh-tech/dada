@@ -605,13 +605,15 @@ http://localhost:8000/game/?gadebug
 `/list.html`만 조용해진다 — 크롤러가 실제로 읽는 페이지라 오히려 아까운 자리다.
 `npm test`가 세 곳을 다 지킨다.
 
-### Cloudflare Web Analytics — 「호스트 이름을 직접 적는」 길로 만든다
+### 존이 아닌 주소에 걸어야 할 때 — 「호스트 이름을 직접 적는」 길
 
-**Workers 정적 에셋에는 「Settings에서 켜면 알아서 끼워 넣기」가 없다.** 그 토글은
-Pages 프로젝트에만 있다. 게다가 `*.workers.dev`는 Cloudflare가 관리하는 존(zone)이
-아니라 Web Analytics의 사이트 목록에도 안 뜬다 (거기 뜨는 건 이 계정으로 산 도메인뿐).
+**지금은 이 길로 안 간다** (2026-08-24). `dada-town.com`이 Cloudflare 존이라
+대시보드가 알아서 비콘을 넣어 주기 때문이다 — 아래 「방문 통계」를 먼저 본다.
+여기 남긴 것은 **존이 아닌 주소**(`*.workers.dev`, 남의 호스팅 등)에 다시 걸
+일이 생겼을 때의 길이다.
 
-그래서 이렇게 만든다.
+그런 주소는 Web Analytics의 사이트 목록에 안 뜬다 (거기 뜨는 건 이 계정의
+존뿐이다). 그래서 이렇게 만든다.
 
 1. Cloudflare 대시보드 → 왼쪽 **Analytics → Web analytics** → **Add a site**
 2. 호스트 이름 칸에 `dada-portfolio.stupidpoohh.workers.dev`를 **직접 타이핑**한다
@@ -941,9 +943,10 @@ DNS 레코드와 인증서는 Cloudflare가 만든다. **`wrangler.jsonc`에 `ro
 | `ga.js`의 `HOSTS` | **여기 없는 주소에서는 통계가 통째로 안 켜진다** |
 | `wrangler.jsonc`의 주석 | 어디서 관리하는지를 적어 둔 자리 |
 
-예전 주소(`dada-portfolio.stupidpoohh.workers.dev`)도 아직 살아 있고 `HOSTS`에
-남겨 뒀다 — 그리로 들어오는 사람도 세어야 「옮겨 갔는가」를 알 수 있다.
-정리하려면 같은 자리에서 `workers.dev` 줄을 **Disable** 한다.
+**예전 주소(`dada-portfolio.stupidpoohh.workers.dev`)는 껐다** (2026-08-24) —
+같은 자리에서 `workers.dev` 줄을 Disable 했고, Web Analytics의 그 사이트도 지웠다.
+`ga.js`의 `HOSTS`에서도 뺐다. 죽은 주소를 목록에 두면 「지금 살아 있는 주소」로
+읽히기 때문이다.
 
 ### 미리보기 그림 (og:image)
 
@@ -966,6 +969,10 @@ JPEG로 다시 담기만 해도 1/7이 된다.
 `og:image:width`·`height`를 적어 두면 미리보기를 만드는 쪽이 자리를 먼저 잡을 수
 있다. **적은 값이 실제와 다르면 카드 비율이 어긋나므로** 회귀 테스트가 둘을
 견준다(「미리보기 그림」) — 이 값들은 화면에 안 보이는 것이라 깨져도 티가 안 난다.
+
+**`og:image`와 `og:url`은 반드시 절대 주소여야 한다.** 상대 경로로 두면 카카오톡·
+링크드인 같은 크롤러가 그림을 못 찾아 미리보기가 아예 안 생긴다. 이것도 회귀
+테스트가 본다.
 
 ### 방문 통계 — 이제 둘이 아니라 하나 반이다
 
@@ -1028,13 +1035,5 @@ Cloudflare 쪽이 정확하고, 「무엇을 눌렀나」(구역을 열었다 ·
 
 회귀 테스트가 셋 다 지킨다.
 
-### 링크 미리보기(OG) 주의
-
-`og:image`·`og:url`은 **반드시 절대 URL**이어야 한다. 상대 경로로 두면 링크드인·카카오톡 같은
-크롤러가 이미지를 못 찾아 미리보기가 생기지 않는다. 도메인을 바꾸면 아래 두 곳을 함께 고쳐야 한다.
-
-- `index.html` — `og:url`, `og:image`
-- `services.json`의 `site.url` (기준값 기록용)
-
-`*.workers.dev` 도메인은 링크 검사기에서 걸러지는 경우가 있다. 공유용으로는 커스텀 도메인을 붙이는 편이
-안전하다 (Cloudflare 대시보드 → 프로젝트 → Settings → Domains & Routes → Add custom domain).
+*(예전에 여기 있던 「링크 미리보기(OG) 주의」는 위의 「미리보기 그림」과
+「주소 — dada-town.com」으로 옮겼다. 같은 이야기를 두 군데서 읽게 두지 않는다.)*
