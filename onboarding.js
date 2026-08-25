@@ -403,6 +403,7 @@
    *  돌아와 그 자리에서 이어 붙일 수도 있다(boot). 뒤쪽에는 다원도 덮개도 없다. */
   function beginTour(from) {
     {
+      clearResume();          // 여기까지 왔으면 이어 붙인 것이다 — 한 번만 잇는다
       document.body.classList.add('dada-touring');
       phase = 'tour';
       at = 0;
@@ -557,7 +558,7 @@
     const map = document.getElementById('map');
     if (onMapClick) { map.removeEventListener('click', onMapClick, true); onMapClick = null; }
     // 투어를 접었으면 「돌아올 자리」도 지운다 — 안 지우면 다음에 들어올 때 되살아난다
-    try { sessionStorage.removeItem(RESUME); } catch (e) { /* 시크릿 창 */ }
+    clearResume();
     dims.forEach((d) => d.remove()); dims = [];
     if (ring) { ring.remove(); ring = null; }
     if (card) { card.remove(); card = null; }
@@ -613,6 +614,20 @@
     addEventListener('resize', relayout);
     addEventListener('scroll', relayout, { passive: true });
 
+    /* **뒤로 가기가 페이지를 통째로 되살릴 때**(bfcache)는 스크립트가 다시 돌지
+       않는다 — boot()도 안 불린다. 그때 화면에 투어가 없는데 「돌아올 자리」만
+       남아 있으면, 여기서 이어 붙인다. 되살아난 화면에 투어가 이미 있으면
+       그것이 곧 이어진 것이므로 자리만 지운다. */
+    addEventListener('pageshow', (e) => {
+      if (!e.persisted || !data) return;
+      const back = resumeAt();
+      if (back === null) return;
+      if (phase === 'tour') { clearResume(); return; }
+      if (!stopsReady()) { clearResume(); return; }
+      if (!layer) build(false);
+      beginTour(back);
+    });
+
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (phase === 'tour') endTour('esc');
@@ -630,17 +645,21 @@
     });
   }
 
-  /** 떠나기 전에 적어 둔 투어 자리를 **꺼내면서 지운다.** 지우지 않으면 그다음
-   *  방문마다 투어가 되살아난다. 값이 없거나 이상하면 `null`이다. */
+  /** 떠나기 전에 적어 둔 투어 자리를 읽는다. 값이 없거나 이상하면 `null`.
+   *
+   *  **읽으면서 지우지 않는다.** 한때 그랬는데, 읽고 나서 「그런데 문이 하나도
+   *  안 그려져 있네」로 되돌아가는 길(stopsReady가 false)이 있어서 그때 자리가
+   *  조용히 날아갔다 — 돌아왔는데 투어가 없고 인사가 다시 나오는 꼴이다.
+   *  **정말 이어 붙인 뒤에** 지운다(clearResume). */
   function resumeAt() {
     let v = null;
-    try {
-      v = sessionStorage.getItem(RESUME);
-      sessionStorage.removeItem(RESUME);
-    } catch (e) { /* 시크릿 창 */ }
+    try { v = sessionStorage.getItem(RESUME); } catch (e) { /* 시크릿 창 */ }
     const n = v === null ? null : parseInt(v, 10);
     return Number.isInteger(n) && n >= 0 ? n : null;
   }
+  const clearResume = () => {
+    try { sessionStorage.removeItem(RESUME); } catch (e) { /* 시크릿 창 */ }
+  };
 
   function boot(d) {
     if (phase !== 'off' || !d) return;
@@ -650,6 +669,7 @@
        투어를 고른 사람에게 처음부터 다시 인사하면, 안내가 아니라 벽이 된다. */
     const back = resumeAt();
     if (back !== null && stopsReady()) { build(false); beginTour(back); return; }
+    if (back !== null) clearResume();   // 이어 붙일 수 없는 자리였다 — 남겨 두면 계속 걸린다
 
     if (!wanted()) return;
     build(true);

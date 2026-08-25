@@ -2155,7 +2155,32 @@ if (head('투어가이드 — 보고 돌아오면 잇는다')) {
   ok(await p.evaluate(() => sessionStorage.getItem('dada.tourAt')) === '1',
     '떠나면서 몇 번째였는지 적어 둔다');
 
-  // 뒤로가기로 돌아온다 — 「돌아가기」 링크도 케이스 스터디 끝도 같은 `/`다
+  /* **케이스 스터디에서 마을로 나오는 문이 셋이다.** 왼쪽 위 「← 마을 지도로
+     돌아가기」(`.doc-back`, `<a href="/">`), 양 끝에서 한 번 더 미는 화살표
+     (`location.href='/'`), 그리고 브라우저 뒤로가기. **셋 다 같아야 한다** —
+     하나만 이어지고 다른 하나는 안 이어진다는 말을 들었다(2026-08-25).
+     여기서는 셋을 다 지나간다. */
+  await p.click('.doc-back a');
+  await p.waitForSelector('.onb-tour', { timeout: 5000 });
+  ok(await p.textContent('.onb-count') === '2 / 3',
+    '「마을 지도로 돌아가기」로 나와도 이어진다');
+  ok(await p.locator('.onb-char').count() === 0, '그때도 다시 인사하지 않는다');
+
+  // 다시 들어갔다가, 이번에는 화살표로 (표지에서 왼쪽으로 한 번 더 밀면 마을이다)
+  await Promise.all([
+    p.waitForURL('**/case/playgrown.html*', { timeout: 6000 }),
+    p.click('.onb-tour-act .onb-btn.go'),
+  ]);
+  await p.waitForTimeout(700);                 // 화살표는 400ms 머문 뒤에야 문이 된다
+  await p.evaluate(() => { location.href = '/'; });
+  await p.waitForSelector('.onb-tour', { timeout: 5000 });
+  ok(await p.textContent('.onb-count') === '2 / 3', '화살표로 나와도 이어진다');
+
+  // 마지막으로 뒤로가기 — 페이지가 통째로 되살아나도(bfcache) 같아야 한다
+  await Promise.all([
+    p.waitForURL('**/case/playgrown.html*', { timeout: 6000 }),
+    p.click('.onb-tour-act .onb-btn.go'),
+  ]);
   await p.goBack({ waitUntil: 'networkidle' });
   await p.waitForSelector('.onb-tour', { timeout: 5000 });
   const back = await p.evaluate(() => ({
