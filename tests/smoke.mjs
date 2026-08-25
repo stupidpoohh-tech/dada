@@ -61,6 +61,25 @@ const watch = async (p) => {
   });
   return p;
 };
+/** 걸음새를 잰다 — **보폭이 몸폭의 몇 배인가.**
+ *
+ *  이것이 이 안내에서 제일 잘 깨지는 값이다. 다원이 가는 거리는 화면마다 두 배
+ *  넘게 다른데(폰 200px · 1440px 데스크톱 600px), 걷는 시간과 걸음 박자를 못 박아
+ *  두면 넓은 화면에서 한 주기에 몸폭의 두세 배씩 나아간다 — 걷는 게 아니라
+ *  「슝 날아가면서 통통거리는」 것이 된다(2026-08-25에 다원님이 잡았다).
+ *
+ *  그래서 **시간(초)이 아니라 이 비율을 못 박는다.** 화면 크기가 바뀌어도,
+ *  나중에 SPEED·STRIDE를 손봐도, 이 비율만 지켜지면 걷는 것으로 보인다.
+ *  출발점은 나중에 물어서는 못 재므로 `__onbFrom`(붙는 순간의 오른쪽 끝)을 쓴다. */
+const gait = (p) => p.evaluate(() => {
+  const c = document.querySelector('.onb-char');
+  const b = c.getBoundingClientRect();
+  const dur = parseFloat(getComputedStyle(c).transitionDuration);
+  const pace = parseFloat(c.style.getPropertyValue('--onb-step')) / 1000;
+  const dist = (b.left + b.width / 2) - (window.__onbFrom - b.width / 2);
+  return { dur, pace, w: b.width, dist, stride: (dist / dur) * pace / b.width };
+});
+
 /** 안내를 끄지 않은 페이지 — 안내를 실제로 보는 유일한 통로다.
  *
  *  **다원이 어디서 출발했는지는 나중에 물어서는 못 안다.** 걸어 들어오는 데
@@ -1839,11 +1858,14 @@ if (head('첫 방문 안내')) {
   });
   ok(inX.left > inX.mapLeft && inX.left < inX.mapRight, '걸어 들어와 마을 안(전경)에 선다',
     `left=${Math.round(inX.left)} map=${Math.round(inX.mapLeft)}~${Math.round(inX.mapRight)}`);
-  ok(inX.dur === '1.5s', '걸어 들어오는 데 1.5초를 쓴다', inX.dur);
   /* **뒤뚱거림이 없으면 걷는 게 아니라 미끄러지는 것이다.** 실제로 한 번
      그렇게 만들어 「계속 슝 나와」를 들었다(2026-08-25). 걸음이 걸려 있는지는
-     붙는 순간에 적어 둔다 — 1.5초짜리라 나중에 물으면 이미 끝나 있다. */
+     붙는 순간에 적어 둔다 — 나중에 물으면 이미 끝나 있다. */
   ok(await p.evaluate(() => window.__onbWalk) === 'onb-step', '걸으면서 뒤뚱거린다');
+  const pc = await gait(p);
+  ok(pc.stride > .5 && pc.stride < .8, '보폭이 몸폭의 0.6배쯤이다 (걷는 것으로 보인다)',
+    `${pc.stride.toFixed(2)}배 — ${Math.round(pc.dist)}px를 ${pc.dur}초에, 걸음 ${pc.pace}초`);
+  ok(pc.dur >= 1.5 && pc.dur <= 2.2, '가는 시간은 1.5~2.2초 안이다', `${pc.dur}초`);
 
   /* **도착했다고 목석이 되지 않는다.** 예전에는 착지 동작이 마지막 프레임을
      붙들고 끝이라, 말풍선이 세 번 넘어가는 동안 내내 얼어 있었다. */
@@ -2046,6 +2068,10 @@ if (head('투어가이드')) {
   await p.close();
 }
 
+/* 「열어보기」는 **구역이 아니라 그 항목을 연다.** 예전에는 지도 위 문을 대신
+   눌렀는데(door.click()), 회사 건물은 구역 패널을 여는 문이라 「사업팀 운영보드」를
+   누른 사람에게 회사 목록이 떴다(2026-08-25). 그리고 **투어를 끝내지 않는다** —
+   새 탭으로 열리는 것이라, 보고 돌아오면 투어가 그 자리에 있어야 한다. */
 if (head('투어가이드 — 열어보기')) {
   const p = await first();
   await p.goto(BASE, { waitUntil: 'networkidle' });
@@ -2055,18 +2081,48 @@ if (head('투어가이드 — 열어보기')) {
   await p.waitForSelector('.onb-tour', { timeout: 4000 });
   await p.waitForTimeout(400);
 
-  /* 「열어보기」는 **마을이 원래 여는 방식을 그대로 두드린다.** 1번(회사)은
-     구역 패널이 열리는 문이라, 그늘이 먼저 걷히고 그 아래에서 패널이 떠야 한다 —
-     순서가 뒤집히면 패널이 그늘 밑에서 열려 아무것도 안 보인다. */
-  await p.click('.onb-tour-act .onb-btn.go');
-  await p.waitForTimeout(500);
+  const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
+  const want = data.items.find((i) => i.id === 'sindorang-demo');
+
+  /* 바깥 주소는 **가로채서 대신 답한다.** 검사가 남의 서버에 기대면 안 된다 —
+     그쪽이 죽거나 여기 망이 막히면(이 컨테이너가 그렇다) 새 탭이 오류 화면이 되고,
+     그러면 「어디로 가려 했는가」를 물어볼 수가 없다. */
+  await p.context().route(want.url.replace(/\/[^/]*$/, '/**'),
+    (r) => r.fulfill({ contentType: 'text/html', body: '<title>demo</title>' }));
+
+  // 1번(사업팀 운영보드)은 바깥 앱이라 새 탭으로 열린다
+  const [tab] = await Promise.all([
+    p.context().waitForEvent('page', { timeout: 5000 }).catch(() => null),
+    p.click('.onb-tour-act .onb-btn.go'),
+  ]);
+  ok(tab !== null, '새 탭이 열린다');
+  ok(tab && tab.url() === want.url, '그 항목의 주소로 곧장 간다 (구역 패널이 아니라)',
+    tab && `${tab.url()}\n        기대: ${want.url}`);
+  if (tab) await tab.close();
+
+  await p.waitForTimeout(400);
   const after = await p.evaluate(() => ({
     dim: document.querySelectorAll('.onb-dim').length,
+    card: document.querySelectorAll('.onb-tour').length,
+    count: document.querySelector('.onb-count')?.textContent || '',
     panel: !document.getElementById('panelWrap').hidden,
-    title: document.querySelector('.panel-title')?.textContent || '',
   }));
-  ok(after.dim === 0, '열면서 그늘이 먼저 걷힌다');
-  ok(after.panel && after.title.indexOf('회사') >= 0, '마을이 원래 열던 구역 패널이 뜬다', after.title);
+  ok(!after.panel, '회사 구역 패널이 뜨지 않는다');
+  ok(after.dim === 4 && after.card === 1 && after.count === '1 / 3',
+    '보고 돌아오면 투어가 그 자리에 그대로 있다',
+    `그늘 ${after.dim} · 카드 ${after.card} · ${after.count}`);
+
+  /* 반대로 **이 페이지를 떠나는 것**은 투어가 살아 있을 자리가 없다.
+     2번(PlayGrown)은 같은 탭에서 케이스 스터디로 넘어간다. */
+  await p.click('.onb-tour-act .onb-btn:last-child'); await p.waitForTimeout(400);
+  ok(await p.textContent('.onb-count') === '2 / 3', '2번으로 넘어간다');
+  await Promise.all([
+    p.waitForURL('**/case/playgrown.html', { timeout: 6000 }),
+    p.click('.onb-tour-act .onb-btn.go'),
+  ]);
+  // 케이스 스터디는 열리면서 스스로 해시(#r-cover)를 붙인다 — 경로만 본다
+  ok(p.url().includes('/case/playgrown.html'), '같은 탭으로 여는 것은 그 문서로 간다', p.url());
+  ok(await p.locator('.onb-tour').count() === 0, '떠나고 나면 투어는 남지 않는다');
   await p.close();
 }
 
@@ -2127,13 +2183,20 @@ if (head('안내 — 움직임 줄이기')) {
   await p.waitForSelector('.onb-char', { timeout: 4000 });
 
   ok(await p.evaluate(() => window.__onbFrom) <= 0, '여기서도 화면 밖에서 출발한다');
-  const dur = await p.evaluate(() =>
-    getComputedStyle(document.querySelector('.onb-char')).transitionDuration.split(',')[0].trim());
-  ok(dur === '0.9s', '가로지르는 시간을 줄인다 (1.5초 → 0.9초)', dur);
   ok(await p.evaluate(() => window.__onbWalk) === 'onb-step-soft',
-    '여기서도 뒤뚱거리되 얕게 걷는다 (8%·0.34초 → 4%·0.44초)');
+    '여기서도 뒤뚱거리되 몸짓만 얕다 (8% → 4%)');
+  /* **걸음새는 도착한 뒤에 잰다.** 걷는 중에 재면 그때까지 온 만큼만 거리로 잡혀
+     보폭이 실제보다 작게 나온다(0.16배로 나와 한 번 헛짚었다). */
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  await p.waitForTimeout(200);
 
-  await p.waitForTimeout(1300);
+  /* **가는 시간은 줄이지 않는다.** 한때 1.5초를 0.9초로 줄였는데 거리는 그대로라
+     속도만 1.7배가 됐다 — 「덜 움직이는 것」이 아니라 더 빨리 지나가는 것이 됐고,
+     넓은 화면에서는 줄이기를 켠 쪽이 도리어 제일 심하게 「슝」 했다. */
+  const rm = await gait(p);
+  ok(rm.stride > .5 && rm.stride < .8, '보폭이 평상시와 같은 비율이다 (여기가 더 빠르면 안 된다)',
+    `${rm.stride.toFixed(2)}배 — ${Math.round(rm.dist)}px를 ${rm.dur}초에`);
+
   const put = await p.evaluate(() => {
     const r = document.querySelector('.onb-char').getBoundingClientRect();
     const m = document.getElementById('map').getBoundingClientRect();
@@ -2184,6 +2247,15 @@ if (head('안내 — 폰')) {
     return { b: { l: b.left, r: b.right, h: b.height }, cw: c.width, btnH: btn.height,
              vw: innerWidth, vh: innerHeight };
   });
+  /* **폰 값은 손대지 않는다.** 다원님이 「모바일 모션이 훨씬 좋다」고 한 그 값이
+     기준이라, 거리에서 시간·박자를 뽑는 식(SPEED·STRIDE)도 여기에 넣으면 1.5초·
+     0.34초가 그대로 나오도록 골랐다. 여기가 흔들리면 기준 자체가 옮겨진 것이다. */
+  const ph = await gait(p);
+  ok(ph.dur === 1.5, '폰에서는 여전히 1.5초에 걸어 들어온다', `${ph.dur}초`);
+  ok(Math.abs(ph.pace - 0.34) < 0.01, '폰에서는 여전히 0.34초 박자로 걷는다', `${ph.pace}초`);
+  ok(ph.stride > .5 && ph.stride < .8, '보폭도 데스크톱과 같은 비율이다',
+    `${ph.stride.toFixed(2)}배`);
+
   ok(m.b.l >= 6 && m.b.r <= m.vw - 6, '말풍선이 화면 폭 안에 여백을 두고 든다',
     `${Math.round(m.b.l)}~${Math.round(m.b.r)} / ${m.vw}`);
   ok(m.cw < 100, '다원이 폰에서는 작아진다', `${Math.round(m.cw)}px`);

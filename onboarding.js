@@ -47,12 +47,30 @@
      같은 칸을 끄는 스위치로 재활용하면 **그 사람들에게는 영영 안 뜬다** —
      다원님 폰이 그중 하나다. 뜻이 달라졌으니 칸도 새로 판다. */
   const OFF = 'dada.introOff';
-  const WALK = 1500;                 // 걸어 들어오는 시간(ms). 1.2~2초 사이
-  /* 움직임을 줄여 달라고 한 사람에게는 **더 짧게** 걸어 들어온다. 걷는 것 자체를
-     빼지 않는다 — 한때 0.52초에 반동 없이 미끄러지게 했더니 「계속 슝 나와」가
-     됐다(2026-08-25). 여기서 줄일 것은 **화면을 가로지르는 거리**지 제자리에서
-     몸이 들썩이는 폭이 아니다. 뒤뚱거림은 얕게 남는다(CSS의 onb-step-soft). */
-  const SLIP = 900;
+  /* ── 걸음 ──────────────────────────────────
+     **걷는 시간도 걸음 박자도 거리에서 나온다.** 둘 다 고정이었던 적이 있다
+     (1.5초 · 0.34초). 그런데 다원이 가는 거리는 화면마다 다르다 — 폰에서는
+     200px 남짓인데 1440px 데스크톱에서는 600px이 넘는다. 같은 시간에 세 배를
+     가니 **한 걸음에 몸폭의 두 배씩** 나아갔고, 그게 「슝 날아가면서 통통거린다」로
+     보였다(2026-08-25. 폰은 멀쩡한데 PC만 이상하다고 한 것이 이것이다).
+
+     그래서 둘 다 거리에서 뽑는다.
+       ① 시간 = 거리 / SPEED    — 어느 화면에서나 비슷한 속도로 걷는다
+       ② 박자 = 한 주기에 몸폭의 STRIDE배만 가도록 — 빨리 갈수록 발을 빨리 놓는다
+     폰(200px·몸폭 72px)을 넣으면 **1.5초·0.34초가 그대로 나온다** — 다원님이
+     좋다고 한 그 값이다. 여기를 손댈 때는 그 두 값이 유지되는지부터 본다. */
+  const SPEED = 210;                 // px/s — 걷는 것으로 보이는 속도
+  const STRIDE = 0.62;               // 한 주기(발 두 번)에 가는 거리 ÷ 몸폭
+
+  /** 거리와 몸폭에서 「몇 초에 갈까 · 발을 얼마나 빨리 놓을까」를 정한다.
+   *  `lo`~`hi`는 시간의 아래위 한계다 — 너무 짧으면 순간이동이고, 너무 길면
+   *  말풍선이 뜨기까지 하염없이 기다리게 된다. */
+  function gait(dist, w, lo, hi) {
+    const ms = Math.min(Math.max(Math.round(dist / SPEED * 1000), lo), hi);
+    // 속도(px/ms) = dist/ms 이므로, 한 주기에 STRIDE*w 를 가려면 이만큼 걸린다
+    const pace = Math.min(Math.max(Math.round(STRIDE * w * ms / dist), 200), 340);
+    return { ms, pace };
+  }
   const SPR = 'assets/sprites/cut/';
   const FRONT = 'me.png';
   /* 뒷모습. 「탐험하기」를 고르면 다원이 **돌아서서** 제자리로 걸어간다.
@@ -60,7 +78,6 @@
      된다 — `tools/cut_me_back.py`가 그렇게 맞춰 떠낸다. 비워 두면 앞모습 그대로
      물러난다(그림이 없다고 연출이 멈추지는 않게). */
   const BACK = 'me-back.png';
-  const HOME = 1200;                 // 제자리로 돌아가는 시간(ms)
 
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -75,7 +92,7 @@
   let data = null;
   let phase = 'off';                 // off · entering · intro · choice · tour
   let line = 0, at = 0;              // 몇 번째 대사 · 몇 번째 투어
-  let scrim, layer, ch, bubble, card;
+  let scrim, layer, ch, bubble, card, walkMs = 1500;
   let dims = [], ring = null;
   let onMapClick = null;
 
@@ -148,8 +165,12 @@
     track('intro_start', {});
 
     place();
-    ch.style.setProperty('--onb-dur', (reduced() ? SLIP : WALK) + 'ms');
-    ch.style.left = outside() + 'px';
+    const from = outside();
+    const g = gait(Math.abs(+ch.dataset.home - from), parseFloat(ch.style.width), 1500, 2200);
+    walkMs = g.ms;
+    ch.style.setProperty('--onb-dur', g.ms + 'ms');
+    ch.style.setProperty('--onb-step', g.pace + 'ms');
+    ch.style.left = from + 'px';
     ch.classList.add('walking');
 
     // 한 프레임 뒤에 목적지를 준다 — 같은 프레임에 두 값을 넣으면 브라우저가
@@ -175,7 +196,7 @@
     };
     ch.addEventListener('transitionend', (e) => { if (e.propertyName === 'left') arrive(); }, { once: true });
     // 전환이 아예 안 걸리는 경우(탭이 뒤에 있어 rAF가 안 돌았다)를 위한 보험
-    setTimeout(arrive, (reduced() ? SLIP : WALK) + 260);
+    setTimeout(arrive, walkMs + 260);
   }
 
   /* ── 말풍선 ────────────────────────────────
@@ -317,11 +338,15 @@
     const r = spot.getBoundingClientRect();
     if (!r.width || !r.height) return false;
 
-    const ms = reduced() ? 700 : HOME;
+    // 돌아가는 길도 같은 규칙으로 잰다 — 여기도 화면마다 거리가 두 배 넘게 다르다
+    const g = gait(Math.abs(r.left + r.width / 2 - parseFloat(ch.style.left)),
+                   parseFloat(ch.style.width), 900, 1600);
+    const ms = g.ms;
     ch.classList.remove('idle', 'beat');
     if (BACK) ch.classList.add('away');        // 돌아선다 (뒷모습으로 빠르게 바뀐다)
     ch.classList.add('home', 'walking');       // 뒤뚱뒤뚱은 들어올 때와 같은 것을 쓴다
     ch.style.setProperty('--onb-dur', ms + 'ms');
+    ch.style.setProperty('--onb-step', g.pace + 'ms');
     // 한 프레임 뒤에 목적지를 준다 — 같은 프레임에 두 값을 넣으면 전환 없이 순간이동한다
     requestAnimationFrame(() => {
       ch.style.left = Math.round(r.left + r.width / 2) + 'px';
@@ -422,8 +447,19 @@
     open.type = 'button';
     open.addEventListener('click', () => {
       track('tour_open', { item: item.id, step: at + 1 });
-      endTour('open');
-      door.click();                       // 마을이 원래 여는 방식 그대로
+      /* **문이 아니라 그 항목을 연다.** 예전에는 지도 위 문을 대신 눌렀는데
+         (`door.click()`), 회사 건물은 **구역 패널**을 여는 문이라 「사업팀
+         운영보드」를 누른 사람에게 회사 목록이 떴다. 투어가 가리키는 것은
+         구역이 아니라 항목이므로, 항목을 여는 문(app.js의 `openItem`)으로 간다.
+
+         **그리고 투어를 끝내지 않는다.** 셋 중 둘은 새 탭으로 열려서, 보고
+         돌아오면 투어가 그 자리에 있어야 한다 — 예전에는 열자마자 끝나서
+         돌아왔을 때 아무것도 없었다. 이 페이지를 떠나는 것(같은 탭 이동·책)
+         일 때만 끝낸다. 살아 있을 자리가 없어서다. */
+      const town = window.dadaTown;
+      const res = town && town.open ? town.open(item.id, 'tour') : null;
+      if (!res) { endTour('open'); door.click(); return; }   // 못 열면 문이라도 두드린다
+      if (!res.stays) endTour('open');
     });
     act.appendChild(open);
 

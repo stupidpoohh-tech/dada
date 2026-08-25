@@ -737,7 +737,7 @@
 
   /* ── 카드 ────────────────────────────────── */
 
-  function card(item) {
+  function card(item, from) {
     /* **주소가 없는 항목은 링크로 만들지 않는다.** 쪽지 묶음에서는 이미 그렇게
        하고 있었는데(soonCard), 목록·모달·구역 패널에서는 `href="#"`가 물려
        **눌리기는 하는데 페이지 맨 위로만 튀는 카드**가 됐다. 「준비 중」인 것을
@@ -759,7 +759,8 @@
     a.addEventListener('click', () => track('item_click', {
       item: item.id,
       item_type: item.type,
-      from: !$('modal').hidden ? 'list' : (!$('picksPanel').hidden ? 'picks' : 'map'),
+      // 어디서 왔는지를 부르는 쪽이 알려줄 수 있다(투어). 없으면 화면을 보고 짐작한다
+      from: from || (!$('modal').hidden ? 'list' : (!$('picksPanel').hidden ? 'picks' : 'map')),
     }));
 
     if (item.open === 'book') {
@@ -1002,6 +1003,31 @@
     placePanel(d);
     panel.focus({ preventScroll: true });
     $('hint').classList.add('gone');
+  }
+
+  /** 항목 하나를 **마을이 원래 여는 방식 그대로** 연다 (안내의 투어가 쓴다).
+   *
+   *  여는 규칙 — 새 탭이냐 · 책이냐 · 노래냐 · 그냥 이동이냐 — 을 부르는 쪽에서
+   *  다시 적지 않는다. 목록·구역 패널이 쓰는 **그 카드를 실제로 만들어 누른다.**
+   *  규칙이 `card()` 한 군데에만 있어야 나중에 갈릴 때 같이 갈린다.
+   *
+   *  화면 밖에 잠깐 붙였다 뗀다 — 떼어 둔 `<a>`는 `click()`해도 브라우저가
+   *  따라가지 않는다(문서 안에 있어야 한다).
+   *
+   *  돌려주는 `stays`는 **이 페이지에 남느냐**다. 새 탭으로 열리면 남고(투어를
+   *  계속할 수 있다), 같은 탭으로 이동하거나 책이 지도를 통째로 덮으면 안 남는다.
+   *  못 여는 것(「준비 중」처럼 주소가 없는 항목)은 `null`이다. */
+  function openItem(id, from) {
+    const item = data.items.find((x) => x.id === id);
+    if (!item) return null;
+    const a = card(item, from);
+    if (a.tagName !== 'A') return null;
+    const stays = !!a.target;              // target="_blank" — 새 탭이라 이 페이지는 남는다
+    Object.assign(a.style, { position: 'fixed', left: '-9999px', top: '0' });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return { stays, item };
   }
 
   /* ── 넘겨보는 책 팝업 (아트북·세모집 카탈로그) ── */
@@ -1597,7 +1623,7 @@
        onboarding.js가 늦게 붙어도 되도록 `window.dadaTown`에도 남긴다 —
        이벤트는 한 번 지나가면 끝이라 그때 없던 쪽은 영영 못 받는다.
        onboarding.js가 아예 없어도 이 두 줄은 그냥 아무도 안 듣는 말이 된다. */
-    window.dadaTown = { data };
+    window.dadaTown = { data, open: openItem };
     document.dispatchEvent(new CustomEvent('dada:ready', { detail: { data } }));
   }
 

@@ -74,9 +74,13 @@ body.dada-touring .hint { visibility: hidden; }
 .onb-step { display: block; transform-origin: 50% 100%; }
 
 /* 걷기 스프라이트가 없다(me.png는 한 장이다). 그래서 걸음은 **반동으로만** 만든다 —
-   한 걸음마다 몸이 살짝 뜨고 좌우로 기우뚱한다. 0.34초는 사람 걸음 박자다.
-   마을의 idle(2.4초)보다 훨씬 빠른 것이 맞다 — 지금은 걸어오는 중이다. */
-.onb-char.walking .onb-step { animation: onb-step .34s ease-in-out infinite; }
+   한 걸음마다 몸이 살짝 뜨고 좌우로 기우뚱한다. 마을의 idle(2.4초)보다 훨씬 빠른
+   것이 맞다 — 지금은 걸어오는 중이다.
+
+   **박자를 여기 못 박지 않는다.** 화면마다 가는 거리가 두 배 넘게 다른데 박자만
+   같으면 넓은 화면에서 보폭이 몸폭의 두 배가 된다(「슝 날아가면서 통통거린다」).
+   JS가 거리에서 재서 `--onb-step`에 넣는다 — 폰에서는 그 값이 0.34초다. */
+.onb-char.walking .onb-step { animation: onb-step var(--onb-step, .34s) ease-in-out infinite; }
 @keyframes onb-step {
   0%, 100% { transform: translateY(0)   rotate(-3deg) scale(1, 1); }
   25%      { transform: translateY(-8%) rotate(0deg)  scale(.98, 1.04); }
@@ -300,19 +304,24 @@ body.dada-touring .hint { visibility: hidden; }
    **안내만 혼자 얼어 있으면 그게 도리어 어긋난 것이다.**
 
    그래서 여기서 줄이는 것은 셋뿐이다.
-     · 가로 이동 1.5초 → 0.9초 (움직이는 시간 자체를 줄인다)
-     · 걸음 8%·0.34초 → 4%·0.44초 (얕고 느리게 — 걷는 것으로는 보이되 덜 흔들리게)
+     · 걸음의 폭 8% → 4% (얕게 — 걷는 것으로는 보이되 덜 흔들리게)
      · 말풍선·투어 카드가 뜰 때의 translate·scale → 페이드 (WCAG가 권하는 갈음)
+     · 투어 테두리의 숨쉬기 (끝없이 되풀이되며 시선을 끄는 것이라)
+   **가는 시간은 줄이지 않는다.** 한때 1.5초를 0.9초로 줄였는데, 거리는 그대로라
+   속도만 1.7배가 됐다 — 「덜 움직이는 것」이 아니라 **더 빨리 지나가는 것**이 됐고,
+   1440px에서는 한 주기에 몸폭의 세 배를 갔다. 줄이기를 켠 화면이 도리어 제일
+   심하게 「슝」 했다(2026-08-25). 시간은 평상시와 같은 것을 쓴다.
    숨쉬기와 끄덕임은 남긴다. 지도 위의 "나"가 이미 그보다 크게 숨쉬고 있다.
    대신 **테두리 숨쉬기(onb-pulse)는 세운다** — 끝없이 되풀이되며 시선을 끄는 것이
    하는 일이 오직 강조뿐이라, 가만히 있는 테두리로도 그 일은 된다. */
 @media (prefers-reduced-motion: reduce) {
-  .onb-char.walking .onb-step { animation: onb-step-soft .44s ease-in-out infinite; }
+  /* 같은 박자로 같은 시간을 걷되 **몸짓만 얕다** */
+  .onb-char.walking .onb-step { animation: onb-step-soft var(--onb-step, .34s) ease-in-out infinite; }
   .onb-bubble, .onb-tour { animation: onb-fade .2s ease-out both; }
   .onb-line { animation: onb-fade .18s ease-out both; }
   .onb-ring { animation: none; transition: none; }
 }
-/* 얕은 걸음 — 위의 onb-step과 같은 몸짓이되 폭은 절반, 박자는 느리게 */
+/* 얕은 걸음 — 위의 onb-step과 같은 몸짓·같은 박자이되 폭이 절반이다 */
 @keyframes onb-step-soft {
   0%, 100% { transform: translateY(0)   rotate(-1.5deg) scale(1, 1); }
   25%      { transform: translateY(-4%) rotate(0deg)    scale(.99, 1.02); }
