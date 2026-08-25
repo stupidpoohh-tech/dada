@@ -1014,8 +1014,10 @@
    *  화면 밖에 잠깐 붙였다 뗀다 — 떼어 둔 `<a>`는 `click()`해도 브라우저가
    *  따라가지 않는다(문서 안에 있어야 한다).
    *
-   *  돌려주는 `stays`는 **이 페이지에 남느냐**다. 새 탭으로 열리면 남고(투어를
-   *  계속할 수 있다), 같은 탭으로 이동하거나 책이 지도를 통째로 덮으면 안 남는다.
+   *  돌려주는 것은 둘이다. `stays`는 **이 페이지에 남느냐**(새 탭이면 남는다),
+   *  `leaves`는 **이 페이지를 정말 떠나느냐**다. 둘은 같은 말이 아니다 — 책은
+   *  남지도(지도를 통째로 덮는다) 떠나지도 않는다. 투어는 이 둘을 갈라 쓴다:
+   *  떠나는 것이면 돌아올 자리를 적어 두고, 덮는 것이면 그냥 접는다.
    *  못 여는 것(「준비 중」처럼 주소가 없는 항목)은 `null`이다. */
   function openItem(id, from) {
     const item = data.items.find((x) => x.id === id);
@@ -1023,11 +1025,12 @@
     const a = card(item, from);
     if (a.tagName !== 'A') return null;
     const stays = !!a.target;              // target="_blank" — 새 탭이라 이 페이지는 남는다
+    const leaves = !stays && item.open !== 'book' && item.open !== 'song';
     Object.assign(a.style, { position: 'fixed', left: '-9999px', top: '0' });
     document.body.appendChild(a);
     a.click();
     a.remove();
-    return { stays, item };
+    return { stays, leaves, item };
   }
 
   /* ── 넘겨보는 책 팝업 (아트북·세모집 카탈로그) ── */

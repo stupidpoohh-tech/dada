@@ -77,7 +77,8 @@ const gait = (p) => p.evaluate(() => {
   const dur = parseFloat(getComputedStyle(c).transitionDuration);
   const pace = parseFloat(c.style.getPropertyValue('--onb-step')) / 1000;
   const dist = (b.left + b.width / 2) - (window.__onbFrom - b.width / 2);
-  return { dur, pace, w: b.width, dist, stride: (dist / dur) * pace / b.width };
+  return { dur, pace, w: b.width, dist, stride: (dist / dur) * pace / b.width,
+           perSec: 2 / pace, steps: dur / pace * 2 };
 });
 
 /** 안내를 끄지 않은 페이지 — 안내를 실제로 보는 유일한 통로다.
@@ -1866,6 +1867,11 @@ if (head('첫 방문 안내')) {
   ok(pc.stride > .5 && pc.stride < .8, '보폭이 몸폭의 0.6배쯤이다 (걷는 것으로 보인다)',
     `${pc.stride.toFixed(2)}배 — ${Math.round(pc.dist)}px를 ${pc.dur}초에, 걸음 ${pc.pace}초`);
   ok(pc.dur >= 1.5 && pc.dur <= 2.2, '가는 시간은 1.5~2.2초 안이다', `${pc.dur}초`);
+  /* **초당 몇 번 발을 놓는가.** 「두두두두 둔탁하다」가 여기서 잡힌다(2026-08-25).
+     한때 데스크톱에서 초당 9.3번씩 들썩였다 — 걷는 게 아니라 떠는 것으로 보인다.
+     폰이 5.9번이고 그게 좋다고 한 값이라, 어느 화면에서나 그 언저리여야 한다. */
+  ok(pc.perSec > 4.5 && pc.perSec < 7.5, '초당 발을 6번쯤 놓는다 (떠는 게 아니라 걷는다)',
+    `${pc.perSec.toFixed(1)}번 · 걸음 ${pc.pace}초 · 모두 ${pc.steps.toFixed(0)}발`);
 
   /* **도착했다고 목석이 되지 않는다.** 예전에는 착지 동작이 마지막 프레임을
      붙들고 끝이라, 말풍선이 세 번 넘어가는 동안 내내 얼어 있었다. */
@@ -2126,6 +2132,50 @@ if (head('투어가이드 — 열어보기')) {
   await p.close();
 }
 
+/* **케이스 스터디를 보고 돌아오면 투어가 이어진다.**
+   셋 중 PlayGrown만 같은 탭으로 간다. 거기서 다 보든 뒤로가기를 하든 「돌아가기」를
+   누르든 전부 `/`로 오는데, 그때 투어가 없고 다원이 처음부터 다시 인사했다
+   (2026-08-25). 방금 인사를 듣고 투어를 고른 사람에게 다시 인사하면 안내가 아니라
+   벽이 된다. */
+if (head('투어가이드 — 보고 돌아오면 잇는다')) {
+  const p = await first();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  for (let i = 0; i < 3; i++) { await p.click('.onb-btn.go'); await p.waitForTimeout(180); }
+  await p.click('.onb-act .onb-btn:nth-child(2)');
+  await p.waitForSelector('.onb-tour', { timeout: 4000 });
+  await p.waitForTimeout(400);
+  await p.click('.onb-tour-act .onb-btn:last-child'); await p.waitForTimeout(400);
+  ok(await p.textContent('.onb-count') === '2 / 3', '2번(PlayGrown)까지 왔다');
+
+  await Promise.all([
+    p.waitForURL('**/case/playgrown.html*', { timeout: 6000 }),
+    p.click('.onb-tour-act .onb-btn.go'),
+  ]);
+  ok(await p.evaluate(() => sessionStorage.getItem('dada.tourAt')) === '1',
+    '떠나면서 몇 번째였는지 적어 둔다');
+
+  // 뒤로가기로 돌아온다 — 「돌아가기」 링크도 케이스 스터디 끝도 같은 `/`다
+  await p.goBack({ waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-tour', { timeout: 5000 });
+  const back = await p.evaluate(() => ({
+    count: document.querySelector('.onb-count')?.textContent || '',
+    greet: !!document.querySelector('.onb-char') || !!document.querySelector('.onb-scrim'),
+    dim: document.querySelectorAll('.onb-dim').length,
+    left: sessionStorage.getItem('dada.tourAt'),
+  }));
+  ok(back.count === '2 / 3', '돌아오면 그 자리에서 이어진다', back.count);
+  ok(!back.greet, '다시 인사하지 않는다 (다원도 덮개도 없다)');
+  ok(back.dim === 4, '그늘도 다시 깔린다');
+  ok(back.left === null, '이어붙인 자리는 지운다 (한 번만 잇는다)', String(back.left));
+
+  // 그다음에 새로 들어오면 다시 인사한다 — 투어가 되살아나면 안 된다
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-char', { timeout: 4000 });
+  ok(await p.locator('.onb-tour').count() === 0, '다음에 들어올 때는 투어가 되살아나지 않는다');
+  await p.close();
+}
+
 if (head('안내는 올 때마다')) {
   const p = await first();
   await p.goto(BASE, { waitUntil: 'networkidle' });
@@ -2255,6 +2305,8 @@ if (head('안내 — 폰')) {
   ok(Math.abs(ph.pace - 0.34) < 0.01, '폰에서는 여전히 0.34초 박자로 걷는다', `${ph.pace}초`);
   ok(ph.stride > .5 && ph.stride < .8, '보폭도 데스크톱과 같은 비율이다',
     `${ph.stride.toFixed(2)}배`);
+  ok(Math.abs(ph.perSec - 5.9) < 0.4, '폰은 초당 5.9번 — 이 값이 기준이다',
+    `${ph.perSec.toFixed(1)}번`);
 
   ok(m.b.l >= 6 && m.b.r <= m.vw - 6, '말풍선이 화면 폭 안에 여백을 두고 든다',
     `${Math.round(m.b.l)}~${Math.round(m.b.r)} / ${m.vw}`);

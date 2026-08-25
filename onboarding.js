@@ -47,6 +47,13 @@
      같은 칸을 끄는 스위치로 재활용하면 **그 사람들에게는 영영 안 뜬다** —
      다원님 폰이 그중 하나다. 뜻이 달라졌으니 칸도 새로 판다. */
   const OFF = 'dada.introOff';
+  /* **마을을 떠났다 돌아오면 투어를 잇는다.** 투어의 셋 중 PlayGrown만 같은 탭으로
+     간다(케이스 스터디). 거기서 다 보든 뒤로가기를 하든 「돌아가기」를 누르든
+     전부 `/`로 오는데, 그때 투어가 없고 다원이 처음부터 다시 인사했다(2026-08-25).
+     떠나기 직전에 몇 번째였는지를 적어 두고, 돌아오면 그 자리에서 잇는다.
+     **sessionStorage다** — 탭을 닫으면 사라져야 한다. 다음에 새로 온 사람에게
+     남의 투어 자리가 이어지면 안 된다. */
+  const RESUME = 'dada.tourAt';
   /* ── 걸음 ──────────────────────────────────
      **걷는 시간도 걸음 박자도 거리에서 나온다.** 둘 다 고정이었던 적이 있다
      (1.5초 · 0.34초). 그런데 다원이 가는 거리는 화면마다 다르다 — 폰에서는
@@ -128,8 +135,16 @@
     const m = map.getBoundingClientRect();
     const small = narrow();
 
+    /* **넓은 화면에서는 다원이 더 커야 한다.** 크기 자체가 예쁘고 말고의 문제가
+       아니라 **걸음이 그것으로 정해져서**다. 다원은 화면 밖에서 지도 안까지
+       걸어오는데, 몸이 작으면 그 거리가 제 몸길이의 여섯 배가 넘는다. 보폭을
+       몸에 맞춰 두면(STRIDE) 그만큼 발을 자주 놓아야 해서 초당 아홉 번씩
+       들썩였다 — 걷는 게 아니라 떠는 것으로 보였다(「두두두두 둔탁하다」,
+       2026-08-25). 폰에서는 두세 배뿐이라 처음부터 멀쩡했다.
+       0.24로 키우면 넓은 화면에서도 건너는 거리가 제 몸의 네 배쯤이 되고,
+       걸음 박자가 폰과 같은 0.34초로 떨어진다. */
     const w = small ? Math.min(88, Math.max(62, m.width * 0.20))
-                    : Math.min(152, Math.max(96, m.width * 0.135));
+                    : Math.min(200, Math.max(120, m.width * 0.24));
     const h = w * 130 / 98;                       // me.png 원래 비율
     const cx = m.left + m.width * (small ? 0.20 : 0.15);
     const cb = innerHeight - m.bottom + m.height * (small ? 0.04 : 0.02);
@@ -291,11 +306,11 @@
     if (phase === 'off') return;
     track('intro_choice', { choice: how });
     phase = 'off';
-    scrim.remove();
+    if (scrim) { scrim.remove(); scrim = null; }
     if (bubble) { bubble.remove(); bubble = null; }
 
     const done = () => {
-      ch.remove();
+      if (ch) ch.remove();
       document.body.classList.remove('dada-onboarding');
       if (then) then();
     };
@@ -381,7 +396,13 @@
   function startTour() {
     const list = stops();
     if (!list.length) return finish('explore');
-    finish('tour', () => {
+    finish('tour', () => beginTour(0));
+  }
+
+  /** 투어를 편다. 인사를 거쳐서 올 수도 있고(startTour), 케이스 스터디를 보고
+   *  돌아와 그 자리에서 이어 붙일 수도 있다(boot). 뒤쪽에는 다원도 덮개도 없다. */
+  function beginTour(from) {
+    {
       document.body.classList.add('dada-touring');
       phase = 'tour';
       at = 0;
@@ -410,9 +431,9 @@
       };
       map.addEventListener('click', onMapClick, true);
 
-      track('tour_start', {});
-      step(0);
-    });
+      track('tour_start', { from: from + 1 });
+      step(from);
+    }
   }
 
   function step(i) {
@@ -459,7 +480,14 @@
       const town = window.dadaTown;
       const res = town && town.open ? town.open(item.id, 'tour') : null;
       if (!res) { endTour('open'); door.click(); return; }   // 못 열면 문이라도 두드린다
-      if (!res.stays) endTour('open');
+      if (res.stays) return;                     // 새 탭 — 투어는 그대로 두고 기다린다
+      if (res.leaves) {
+        /* 같은 탭으로 떠난다. **투어를 접지 않고 자리를 적어 둔다** — 돌아오면
+           그 자리에서 잇는다. 화면은 곧 넘어가므로 그대로 두는 편이 덜 깜빡인다. */
+        try { sessionStorage.setItem(RESUME, String(at)); } catch (e) { /* 시크릿 창 */ }
+        return;
+      }
+      endTour('open');                           // 책처럼 지도를 통째로 덮는 것
     });
     act.appendChild(open);
 
@@ -528,6 +556,8 @@
     track('tour_end', { how, step: at + 1 });
     const map = document.getElementById('map');
     if (onMapClick) { map.removeEventListener('click', onMapClick, true); onMapClick = null; }
+    // 투어를 접었으면 「돌아올 자리」도 지운다 — 안 지우면 다음에 들어올 때 되살아난다
+    try { sessionStorage.removeItem(RESUME); } catch (e) { /* 시크릿 창 */ }
     dims.forEach((d) => d.remove()); dims = [];
     if (ring) { ring.remove(); ring = null; }
     if (card) { card.remove(); card = null; }
@@ -538,12 +568,19 @@
      겹은 `.map-holder`가 아니라 화면 전체를 덮는다(`position: fixed`).
      `.map` 안에 두면 `overflow: hidden`에 잘려 **밖에서 걸어 들어오는 것 자체가
      안 보이고**, `.map-holder`에 두면 지도 왼쪽 여백까지밖에 못 나간다. */
-  function build() {
+  /** @param greet 인사부터 하는가. 투어만 이어 붙일 때는 덮개도 다원도 없다 */
+  function build(greet) {
+    layer = el('div', 'onb');
+    document.body.appendChild(layer);
+    if (greet) greeter();
+    wire();
+  }
+
+  function greeter() {
     scrim = el('div', 'onb-scrim');
     scrim.addEventListener('click', () => { if (phase === 'intro') advance(); });
     document.body.appendChild(scrim);
 
-    layer = el('div', 'onb');
     ch = el('div', 'onb-char');
     /* 껍질이 셋인 이유. **한 요소에 애니메이션 둘을 걸 수 없다** — 나중 것이 앞
        것을 지운다. 그래서 하는 일마다 제 껍질을 준다(확성기의 .horn-zoom과 같다).
@@ -568,8 +605,9 @@
     step2.appendChild(beatBox);
     ch.appendChild(step2);
     layer.appendChild(ch);
-    document.body.appendChild(layer);
+  }
 
+  function wire() {
     let t = null;
     const relayout = () => { cancelAnimationFrame(t); t = requestAnimationFrame(place); };
     addEventListener('resize', relayout);
@@ -592,13 +630,33 @@
     });
   }
 
+  /** 떠나기 전에 적어 둔 투어 자리를 **꺼내면서 지운다.** 지우지 않으면 그다음
+   *  방문마다 투어가 되살아난다. 값이 없거나 이상하면 `null`이다. */
+  function resumeAt() {
+    let v = null;
+    try {
+      v = sessionStorage.getItem(RESUME);
+      sessionStorage.removeItem(RESUME);
+    } catch (e) { /* 시크릿 창 */ }
+    const n = v === null ? null : parseInt(v, 10);
+    return Number.isInteger(n) && n >= 0 ? n : null;
+  }
+
   function boot(d) {
     if (phase !== 'off' || !d) return;
     data = d;
+
+    /* **케이스 스터디를 보고 돌아온 길이면 인사를 건너뛴다.** 방금 인사를 듣고
+       투어를 고른 사람에게 처음부터 다시 인사하면, 안내가 아니라 벽이 된다. */
+    const back = resumeAt();
+    if (back !== null && stopsReady()) { build(false); beginTour(back); return; }
+
     if (!wanted()) return;
-    build();
+    build(true);
     enter();
   }
+
+  const stopsReady = () => stops().length > 0;
 
   document.addEventListener('dada:ready', (e) => boot(e.detail && e.detail.data), { once: true });
   if (window.dadaTown && window.dadaTown.data) boot(window.dadaTown.data);

@@ -80,12 +80,28 @@ body.dada-touring .hint { visibility: hidden; }
    **박자를 여기 못 박지 않는다.** 화면마다 가는 거리가 두 배 넘게 다른데 박자만
    같으면 넓은 화면에서 보폭이 몸폭의 두 배가 된다(「슝 날아가면서 통통거린다」).
    JS가 거리에서 재서 `--onb-step`에 넣는다 — 폰에서는 그 값이 0.34초다. */
-.onb-char.walking .onb-step { animation: onb-step var(--onb-step, .34s) ease-in-out infinite; }
+.onb-char.walking .onb-step { animation: onb-step var(--onb-step, .34s) linear infinite; }
+
+/* **한 걸음의 모양이 「톡」이어야 한다.** 예전에는 위아래를 `ease-in-out` 하나로
+   오갔는데, 그건 사인파라 몸이 **둥둥 뜬 채 흔들리는** 것으로 보인다. 걸음은
+   그런 게 아니다 — 톡 차고 오르고(빠르게), 떨어지고(점점 빨라지고), 딛는 순간
+   눌리고, 아주 잠깐 머문다. 그 네 마디를 키프레임마다 다른 easing으로 만든다
+   (그래서 위의 animation은 `linear`다 — 여기 적은 것이 먹히도록).
+   0~50%가 한 걸음, 50~100%가 반대 발이다. */
 @keyframes onb-step {
-  0%, 100% { transform: translateY(0)   rotate(-3deg) scale(1, 1); }
-  25%      { transform: translateY(-8%) rotate(0deg)  scale(.98, 1.04); }
-  50%      { transform: translateY(0)   rotate(3deg)  scale(1.02, .98); }
-  75%      { transform: translateY(-8%) rotate(0deg)  scale(.98, 1.04); }
+  0%   { transform: translateY(0)    rotate(-2.5deg) scale(1.04, .96);
+         animation-timing-function: cubic-bezier(.2, .8, .3, 1); }      /* 톡 차고 오른다 */
+  22%  { transform: translateY(-9%)  rotate(0deg)    scale(.97, 1.05);
+         animation-timing-function: cubic-bezier(.55, .05, .9, .5); }   /* 떨어진다 */
+  42%  { transform: translateY(0)    rotate(2.5deg)  scale(1.06, .94);
+         animation-timing-function: ease-out; }                          /* 딛으며 눌린다 */
+  50%  { transform: translateY(0)    rotate(2.5deg)  scale(1.02, .98);
+         animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  72%  { transform: translateY(-9%)  rotate(0deg)    scale(.97, 1.05);
+         animation-timing-function: cubic-bezier(.55, .05, .9, .5); }
+  92%  { transform: translateY(0)    rotate(-2.5deg) scale(1.06, .94);
+         animation-timing-function: ease-out; }
+  100% { transform: translateY(0)    rotate(-2.5deg) scale(1.04, .96); }
 }
 /* 도착 — 멈춰 서며 한 번 굽혔다 편다. 여기서 걸음이 끝난 것이 눈에 보여야
    말풍선이 뜰 차례라는 게 읽힌다. */
@@ -316,15 +332,24 @@ body.dada-touring .hint { visibility: hidden; }
    하는 일이 오직 강조뿐이라, 가만히 있는 테두리로도 그 일은 된다. */
 @media (prefers-reduced-motion: reduce) {
   /* 같은 박자로 같은 시간을 걷되 **몸짓만 얕다** */
-  .onb-char.walking .onb-step { animation: onb-step-soft var(--onb-step, .34s) ease-in-out infinite; }
+  .onb-char.walking .onb-step { animation: onb-step-soft var(--onb-step, .34s) linear infinite; }
   .onb-bubble, .onb-tour { animation: onb-fade .2s ease-out both; }
   .onb-line { animation: onb-fade .18s ease-out both; }
   .onb-ring { animation: none; transition: none; }
 }
-/* 얕은 걸음 — 위의 onb-step과 같은 몸짓·같은 박자이되 폭이 절반이다 */
+/* 얕은 걸음 — 위와 같은 네 마디·같은 박자이되 폭이 절반이다 */
 @keyframes onb-step-soft {
-  0%, 100% { transform: translateY(0)   rotate(-1.5deg) scale(1, 1); }
-  25%      { transform: translateY(-4%) rotate(0deg)    scale(.99, 1.02); }
-  50%      { transform: translateY(0)   rotate(1.5deg)  scale(1.01, .99); }
-  75%      { transform: translateY(-4%) rotate(0deg)    scale(.99, 1.02); }
+  0%   { transform: translateY(0)    rotate(-1.2deg) scale(1.02, .98);
+         animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  22%  { transform: translateY(-4.5%) rotate(0deg)   scale(.99, 1.02);
+         animation-timing-function: cubic-bezier(.55, .05, .9, .5); }
+  42%  { transform: translateY(0)    rotate(1.2deg)  scale(1.03, .97);
+         animation-timing-function: ease-out; }
+  50%  { transform: translateY(0)    rotate(1.2deg)  scale(1.01, .99);
+         animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  72%  { transform: translateY(-4.5%) rotate(0deg)   scale(.99, 1.02);
+         animation-timing-function: cubic-bezier(.55, .05, .9, .5); }
+  92%  { transform: translateY(0)    rotate(-1.2deg) scale(1.03, .97);
+         animation-timing-function: ease-out; }
+  100% { transform: translateY(0)    rotate(-1.2deg) scale(1.02, .98); }
 }
