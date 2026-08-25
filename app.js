@@ -1321,20 +1321,29 @@
      「어떻게」를 말한다** — 프로젝트를 고르면 그것이 지나온 여섯 단계
      (문제 · 역할 · 과정 · 결과 · 판단 · 실제 서비스)가 축으로 펼쳐진다.
 
-     산출물은 여기서 다시 그리지 않는다. 각 단계의 카드는 **원래 문서의 그 화면**을
-     가리킬 뿐이다(`item.url + go`) — 케이스 스터디는 케이스 스터디대로 두고,
-     이 화면은 그 안으로 들어가는 지도 노릇만 한다.
+     **선형이라 프레젠테이션이면서 탐색이다.** 축을 끌어 단계를 고르고, 그 아래
+     선반에서 산출물을 한 장씩 크게 넘긴다. 가로 동작이 둘이지만 자리가 갈려 있다 —
+     **위(축)를 끌면 단계**, **아래(선반)를 밀면 그 단계 안의 산출물**이다.
 
-     단계 데이터는 services.json의 `items[].process`에 있다. 그것이 있는 항목만
-     여기 선다 — 없는 프로젝트를 빈 칸으로 세워 두면 「아직 안 썼다」가 아니라
-     「생각 없이 만들었다」로 읽힌다. */
+     **주인공은 축이다.** 산출물은 그 아래 깔린 증거라서, 선반을 오목하게 파고
+     한 단 낮은 바탕에 앉힌다. 산출물이 위로 올라오면 이 화면이 하려는 말
+     (「이렇게 생각하며 만들었다」)이 뒤집힌다.
 
-  let procAt = 0;                     // 지금 보고 있는 단계
+     원본을 여기서 다시 그리지 않는다. 「원래 문서에서 보기」는 그 화면을 가리킬
+     뿐이다(`item.url + go`) — 케이스 스터디는 케이스 스터디대로 둔다. */
+
   let procItem = null;                // 지금 고른 프로젝트
+  let procAt = 0;                     // 지금 단계
+  let procMade = 0;                   // 그 단계 안에서 몇 번째 산출물
   let procRail = null, procSteps = [], procQuiet = 0, procSettle = null;
+  let procLine = null, procStage = null, procNav = null;
 
   const withProcess = () => data.items.filter((i) => Array.isArray(i.process) && i.process.length);
+  const stageNow = () => procItem.process[procAt];
+  const madeNow = () => (stageNow().made || [])[procMade];
 
+  /** 통째로 다시 그리는 것은 **프로젝트를 바꿀 때뿐**이다. 단계나 산출물이 바뀔
+   *  때마다 축까지 새로 만들면 굴려 놓은 자리가 매번 처음으로 튄다. */
   function renderProcess() {
     const body = $('procBody');
     body.textContent = '';
@@ -1343,67 +1352,79 @@
       body.appendChild(el('p', 'no-result', '아직 과정을 적어 둔 프로젝트가 없어요.'));
       return;
     }
-    if (!procItem || list.indexOf(procItem) < 0) { procItem = list[0]; procAt = 0; }
+    if (!procItem || list.indexOf(procItem) < 0) { procItem = list[0]; procAt = 0; procMade = 0; }
 
     /* 프로젝트 고르기. **하나뿐일 때도 이름은 보여준다** — 지금 무엇의 과정을
        보고 있는지가 화면에 없으면 여섯 단계가 누구 것인지 알 수 없다 */
+    /* 축은 **위에 붙박아 둔다**(CSS의 `position: sticky`). 선반이 길어 화면이
+       굴러도 축이 위로 사라지면 안 된다 — 그러면 「사고축 아래에 산출물이
+       깔려 있다」가 「산출물을 보다가 가끔 축이 나온다」로 뒤집힌다 */
+    const top = el('div', 'proc-top');
     const pick = el('div', 'proc-pick');
     pick.appendChild(el('span', 'proc-pick-label', '프로젝트'));
     list.forEach((it) => {
       const b = el('button', 'proc-pick-btn' + (it === procItem ? ' on' : ''), it.name);
       b.type = 'button';
       b.setAttribute('aria-pressed', String(it === procItem));
-      b.addEventListener('click', () => { procItem = it; procAt = 0; renderProcess(); });
+      b.addEventListener('click', () => {
+        procItem = it; procAt = 0; procMade = 0; renderProcess();
+      });
       pick.appendChild(b);
     });
-    body.appendChild(pick);
+    top.appendChild(pick);
 
-    /* 축 — 끌기·손가락·트랙패드는 브라우저의 scroll-snap이 다 한다.
-       손으로 만드는 것은 마우스로 끄는 것 하나뿐이다 */
+    /* ── 축 (주인공) ──
+       스냅은 브라우저에 맡긴다 — 손가락·트랙패드·관성이 공짜로 따라온다.
+       손으로 만드는 것은 마우스로 끄는 것 하나뿐이다. */
     const wrap = el('div', 'proc-railwrap');
-    const rail = el('div', 'proc-rail');
-    rail.id = 'procRail';
-    rail.setAttribute('role', 'tablist');
-    rail.setAttribute('aria-label', `${procItem.name}의 과정`);
+    procRail = el('div', 'proc-rail');
+    procRail.id = 'procRail';
+    procRail.setAttribute('role', 'tablist');
+    procRail.setAttribute('aria-label', `${procItem.name}의 과정`);
     procSteps = procItem.process.map((st, i) => {
       const b = el('button', 'proc-step');
       b.type = 'button';
       b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', String(i === procAt));
       b.setAttribute('aria-label', `${i + 1}. ${st.label} — ${st.sub}`);
       b.append(el('span', 'proc-dot', st.icon), el('span', 'proc-lab', st.label),
                el('span', 'proc-sub', st.sub));
       b.addEventListener('click', () => goStage(i));
-      rail.appendChild(b);
+      procRail.appendChild(b);
       return b;
     });
-    wrap.appendChild(rail);
-    body.appendChild(wrap);
-    procRail = rail;
+    wrap.appendChild(procRail);
+    top.appendChild(wrap);
 
-    const st = procItem.process[procAt];
-    const line = el('p', 'proc-line');
-    line.setAttribute('aria-live', 'polite');
-    line.append(el('b', null, st.label), el('span', null, st.line));
-    body.appendChild(line);
+    procLine = el('p', 'proc-line');
+    procLine.setAttribute('aria-live', 'polite');
+    top.appendChild(procLine);
+    body.appendChild(top);
 
-    /* 그 단계에서 실제로 나온 것들. 누르면 **원래 문서의 그 화면**으로 간다 */
-    const grid = el('div', 'proc-made');
-    (st.made || []).forEach((m) => {
-      const a = el('a', 'proc-card');
-      a.href = (procItem.url || '') + (m.go || '');
-      a.appendChild(el('span', 'proc-card-stage', st.label));
-      a.appendChild(el('strong', 'proc-card-title', m.title));
-      if (m.note) a.appendChild(el('span', 'proc-card-note', m.note));
-      a.appendChild(el('span', 'card-go', '›'));
-      a.addEventListener('click', () => track('process_open', {
-        item: procItem.id, stage: st.id, made: m.title,
-      }));
-      grid.appendChild(a);
-    });
-    body.appendChild(grid);
+    /* ── 선반 (증거) ── 한 단 낮은 자리에서 한 장씩 크게 넘긴다 */
+    procStage = el('div', 'proc-stage');
+    procStage.setAttribute('aria-live', 'polite');
+    body.appendChild(procStage);
 
-    const foot = el('div', 'proc-nav');
+    procNav = el('div', 'proc-nav');
+    body.appendChild(procNav);
+
+    wireProcRail();
+    wireProcStage();
+    paintStage(true);
+  }
+
+  /** 단계가 바뀌었다 — 축·설명·선반·발치를 모두 지금 상태에 맞춘다 */
+  function paintStage(jump) {
+    const st = stageNow();
+    procSteps.forEach((b, i) => b.setAttribute('aria-selected', String(i === procAt)));
+
+    procLine.textContent = '';
+    procLine.append(el('b', null, st.label), el('span', null, st.line));
+
+    procMade = 0;                      // 단계를 바꾸면 그 단계의 첫 산출물부터다
+    paintMade();
+
+    procNav.textContent = '';
     const back = el('button', 'proc-nav-btn', '← 이전 단계');
     const next = el('button', 'proc-nav-btn', '다음 단계 →');
     [back, next].forEach((b) => { b.type = 'button'; });
@@ -1411,18 +1432,91 @@
     next.disabled = procAt === procItem.process.length - 1;
     back.addEventListener('click', () => goStage(procAt - 1));
     next.addEventListener('click', () => goStage(procAt + 1));
-    foot.append(back, el('span', 'proc-of', `${procAt + 1} / ${procItem.process.length}`), next);
-    body.appendChild(foot);
+    procNav.append(back, el('span', 'proc-of', `${procAt + 1} / ${procItem.process.length}`), next);
 
-    wireProcRail();
-    centerStage(procAt, true);
+    centerStage(procAt, jump);
+  }
+
+  /** 선반 안만 갈아 끼운다 — 축은 건드리지 않는다 */
+  function paintMade() {
+    const st = stageNow();
+    const made = st.made || [];
+    const m = made[procMade];
+    procStage.textContent = '';
+    if (!m) {
+      procStage.appendChild(el('p', 'no-result', '이 단계는 아직 남긴 것이 없어요.'));
+      return;
+    }
+
+    const frame = el('div', 'proc-frame');
+    if (m.img) {
+      const im = pixel(m.img, m.alt || m.title);
+      im.className = 'proc-shot';
+      im.loading = 'lazy';
+      frame.appendChild(im);
+    } else {
+      /* 그림이 없는 것은 **글로 크게 세운다.** 영상은 여기서 미리 안 받아온다 —
+         케이스 스터디가 「누르기 전에는 유튜브에 아무 요청도 안 나간다」로 지어져
+         있는데, 목록에서 썸네일을 받아오면 그 약속이 여기서 깨진다 */
+      const plate = el('div', 'proc-plate' + (m.kind === 'film' ? ' film' : ''));
+      plate.appendChild(el('span', 'proc-plate-mark', m.kind === 'film' ? '▶' : st.icon));
+      plate.appendChild(el('strong', 'proc-plate-title', m.title));
+      frame.appendChild(plate);
+    }
+    procStage.appendChild(frame);
+
+    const cap = el('div', 'proc-cap');
+    cap.appendChild(el('span', 'proc-cap-stage', `${st.label}의 산출물`));
+    cap.appendChild(el('strong', 'proc-cap-title', m.title));
+    if (m.note) cap.appendChild(el('span', 'proc-cap-note', m.note));
+    const a = el('a', 'proc-cap-go', '원래 문서에서 보기 →');
+    a.href = (procItem.url || '') + (m.go || '');
+    a.addEventListener('click', () => track('process_open', {
+      item: procItem.id, stage: st.id, made: m.title,
+    }));
+    cap.appendChild(a);
+    procStage.appendChild(cap);
+
+    /* 넘기는 손잡이는 **여러 장일 때만** 선다. 한 장뿐인데 화살표가 있으면
+       「더 있나」 하고 누르게 되고, 눌러도 아무 일이 없다 */
+    if (made.length > 1) {
+      const arrow = (dir, glyph, label) => {
+        const b = el('button', `proc-arrow proc-arrow--${dir}`, glyph);
+        b.type = 'button';
+        b.setAttribute('aria-label', label);
+        b.disabled = dir === 'prev' ? procMade === 0 : procMade === made.length - 1;
+        b.addEventListener('click', () => goMade(procMade + (dir === 'prev' ? -1 : 1)));
+        return b;
+      };
+      procStage.append(arrow('prev', '←', '이전 산출물'), arrow('next', '→', '다음 산출물'));
+      const dots = el('div', 'proc-mdots');
+      made.forEach((_, i) => {
+        const d = el('button', 'proc-mdot' + (i === procMade ? ' on' : ''));
+        d.type = 'button';
+        d.setAttribute('aria-label', `${i + 1}번째 산출물`);
+        d.addEventListener('click', () => goMade(i));
+        dots.appendChild(d);
+      });
+      dots.appendChild(el('span', 'proc-mcount', `${procMade + 1} / ${made.length}`));
+      procStage.appendChild(dots);
+    }
   }
 
   function goStage(i) {
     const n = procItem.process.length;
-    procAt = Math.min(Math.max(i, 0), n - 1);
-    renderProcess();
-    centerStage(procAt);
+    const to = Math.min(Math.max(i, 0), n - 1);
+    if (to === procAt) return;
+    procAt = to;
+    paintStage();
+    track('process_stage', { item: procItem.id, stage: stageNow().id });
+  }
+
+  function goMade(i) {
+    const made = stageNow().made || [];
+    const to = Math.min(Math.max(i, 0), made.length - 1);
+    if (to === procMade) return;
+    procMade = to;
+    paintMade();
   }
 
   /** 고른 단계를 축의 가운데로 데려온다. 스냅이 나머지를 맞춘다 */
@@ -1468,7 +1562,7 @@
       procSettle = setTimeout(nearestStage, 130);
     }, { passive: true });
 
-    /* 축에서 누른 화살표가 뒤의 목록·모달까지 내려가면 안 된다 */
+    /* 축에서 누른 화살표가 뒤의 모달까지 내려가면 안 된다 */
     rail.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft'
         && e.key !== 'Home' && e.key !== 'End') return;
@@ -1479,7 +1573,37 @@
         : procAt + (e.key === 'ArrowRight' ? 1 : -1);
       goStage(to);
       const b = procSteps[Math.min(Math.max(to, 0), n - 1)];
+      /* **초점을 옮기면서 화면을 굴리지 않는다** — 그냥 focus()하면 브라우저가
+         그 칸을 보이는 데까지만 끌어다 놓는데, 그게 방금 시작한 가운데 맞추기와
+         싸워서 엉뚱한 칸이 가운데에 선다 */
       if (b) b.focus({ preventScroll: true });
+    });
+  }
+
+  /** 선반은 **그 단계 안에서만** 움직인다. 축과 자리가 갈려 있으므로 둘이 안 섞인다 */
+  function wireProcStage() {
+    let x0 = null, y0 = null, multi = false;
+    procStage.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 1) { multi = true; x0 = null; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    }, { passive: true });
+    procStage.addEventListener('touchend', (e) => {
+      if (e.touches.length === 0 && multi) { multi = false; x0 = null; return; }
+      if (multi || x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      const dy = e.changedTouches[0].clientY - y0;
+      /* **세로로 쓴 것은 넘기지 않는다** — 긴 그림을 훑는 동작이라 가로보다
+         세로가 크면 그대로 둔다 (케이스 스터디가 같은 규칙을 쓴다) */
+      if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        goMade(procMade + (dx < 0 ? 1 : -1));
+      }
+      x0 = y0 = null;
+    }, { passive: true });
+
+    procStage.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.stopPropagation();
+      goMade(procMade + (e.key === 'ArrowRight' ? 1 : -1));
     });
   }
 
@@ -1492,7 +1616,7 @@
       const d = Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid);
       if (d < gap) { gap = d; best = i; }
     });
-    if (best !== procAt) { procAt = best; renderProcess(); }
+    if (best !== procAt) { procAt = best; paintStage(true); }
   }
 
   /* ── 목록을 보는 두 방식 ──────────────────── */

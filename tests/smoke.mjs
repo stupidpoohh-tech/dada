@@ -1899,7 +1899,7 @@ if (head('첫 방문 안내')) {
   ok(nod.breath === 'onb-idle', '끄덕이는 동안에도 숨쉬기가 안 끊긴다', nod.breath);
 
   await p.waitForTimeout(200);
-  ok(await lineNow() === '저는 기획하고, 디자인하고, 실제로 만드는 사람이에요.', '둘째 대사');
+  ok(await lineNow() === '저는 기획하고, 설계하고, 직접 만드는 사람이에요.', '둘째 대사');
   await p.click('.onb-btn.go'); await p.waitForTimeout(200);
   ok(await lineNow() === '여기는 제가 만든 것들이 사는 Dada Town이에요.', '셋째 대사');
 
@@ -2361,7 +2361,7 @@ if (head('안내 — 키보드')) {
   ok(await p.evaluate(() => document.activeElement.className.indexOf('onb-btn') >= 0),
     '말풍선이 뜨면 포커스가 「다음」에 간다');
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
-  ok(await p.textContent('.onb-line') === '저는 기획하고, 디자인하고, 실제로 만드는 사람이에요.',
+  ok(await p.textContent('.onb-line') === '저는 기획하고, 설계하고, 직접 만드는 사람이에요.',
     '엔터로 대사가 넘어간다');
 
   // 포커스가 뒤의 지도로 새지 않는다 (덮개가 막고 있어 눌리지도 않는 곳이다)
@@ -2435,6 +2435,19 @@ if (head('목록 — 프로세스 보기')) {
   });
   ok(await off() < 4, '고른 단계가 축의 한가운데에 선다', `${Math.round(await off())}px`);
 
+  /* **축이 주인공이다.** 선반이 길어 화면이 굴러도 축이 위로 사라지면 안 된다 —
+     그러면 「사고축 아래에 산출물이 깔려 있다」가 뒤집힌다 */
+  const stuck = await p.evaluate(() => {
+    const box = document.getElementById('procBody');
+    box.scrollTop = box.scrollHeight;
+    const rail = document.querySelector('.proc-rail').getBoundingClientRect();
+    const stage = document.querySelector('.proc-stage').getBoundingClientRect();
+    return { seen: rail.bottom > box.getBoundingClientRect().top + 20, above: rail.bottom <= stage.top + 1 };
+  });
+  ok(stuck.seen, '끝까지 굴려도 축은 위에 남는다');
+  ok(stuck.above, '산출물은 늘 축 아래에 깔린다');
+  await p.evaluate(() => { document.getElementById('procBody').scrollTop = 0; });
+
   /* 단계를 바꾸면 아래 산출물도 그 단계 것으로 바뀌고, 카드는 **원래 문서의
      그 화면**을 가리킨다 — 여기서 산출물을 다시 그리지 않는다 */
   for (let i = 0; i < want.length; i++) {
@@ -2444,9 +2457,20 @@ if (head('목록 — 프로세스 보기')) {
     ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent) === st.label
       && (await p.textContent('.proc-line')).includes(st.line),
       `${st.label} — 축과 설명이 같이 바뀐다`);
-    const hrefs = await p.$$eval('.proc-card', (a) => a.map((x) => x.getAttribute('href')));
-    ok(hrefs.join('|') === st.made.map((m) => withProc[0].url + m.go).join('|'),
-      `${st.label}의 산출물이 원래 문서의 그 화면을 가리킨다`, hrefs.join(' '));
+    /* **산출물은 한 장씩 크게 선다.** 화살표로 끝까지 넘기며 하나하나 확인한다 —
+       각 장이 원래 문서의 그 화면을 가리켜야 한다 */
+    const seen = [];
+    for (let k = 0; k < st.made.length; k++) {
+      seen.push(await p.$eval('.proc-cap-go', (a) => a.getAttribute('href')));
+      if (k < st.made.length - 1) {
+        await p.evaluate(() => document.querySelector('.proc-arrow--next').click());
+        await p.waitForTimeout(300);
+      }
+    }
+    ok(seen.join('|') === st.made.map((m) => withProc[0].url + m.go).join('|'),
+      `${st.label}의 산출물이 원래 문서의 그 화면을 가리킨다`, seen.join(' '));
+    ok(await p.locator('.proc-frame').count() === 1,
+      `${st.label}에서는 한 장만 크게 선다 (여러 장을 늘어놓지 않는다)`);
     ok(await off() < 4, `${st.label}에서도 축이 가운데로 온다`);
   }
   ok((await p.textContent('.proc-of')) === `${want.length} / ${want.length}`,
@@ -2480,12 +2504,21 @@ if (head('목록 — 축을 끌면 단계가 바뀐다')) {
   ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent) === '문제',
     'Home으로 처음 단계에 간다');
 
-  /* 산출물을 누르면 원래 문서의 그 화면이 실제로 열린다 */
+  /* **선반을 밀면 그 단계 안에서만 움직인다**(축은 가만히 있어야 한다) */
   await p.evaluate(() => document.querySelectorAll('.proc-step')[2].click());
-  await p.waitForTimeout(600);
+  await p.waitForTimeout(700);
+  ok((await p.textContent('.proc-mcount')) === '1 / 3', '과정에는 산출물이 셋이다',
+    await p.textContent('.proc-mcount'));
+  await p.evaluate(() => document.querySelector('.proc-arrow--next').click());
+  await p.waitForTimeout(400);
+  ok((await p.textContent('.proc-mcount')) === '2 / 3', '화살표로 산출물이 넘어간다');
+  ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent) === '과정',
+    '산출물을 넘겨도 축은 과정 그대로다 (두 가로 동작이 안 섞인다)');
+
+  /* 산출물을 누르면 원래 문서의 그 화면이 실제로 열린다 */
   await Promise.all([
     p.waitForURL('**/case/playgrown.html*', { timeout: 6000 }),
-    p.evaluate(() => document.querySelectorAll('.proc-card')[1].click()),
+    p.evaluate(() => document.querySelector('.proc-cap-go').click()),
   ]);
   await p.waitForTimeout(700);
   ok(await p.locator('body.viewer').count() === 1, '까마귀 문서는 예전 그대로 넘겨보기다');

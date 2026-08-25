@@ -955,29 +955,47 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 .modal-tab.on { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* ── 프로세스 보기 ──────────────────────────
-   프로젝트를 고르면 그것이 지나온 여섯 단계가 축으로 펼쳐진다. */
+   프로젝트를 고르면 그것이 지나온 여섯 단계가 축으로 펼쳐진다. 선형이라
+   **프레젠테이션이면서 탐색**이다 — 축을 끌어 단계를 고르고, 그 아래 선반에서
+   산출물을 한 장씩 크게 넘긴다.
 
-.proc { display: block; }
+   **주인공은 축이다.** 산출물은 그 아래 깔린 증거라서 선반을 한 단 낮게 파고
+   조용한 바탕에 앉힌다. 산출물이 위로 올라오면 이 화면이 하려는 말
+   (「이렇게 생각하며 만들었다」)이 뒤집힌다. */
 
-.proc-pick { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 12px; }
+/* **그림 자리의 높이를 직접 준다.** `max-height: 100%`만 걸어 두면 위쪽 어딘가가
+   auto인 순간 아무것도 안 막는다 — 브랜드 보드가 선반을 뚫고 나와 축까지 덮었다
+   (CLAUDE.md의 「그림이 제 높이를 자기 기준으로 재는 꼴」과 같은 함정이다).
+   화면 높이에 딸린 값이라 창을 세로로 줄여도 모달이 넘치지 않는다. */
+.proc { display: flex; flex-direction: column; overflow-y: auto; --proc-shot-h: min(30dvh, 300px); }
+
+/* 축은 굴러도 위에 남는다 — 「사고축 아래에 산출물이 깔려 있다」는 위계가
+   화면을 굴린다고 뒤집히면 안 된다. 바탕을 깔아야 밑에 것이 비쳐 지나가지 않는다 */
+.proc-top {
+  position: sticky; top: 0; z-index: 2; flex: none;
+  background: var(--surface); padding-bottom: 2px;
+}
+
+.proc-pick { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; flex: none; }
 .proc-pick-label { font-size: 11.5px; font-weight: 700; color: var(--faint); letter-spacing: .06em; }
 .proc-pick-btn {
   background: var(--surface); color: var(--sub);
   border: 1px solid var(--line); border-radius: 999px;
-  padding: 5px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  padding: 4px 11px; font-size: 12px; font-weight: 700; cursor: pointer;
 }
 .proc-pick-btn:hover { background: var(--surface-2); color: var(--ink); }
 .proc-pick-btn.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 
-/* 축 — 가로로 굴러가는 한 줄. 스냅은 브라우저에 맡긴다(손가락·트랙패드·관성이
-   공짜로 따라온다). 마우스로 끄는 것만 JS가 만든다. */
-.proc-railwrap { position: relative; margin: 0 -16px 12px; }
+/* ── 축 (주인공) ──
+   스냅은 브라우저에 맡긴다 — 손가락·트랙패드·관성이 공짜로 따라온다. */
+.proc-railwrap { position: relative; flex: none; margin: 12px -16px 10px; }
 .proc-rail {
   display: flex; align-items: flex-start;
   overflow-x: auto; overflow-y: hidden;
   scroll-snap-type: x mandatory; scrollbar-width: none;
-  padding-inline: calc(50% - var(--proc-step, 124px) / 2);
+  padding-inline: calc(50% - var(--proc-step) / 2);
   touch-action: pan-x; cursor: grab;
+  --proc-step: 132px;
 }
 .proc-rail::-webkit-scrollbar { display: none; }
 .proc-rail.dragging { cursor: grabbing; scroll-snap-type: none; }
@@ -986,73 +1004,121 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 
 /* **여섯 개의 독립 메뉴가 아니라 하나의 축을 지나가는 것**으로 보여야 한다.
    그래서 칸 사이를 선으로 잇는다. 선은 0, 동그라미는 1 — 동그라미의 배경이
-   선을 덮으므로 칸마다 끊겨 보인다(음수 z-index로 두면 아예 안 보인다) */
+   선을 덮으므로 칸마다 끊겨 보인다(음수 z-index로 두면 배경 아래라 안 보인다) */
 .proc-step {
-  flex: 0 0 var(--proc-step, 124px);
-  scroll-snap-align: center; position: relative;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  background: none; border: 0; padding: 6px 6px 8px; cursor: pointer;
-  color: var(--ink); opacity: .45;
+  flex: 0 0 var(--proc-step); scroll-snap-align: center; position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: none; border: 0; padding: 6px 6px 4px; cursor: pointer;
+  color: var(--ink); opacity: .4;
   transition: opacity .24s, transform .24s cubic-bezier(.34, 1.2, .64, 1);
 }
 .proc-step::before {
   content: ""; position: absolute; z-index: 0;
-  left: -50%; right: -50%; top: 24px; height: 2px; background: var(--line);
+  left: -50%; right: -50%; top: 28px; height: 2px; background: var(--line);
 }
 .proc-step:first-child::before { left: 50%; }
 .proc-step:last-child::before { right: 50%; }
 .proc-dot {
   position: relative; z-index: 1;
-  width: 36px; height: 36px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 17px; line-height: 1;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 20px; line-height: 1;
   background: var(--surface); border: 2px solid var(--line);
-  transition: border-color .24s, box-shadow .24s;
+  transition: border-color .24s, background .24s, box-shadow .24s;
 }
-.proc-lab { font-size: 13px; font-weight: 800; }
+.proc-lab { font-size: 14px; font-weight: 800; letter-spacing: -.01em; }
 .proc-sub { font-size: 11px; color: var(--faint); }
-.proc-step:hover { opacity: .75; }
-.proc-step[aria-selected="true"] { opacity: 1; transform: scale(1.1); }
+.proc-step:hover { opacity: .72; }
+.proc-step[aria-selected="true"] { opacity: 1; transform: scale(1.12); }
 .proc-step[aria-selected="true"] .proc-dot {
   border-color: var(--accent); background: var(--accent-tint);
+  box-shadow: 0 3px 12px rgba(61, 122, 78, .2);
 }
 .proc-step[aria-selected="true"] .proc-lab { color: var(--accent); }
 .proc-step:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
 
 .proc-line {
-  margin: 0 0 12px; text-align: center; font-size: 13.5px;
-  color: var(--sub); line-height: 1.55;
+  flex: none; margin: 0 0 10px; text-align: center;
+  font-size: 13.5px; color: var(--sub); line-height: 1.5;
 }
-.proc-line b { display: block; color: var(--ink); font-weight: 800; margin-bottom: 2px; }
+.proc-line b { display: block; color: var(--ink); font-weight: 800; font-size: 15px; margin-bottom: 3px; }
 
-/* 그 단계에서 나온 것들 — 누르면 원래 문서의 그 화면으로 간다.
-   **산출물이 축보다 커 보이면 안 된다**: 이 화면이 하려는 말은 「이렇게 생각했다」이고
-   카드는 그 증거다. 그래서 카드는 한 줄짜리로 조용히 눕는다 */
-.proc-made { display: grid; gap: 8px; }
-.proc-card {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
-  gap: 4px 10px; text-decoration: none; color: inherit;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 12px; padding: 11px 13px;
+/* ── 선반 (증거) ──
+   **한 단 낮은 자리다.** 오목하게 파서 축 아래에 깔린 것으로 읽히게 한다.
+   `min-height: 0`이 있어야 flex 안에서 그림이 제 높이를 밀어내지 않는다. */
+/* **선반은 제 내용만큼만 차지한다**(`flex: 0 0 auto`). 늘였다 줄였다 하게 두면
+   남은 자리에 맞춰 상자만 줄고 그림은 안 줄어서, 그림이 위아래로 삐져나와
+   축과 발치를 덮는다 — 실제로 그렇게 보였다. 모자라면 이 화면이 굴러간다. */
+.proc-stage {
+  position: relative; flex: 0 0 auto;
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: inset 0 2px 10px rgba(31, 36, 28, .07);
+  padding: 16px 52px 14px;
 }
-.proc-card:hover { border-color: var(--accent); background: var(--accent-tint); }
-/* **네 칸의 자리를 다 못 박는다.** 하나라도 비워 두면 자동 배치가 남는 칸부터
-   메워서, 화살표가 이름표 옆에 서고 제목이 오른쪽 끝으로 밀렸다 */
-.proc-card-stage {
-  grid-column: 1; grid-row: 1 / 3; align-self: center;
+.proc-frame {
+  flex: 0 0 auto; height: var(--proc-shot-h);
+  display: flex; align-items: center; justify-content: center;
+}
+.proc-shot {
+  max-width: 100%; max-height: 100%;
+  width: auto; height: auto; object-fit: contain;
+  border-radius: 10px; background: #fff;
+  box-shadow: 0 6px 20px rgba(31, 36, 28, .14);
+}
+/* 그림이 없는 산출물은 글로 크게 세운다. 영상은 여기서 미리 안 받아온다 —
+   케이스 스터디의 「누르기 전에는 유튜브에 아무 요청도 안 나간다」를 지킨다 */
+.proc-plate {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 22px 26px; border-radius: 14px;
+  background: var(--surface); border: 1px dashed var(--line);
+  max-width: 100%;
+}
+.proc-plate-mark { font-size: 30px; line-height: 1; }
+.proc-plate.film .proc-plate-mark { color: var(--accent); }
+.proc-plate-title { font-size: 19px; font-weight: 800; text-align: center; }
+
+.proc-cap { flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.proc-cap-stage {
   font-size: 10.5px; font-weight: 800; color: var(--accent);
-  background: var(--accent-tint); border-radius: 999px; padding: 3px 8px;
-  white-space: nowrap;
+  background: var(--accent-tint); border-radius: 999px; padding: 3px 9px; white-space: nowrap;
 }
-.proc-card-title { grid-column: 2; grid-row: 1; font-size: 14px; font-weight: 700; }
-.proc-card-note { grid-column: 2; grid-row: 2; font-size: 12.5px; color: var(--sub); }
-.proc-card .card-go { grid-column: 3; grid-row: 1 / 3; align-self: center;
-  color: var(--faint); font-size: 17px; }
-/* 설명이 없는 산출물은 제목이 가운데 눕는다 */
-.proc-card:not(:has(.proc-card-note)) .proc-card-title { grid-row: 1 / 3; align-self: center; }
+.proc-cap-title { font-size: 14.5px; font-weight: 800; }
+.proc-cap-note { font-size: 12.5px; color: var(--sub); }
+.proc-cap-go { font-size: 12.5px; font-weight: 700; color: var(--accent); text-decoration: none; white-space: nowrap; }
+.proc-cap-go:hover { text-decoration: underline; }
+
+/* 넘기는 손잡이 — 선반 안에만 있다. 축과 자리가 갈려 있어 둘이 안 섞인다 */
+.proc-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font-size: 14px; line-height: 1; cursor: pointer; box-shadow: var(--shadow);
+}
+.proc-arrow:hover:not([disabled]) { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.proc-arrow[disabled] { opacity: .3; cursor: default; }
+.proc-arrow--prev { left: 8px; }
+.proc-arrow--next { right: 8px; }
+
+.proc-mdots {
+  position: absolute; left: 50%; bottom: -13px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 999px; padding: 5px 11px; box-shadow: var(--shadow);
+}
+.proc-mdot {
+  width: 7px; height: 7px; border-radius: 50%; padding: 0;
+  border: 0; background: var(--line); cursor: pointer;
+}
+.proc-mdot.on { background: var(--accent); }
+.proc-mcount {
+  font-size: 11px; font-weight: 700; color: var(--faint);
+  font-variant-numeric: tabular-nums; margin-left: 2px;
+}
 
 .proc-nav {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; margin-top: 14px;
+  flex: none; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 28px;      /* 선반 아래로 반쯤 걸린 점 줄을 피한다 */
 }
 .proc-nav-btn {
   background: var(--surface); color: var(--ink);
@@ -1061,18 +1127,25 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 }
 .proc-nav-btn:hover:not([disabled]) { background: var(--surface-2); }
 .proc-nav-btn[disabled] { opacity: .35; cursor: default; }
-.proc-of {
-  font-size: 12px; font-weight: 700; color: var(--faint);
-  font-variant-numeric: tabular-nums;
-}
+.proc-of { font-size: 12px; font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; }
 
 @media (max-width: 699px) {
   .modal-tabs { padding: 8px 12px 0; }
   .modal-tab { padding: 8px 10px 9px; font-size: 12.5px; }
   .proc-railwrap { margin-inline: -12px; }
-  .proc-step { --proc-step: 106px; flex-basis: 106px; }
-  .proc-rail { padding-inline: calc(50% - 53px); }
-  .proc-lab { font-size: 12.5px; }
+  .proc-rail { --proc-step: 108px; }
+  .proc-dot { width: 38px; height: 38px; font-size: 17px; }
+  .proc-step::before { top: 25px; }
+  .proc-lab { font-size: 13px; }
+  .proc-line b { font-size: 14px; }
+  .proc { --proc-shot-h: min(30dvh, 250px); }
+  .proc-stage { padding: 12px; }
+  /* 폰에서는 화살표를 양 끝에 두면 그림이 그만큼 좁아진다 — 미는 것이 주된
+     방식이라 손잡이는 아래 점 옆으로 내린다 */
+  .proc-arrow { top: auto; bottom: -13px; transform: none; width: 30px; height: 30px; font-size: 12px; }
+  .proc-arrow--prev { left: 14px; }
+  .proc-arrow--next { right: 14px; }
+  .proc-nav { margin-top: 32px; }   /* 선반 아래 한 줄에 화살표와 점이 같이 앉는다 */
   .proc-nav-btn { padding: 9px 12px; min-height: 40px; }
 }
 

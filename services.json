@@ -664,12 +664,16 @@
             {
               "title": "어른이 놀 곳이 왜 없나",
               "note": "제3의 공간이 사라진다는 리서치",
-              "go": "#r-research"
+              "go": "#r-research",
+              "img": "/assets/case/playgrown/column.jpg",
+              "alt": "제3의 공간이 사라지고 있다는 리서치 메모를 종이에 정리한 보드"
             },
             {
               "title": "비어 있던 가운데",
               "note": "어디에 설 것인가 — 포지셔닝",
-              "go": "#r-position"
+              "go": "#r-position",
+              "img": "/assets/case/playgrown/positioning.jpg",
+              "alt": "놀이의 강도와 관계의 깊이 두 축으로 그린 포지셔닝 보드"
             }
           ]
         },
@@ -702,12 +706,16 @@
             {
               "title": "Playgrown의 모습",
               "note": "로고 · 캐릭터 · 슬로건 · 쿠폰",
-              "go": "#r-brand"
+              "go": "#r-brand",
+              "img": "/assets/case/playgrown/brand-board.jpg",
+              "alt": "PlayGrown의 로고 · 캐릭터 · 슬로건 · 쿠폰을 모은 브랜드 보드"
             },
             {
               "title": "하루짜리 다섯 개 존",
               "note": "북카페 한 층을 나눈 공간 설계",
-              "go": "#r-space"
+              "go": "#r-space",
+              "img": "/assets/case/playgrown/map.jpg",
+              "alt": "북카페 한 층을 다섯 개 존으로 나눈 공간 배치도"
             }
           ]
         },
@@ -721,7 +729,8 @@
             {
               "title": "그날, 네 시간",
               "note": "파일럿 1회의 현장",
-              "go": "#r-pilot"
+              "go": "#r-pilot",
+              "kind": "film"
             }
           ]
         },
@@ -749,7 +758,8 @@
             {
               "title": "인스타 홍보 영상",
               "note": "지금도 볼 수 있는 숏츠",
-              "go": "#r-promo"
+              "go": "#r-promo",
+              "kind": "film"
             }
           ]
         }
