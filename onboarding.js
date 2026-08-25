@@ -157,6 +157,14 @@
       if (phase !== 'entering') return;
       ch.classList.remove('walking');
       ch.classList.add('landed');
+      /* **착지 뒤에는 선 채로 숨쉰다.** 예전에는 여기서 끝이었는데, 착지 동작이
+         `both`라 마지막 프레임에 얼어붙어 말풍선이 세 번 넘어가는 동안 내내
+         목석처럼 서 있었다. 착지가 끝나는 자리에서 숨쉬기로 갈아탄다. */
+      setTimeout(() => {
+        if (phase === 'off') return;
+        ch.classList.remove('landed');
+        ch.classList.add('idle');
+      }, reduced() ? 0 : 520);
       say(0);
     };
     ch.addEventListener('transitionend', (e) => { if (e.propertyName === 'left') arrive(); }, { once: true });
@@ -234,7 +242,18 @@
     const focusMe = buttons(act);
     bubble.appendChild(act);
     place();
+    beat();
     focusMe.focus({ preventScroll: true });
+  }
+
+  /** 말이 바뀔 때마다 한 번 끄덕인다 — 말풍선만 갈리고 사람은 가만있으면
+   *  글자만 바뀌는 판때기가 된다. 클래스를 뗐다 붙이는 사이에 리플로우를 한 번
+   *  일으켜야 애니메이션이 **처음부터** 다시 돈다 (마을의 folks-pop과 같은 수). */
+  function beat() {
+    if (!ch || !ch.isConnected) return;
+    ch.classList.remove('beat');
+    void ch.offsetWidth;
+    ch.classList.add('beat');
   }
 
   /* ── 안내를 접는다 ────────────────────────
@@ -433,11 +452,18 @@
 
     layer = el('div', 'onb');
     ch = el('div', 'onb-char');
+    /* 껍질이 셋인 이유. **한 요소에 애니메이션 둘을 걸 수 없다** — 나중 것이 앞
+       것을 지운다. 그래서 하는 일마다 제 껍질을 준다(확성기의 .horn-zoom과 같다).
+         .onb-char  가로 이동 (transition)        — 걸어 들어오고 나간다
+         .onb-step  걸음 · 착지 · 숨쉬기 (무한)   — 서로 갈아드는 상태 하나
+         .onb-beat  말이 바뀔 때 한 번 끄덕임     — 숨쉬기를 끊지 않고 겹친다 */
     const step2 = el('span', 'onb-step');
+    const beatBox = el('span', 'onb-beat');
     const img = new Image();
     img.src = S;
     img.alt = '';                      // 옆의 말풍선이 이미 누구인지 말한다
-    step2.appendChild(img);
+    beatBox.appendChild(img);
+    step2.appendChild(beatBox);
     ch.appendChild(step2);
     layer.appendChild(ch);
     document.body.appendChild(layer);

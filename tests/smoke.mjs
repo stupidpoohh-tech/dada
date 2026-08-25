@@ -1836,13 +1836,32 @@ if (head('첫 방문 안내')) {
     `left=${Math.round(inX.left)} map=${Math.round(inX.mapLeft)}~${Math.round(inX.mapRight)}`);
   ok(inX.dur === '1.5s', '걸어 들어오는 데 1.5초를 쓴다', inX.dur);
 
+  /* **도착했다고 목석이 되지 않는다.** 예전에는 착지 동작이 마지막 프레임을
+     붙들고 끝이라, 말풍선이 세 번 넘어가는 동안 내내 얼어 있었다. */
+  await p.waitForTimeout(700);
+  const breath = await p.evaluate(() =>
+    getComputedStyle(document.querySelector('.onb-step')).animationName);
+  ok(breath === 'onb-idle', '도착한 뒤에는 선 채로 숨쉰다', breath);
+
   // 대사 셋 — 자동으로 넘어가지 않고, 누르는 만큼만 간다
   const lineNow = () => p.evaluate(() => document.querySelector('.onb-line').textContent);
   ok(await lineNow() === '안녕하세요! 다원하는 다원이에요.', '첫 대사');
   await p.waitForTimeout(900);
   ok(await lineNow() === '안녕하세요! 다원하는 다원이에요.', '가만두면 저절로 넘어가지 않는다');
 
-  await p.click('.onb-btn.go'); await p.waitForTimeout(200);
+  await p.click('.onb-btn.go');
+  /* 말이 바뀌면 한 번 끄덕인다. **숨쉬기와 다른 껍질**에 걸어서 둘이 겹쳐 돈다 —
+     한 요소에 둘을 걸면 나중 것이 앞 것을 지워 숨쉬기가 끊긴다. */
+  const nod = await p.evaluate(() => {
+    const a = document.getAnimations().find((x) => x.animationName === 'onb-beat');
+    return { at: a ? Number(a.currentTime) : null,
+             breath: getComputedStyle(document.querySelector('.onb-step')).animationName };
+  });
+  ok(nod.at !== null && nod.at < 260, '말이 바뀌면 한 번 끄덕인다 (처음부터 다시 돈다)',
+    `currentTime=${nod.at}`);
+  ok(nod.breath === 'onb-idle', '끄덕이는 동안에도 숨쉬기가 안 끊긴다', nod.breath);
+
+  await p.waitForTimeout(200);
   ok(await lineNow() === '저는 기획하고, 디자인하고, 실제로 만드는 사람이에요.', '둘째 대사');
   await p.click('.onb-btn.go'); await p.waitForTimeout(200);
   ok(await lineNow() === '여기는 제가 만든 것들이 사는 Dada Town이에요.', '셋째 대사');
@@ -2059,8 +2078,9 @@ if (head('안내 — 움직임 줄이기')) {
   // 줄이는 것은 들썩임이다 — 걸음의 위아래 반동과 착지 squash만 걷는다
   const bob = await p.evaluate(() => document.getAnimations()
     .map((a) => a.animationName || '')
-    .filter((n) => n === 'onb-step' || n === 'onb-land' || n === 'onb-pulse'));
-  ok(bob.length === 0, '위아래 반동·착지·숨쉬기는 없다', bob.join(' / '));
+    .filter((n) => n === 'onb-step' || n === 'onb-land' || n === 'onb-pulse'
+                || n === 'onb-idle' || n === 'onb-beat'));
+  ok(bob.length === 0, '반동·착지·숨쉬기·끄덕임이 없다', bob.join(' / '));
 
   await p.waitForTimeout(900);
   const put = await p.evaluate(() => {
@@ -2077,6 +2097,9 @@ if (head('안내 — 움직임 줄이기')) {
   const fade = await p.evaluate(() =>
     getComputedStyle(document.querySelector('.onb-bubble')).animationName);
   ok(fade === 'onb-fade', '말풍선은 흐려지며 든다 (뽀용만 걷는다)', fade);
+  const still = await p.evaluate(() =>
+    getComputedStyle(document.querySelector('.onb-step')).animationName);
+  ok(still === 'none', '도착한 뒤에도 숨쉬지 않는다 (되풀이되는 움직임이라)', still);
   await p.close();
 }
 
