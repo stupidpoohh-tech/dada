@@ -72,9 +72,14 @@ const first = async (opts = { viewport: { width: 1280, height: 900 } }) => {
   const p = listen(await browser.newPage(opts));
   await p.addInitScript(() => {
     window.__onbFrom = null;
+    window.__onbWalk = null;
     new MutationObserver(() => {
       const c = document.querySelector('.onb-char');
-      if (c && window.__onbFrom === null) window.__onbFrom = c.getBoundingClientRect().right;
+      if (!c || window.__onbFrom !== null) return;
+      window.__onbFrom = c.getBoundingClientRect().right;
+      // 걸음이 무엇으로 걸리는지도 같이 적는다 — 이것도 나중에 물어서는 못 잰다
+      const st = c.querySelector('.onb-step');
+      window.__onbWalk = st ? getComputedStyle(st).animationName : null;
     }).observe(document, { childList: true, subtree: true });
   });
   return p;
@@ -1835,6 +1840,10 @@ if (head('첫 방문 안내')) {
   ok(inX.left > inX.mapLeft && inX.left < inX.mapRight, '걸어 들어와 마을 안(전경)에 선다',
     `left=${Math.round(inX.left)} map=${Math.round(inX.mapLeft)}~${Math.round(inX.mapRight)}`);
   ok(inX.dur === '1.5s', '걸어 들어오는 데 1.5초를 쓴다', inX.dur);
+  /* **뒤뚱거림이 없으면 걷는 게 아니라 미끄러지는 것이다.** 실제로 한 번
+     그렇게 만들어 「계속 슝 나와」를 들었다(2026-08-25). 걸음이 걸려 있는지는
+     붙는 순간에 적어 둔다 — 1.5초짜리라 나중에 물으면 이미 끝나 있다. */
+  ok(await p.evaluate(() => window.__onbWalk) === 'onb-step', '걸으면서 뒤뚱거린다');
 
   /* **도착했다고 목석이 되지 않는다.** 예전에는 착지 동작이 마지막 프레임을
      붙들고 끝이라, 말풍선이 세 번 넘어가는 동안 내내 얼어 있었다. */
@@ -2073,22 +2082,17 @@ if (head('안내 — 움직임 줄이기')) {
   ok(await p.evaluate(() => window.__onbFrom) <= 0, '여기서도 화면 밖에서 출발한다');
   const dur = await p.evaluate(() =>
     getComputedStyle(document.querySelector('.onb-char')).transitionDuration.split(',')[0].trim());
-  ok(dur === '0.52s', '걷는 대신 짧게 미끄러진다 (0.52초 — 순간이동이 아니다)', dur);
+  ok(dur === '0.9s', '가로지르는 시간을 줄인다 (1.5초 → 0.9초)', dur);
+  ok(await p.evaluate(() => window.__onbWalk) === 'onb-step-soft',
+    '여기서도 뒤뚱거리되 얕게 걷는다 (8%·0.34초 → 4%·0.44초)');
 
-  // 줄이는 것은 들썩임이다 — 걸음의 위아래 반동과 착지 squash만 걷는다
-  const bob = await p.evaluate(() => document.getAnimations()
-    .map((a) => a.animationName || '')
-    .filter((n) => n === 'onb-step' || n === 'onb-land' || n === 'onb-pulse'
-                || n === 'onb-idle' || n === 'onb-beat'));
-  ok(bob.length === 0, '반동·착지·숨쉬기·끄덕임이 없다', bob.join(' / '));
-
-  await p.waitForTimeout(900);
+  await p.waitForTimeout(1300);
   const put = await p.evaluate(() => {
     const r = document.querySelector('.onb-char').getBoundingClientRect();
     const m = document.getElementById('map').getBoundingClientRect();
     return { left: r.left, mapLeft: m.left, bubble: !!document.querySelector('.onb-bubble') };
   });
-  ok(put.left > put.mapLeft, '미끄러져 들어와 제자리에 선다', `left=${Math.round(put.left)}`);
+  ok(put.left > put.mapLeft, '걸어 들어와 제자리에 선다', `left=${Math.round(put.left)}`);
   ok(put.bubble, '대사는 그대로 나온다');
   ok(await p.textContent('.onb-line') === '안녕하세요! 다원하는 다원이에요.', '첫 대사도 그대로');
 
@@ -2097,9 +2101,21 @@ if (head('안내 — 움직임 줄이기')) {
   const fade = await p.evaluate(() =>
     getComputedStyle(document.querySelector('.onb-bubble')).animationName);
   ok(fade === 'onb-fade', '말풍선은 흐려지며 든다 (뽀용만 걷는다)', fade);
+  /* 숨쉬기는 남긴다 — 지도 위의 "나"가 이미 그보다 크게 숨쉬고 있고, styles.css는
+     줄이기 사용자에게도 그것을 안 끈다. 안내만 혼자 얼면 그게 도리어 어긋난다.
+     **투어보다 먼저 본다** — 투어를 시작하면 다원은 걸어 나가고 없다. */
   const still = await p.evaluate(() =>
     getComputedStyle(document.querySelector('.onb-step')).animationName);
-  ok(still === 'none', '도착한 뒤에도 숨쉬지 않는다 (되풀이되는 움직임이라)', still);
+  ok(still === 'onb-idle', '도착한 뒤에는 여기서도 숨쉰다 (마을이 이미 숨쉰다)', still);
+
+  /* 끝없이 되풀이되며 시선을 끄는 것 — 이것만 세운다. 하는 일이 강조뿐이라
+     가만히 있는 테두리로도 그 일은 된다 */
+  for (let i = 0; i < 3; i++) { await p.click('.onb-btn.go'); await p.waitForTimeout(160); }
+  await p.click('.onb-act .onb-btn:nth-child(2)');
+  await p.waitForSelector('.onb-ring', { timeout: 4000 });
+  ok(await p.evaluate(() =>
+    getComputedStyle(document.querySelector('.onb-ring')).animationName) === 'none',
+    '투어 테두리는 숨쉬지 않는다 (되풀이되며 시선을 끄는 것이라)');
   await p.close();
 }
 
