@@ -313,6 +313,51 @@ button, input { font: inherit; color: inherit; }
   86%      { transform: translateY(0)    scale(1.03, .96); }
 }
 
+/* ── 마을 나가는 길의 표지판 ──────────────────
+   다리 왼쪽, 마을 밖으로 난 길목에 선다. 누르면 다원이 총총 뛰어와 배웅한다.
+   `dadaBye`가 없으면(안내 JS가 없으면) 풍경으로만 서고 눌리지 않는다.
+
+   **바람에 삐걱이듯 흔들린다.** 마을의 다른 것들과 같은 2.4초 박자를 타되
+   하는 일은 다르다 — 건물은 숨쉬고, 우편함은 또잉또잉하고, 표지판은 나무라
+   기둥을 축으로 천천히 갸웃한다. */
+.sign-spot {
+  position: absolute;
+  pointer-events: none;             /* 안내가 없으면 끝까지 이 값이다 */
+  transform: translateX(-50%);
+  z-index: 4;
+  line-height: 0;
+}
+.sign-spot.sign-live {
+  pointer-events: auto;
+  background: none; border: 0; padding: 0; cursor: pointer;
+}
+/* 지도 폭의 6%라 폰에서 24px 남짓. 판정 영역을 그림보다 넓게 깐다 */
+.sign-spot.sign-live::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  width: max(120%, 48px); height: max(110%, 48px);
+  transform: translate(-50%, -50%);
+}
+.sign-fig {
+  display: block;
+  transform-origin: 50% 100%;       /* 축은 땅에 박힌 기둥 밑동이다 */
+  animation: sign-idle 2.4s ease-in-out infinite;
+}
+.sign-zoom { display: block; transform-origin: 50% 100%; }
+.sign-spot img { width: 100%; height: auto; display: block;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .26)); }
+@keyframes sign-idle {
+  0%, 100% { transform: rotate(0deg); }
+  30%      { transform: rotate(-1.8deg); }
+  62%      { transform: rotate(1.4deg); }
+  84%      { transform: rotate(-.5deg); }
+}
+@media (hover: hover) {
+  .sign-spot.sign-live:hover .sign-zoom { transform: scale(1.12); }
+}
+.sign-spot.sign-live:focus-visible .sign-zoom { transform: scale(1.12); }
+.sign-zoom { transition: transform .18s ease-out; }
+
 /* ── 세모집 마당의 확성기 ────────────────────
    집 테마송이 나오는 자리다. `speaker.song`이 없으면 `.horn-spot`만 있고
    `.horn-live`가 없다 — 그때는 아래에서 `pointer-events: none`으로 막혀 풍경으로만 선다
@@ -988,7 +1033,24 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 
 /* ── 축 (주인공) ──
    스냅은 브라우저에 맡긴다 — 손가락·트랙패드·관성이 공짜로 따라온다. */
-.proc-railwrap { position: relative; flex: none; margin: 12px -16px 10px; }
+/* **축은 정해진 틀 안에서만 미끄러진다.** 예전에는 모달 가장자리까지 흘러
+   나가서 칸이 창 밖으로 잘려 나갔다 — 어디까지가 축인지 알 수 없었다.
+   이제 틀은 크기가 고정이고(테두리가 그 자리를 말한다) 안의 칸만 슬라이드
+   레일처럼 움직인다. 양 끝은 흐려져서 「더 있다」가 보인다. */
+.proc-railwrap {
+  position: relative; flex: none; margin: 12px 0 10px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface); overflow: hidden;
+}
+/* 양 끝의 흐림 — 칸이 테두리에 딱 잘리면 「잘렸다」로 보이고, 흐려지면
+   「이어진다」로 보인다. 손가락이 통과해야 하므로 판정은 안 받는다 */
+.proc-railwrap::before, .proc-railwrap::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 34px;
+  z-index: 1; pointer-events: none;
+}
+.proc-railwrap::before { left: 0; background: linear-gradient(90deg, var(--surface), transparent); }
+.proc-railwrap::after { right: 0; background: linear-gradient(270deg, var(--surface), transparent); }
+
 .proc-rail {
   display: flex; align-items: flex-start;
   overflow-x: auto; overflow-y: hidden;
@@ -1066,6 +1128,15 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
   border-radius: 10px; background: #fff;
   box-shadow: 0 6px 20px rgba(31, 36, 28, .14);
 }
+/* 자리만 잡아 둔 그림에는 이름표를 단다 — 진짜 산출물처럼 보이면 안 된다 */
+.proc-frame.is-sample { position: relative; }
+.proc-sample-tag {
+  position: absolute; right: 8px; bottom: 8px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .04em;
+  color: var(--sub); background: rgba(255, 255, 255, .92);
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px;
+}
+
 /* 그림이 없는 산출물은 글로 크게 세운다. 영상은 여기서 미리 안 받아온다 —
    케이스 스터디의 「누르기 전에는 유튜브에 아무 요청도 안 나간다」를 지킨다 */
 .proc-plate {
@@ -1132,7 +1203,7 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 @media (max-width: 699px) {
   .modal-tabs { padding: 8px 12px 0; }
   .modal-tab { padding: 8px 10px 9px; font-size: 12.5px; }
-  .proc-railwrap { margin-inline: -12px; }
+  .proc-railwrap { margin-inline: 0; }
   .proc-rail { --proc-step: 108px; }
   .proc-dot { width: 38px; height: 38px; font-size: 17px; }
   .proc-step::before { top: 25px; }

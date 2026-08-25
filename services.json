@@ -687,7 +687,10 @@
             {
               "title": "맡은 일 다섯 가지",
               "note": "표지에 적어 둔 것",
-              "go": "#r-cover"
+              "go": "#r-cover",
+              "img": "/assets/case/sample/shot.png",
+              "alt": "맡은 일 다섯 가지 — 아직 그림이 없어 자리만 잡아 둔 샘플",
+              "sample": true
             }
           ]
         },
@@ -701,7 +704,10 @@
             {
               "title": "18일의 기록",
               "note": "하루에 한 장씩 쌓은 일력",
-              "go": "#r-days"
+              "go": "#r-days",
+              "img": "/assets/case/sample/shot.png",
+              "alt": "18일의 기록 — 아직 그림이 없어 자리만 잡아 둔 샘플",
+              "sample": true
             },
             {
               "title": "Playgrown의 모습",
@@ -730,7 +736,10 @@
               "title": "그날, 네 시간",
               "note": "파일럿 1회의 현장",
               "go": "#r-pilot",
-              "kind": "film"
+              "kind": "film",
+              "img": "/assets/case/sample/shot.png",
+              "alt": "그날, 네 시간 — 아직 그림이 없어 자리만 잡아 둔 샘플",
+              "sample": true
             }
           ]
         },
@@ -744,7 +753,10 @@
             {
               "title": "배운 것",
               "note": "세 줄로 남긴 판단",
-              "go": "#r-note"
+              "go": "#r-note",
+              "img": "/assets/case/sample/shot.png",
+              "alt": "배운 것 — 아직 그림이 없어 자리만 잡아 둔 샘플",
+              "sample": true
             }
           ]
         },
@@ -759,11 +771,27 @@
               "title": "인스타 홍보 영상",
               "note": "지금도 볼 수 있는 숏츠",
               "go": "#r-promo",
-              "kind": "film"
+              "kind": "film",
+              "img": "/assets/case/sample/shot.png",
+              "alt": "인스타 홍보 영상 — 아직 그림이 없어 자리만 잡아 둔 샘플",
+              "sample": true
             }
           ]
         }
       ]
     }
-  ]
+  ],
+  "sign": {
+    "sprite": "sign.png",
+    "at": [
+      6.0,
+      96.0
+    ],
+    "w": 7.2,
+    "name": "마을 나가기 표지판",
+    "lines": [
+      "와줘서 고마워요.",
+      "혹시 저에게 남기고 싶은 말이 있나요?"
+    ]
+  }
 }

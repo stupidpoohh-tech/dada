@@ -41,6 +41,8 @@
     '여기는 제가 만든 것들이 사는 Dada Town이에요.',
   ];
   const CHOICE = ['천천히 마을을 구경해도 좋고,', '대표 프로젝트부터 빠르게 볼 수도 있어요.'];
+  /* 배웅 — 마을 나가는 길의 표지판을 눌렀을 때 */
+  const BYE = ['와줘서 고마워요.', '혹시 저에게 남기고 싶은 말이 있나요?'];
 
   /* **이름을 바꿨다.** 예전에는 `dada.onboarded`에 「다녀갔다」를 적었는데,
      그 칸이 이미 '1'로 남아 있는 브라우저가 있다(먼저 올라간 판을 본 사람들).
@@ -100,6 +102,9 @@
   let phase = 'off';                 // off · entering · intro · choice · tour
   let line = 0, at = 0;              // 몇 번째 대사 · 몇 번째 투어
   let scrim, layer, ch, bubble, card, walkMs = 1500;
+  const HELLO = [0.20, 0.15];        // [폰, 데스크톱] — 인사할 때 서는 자리 (지도 폭의 비율)
+  const BYE_AT = [0.34, 0.32];       // 배웅할 때. 표지판 옆에 비켜 선다
+  let standAt = HELLO;
   let dims = [], ring = null;
   let onMapClick = null;
 
@@ -146,7 +151,10 @@
     const w = small ? Math.min(88, Math.max(62, m.width * 0.20))
                     : Math.min(200, Math.max(120, m.width * 0.24));
     const h = w * 130 / 98;                       // me.png 원래 비율
-    const cx = m.left + m.width * (small ? 0.20 : 0.15);
+    /* **배웅 때는 오른쪽에 선다.** 다원은 지도 폭의 4분의 1이라, 인사할 때
+       자리(15%)에 그대로 서면 표지판(6%)을 통째로 덮는다 — 눌러서 부른 것이
+       가려지면 무엇에 대한 대답인지 알 수 없다 */
+    const cx = m.left + m.width * (small ? standAt[0] : standAt[1]);
     const cb = innerHeight - m.bottom + m.height * (small ? 0.04 : 0.02);
 
     if (ch && ch.isConnected) {          // 투어 중이면 다원은 이미 걸어 나갔다
@@ -310,15 +318,18 @@
     if (bubble) { bubble.remove(); bubble = null; }
 
     const done = () => {
-      if (ch) ch.remove();
+      if (ch) { ch.remove(); ch = null; }   // 비워야 배웅 때 다시 세울 수 있다
+      standAt = HELLO;
       document.body.classList.remove('dada-onboarding');
       if (then) then();
     };
 
-    /* **「탐험하기」를 고른 사람에게만 제자리로 돌아가는 것을 보여준다.**
-       투어는 지도가 곧바로 필요하고, 「건너뛰기」는 「그만 보고 싶다」는 뜻이라
-       둘 다 1.2초를 더 붙들면 안 된다 — 그쪽은 아래 짧은 갈음으로 끝낸다. */
-    if (how === 'explore' && goHome(done)) return;
+    /* **투어만 빼고 제자리로 걸어 돌아간다.** 「건너뛰기」도 마찬가지다 —
+       한때 「그만 보고 싶다는 뜻이니 짧게 끝내자」로 뒀는데, 그러면 안내를
+       건너뛴 사람만 다원이 뿅 사라지는 것을 본다. 건너뛰는 것은 인사를 그만
+       듣겠다는 뜻이지 인사한 사람이 없던 일이 되라는 뜻이 아니다.
+       투어는 지도가 곧바로 필요해서 그때만 짧은 갈음으로 끝낸다. */
+    if (how !== 'tour' && goHome(done)) return;
 
     /* 나갈 때도 **페이드는 남긴다.** 사라지는 것을 못 보면 「없어졌다」가 아니라
        「끊겼다」로 읽힌다. 줄여 달라고 한 사람에게서 빼는 것은 옆으로 걸어가는
@@ -631,6 +642,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (phase === 'tour') endTour('esc');
+      else if (phase === 'bye') finish('bye-esc');
       else if (phase !== 'off') finish('skip');
     });
     // 안내가 떠 있는 동안에는 탭이 말풍선 안에서만 돈다 — 뒤의 지도로 새면
@@ -661,6 +673,141 @@
     try { sessionStorage.removeItem(RESUME); } catch (e) { /* 시크릿 창 */ }
   };
 
+  /* ── 배웅 ──────────────────────────────────
+     마을 나가는 길의 표지판을 누르면 다원이 **제자리에서 총총 뛰어나와** 배웅한다.
+     들어올 때의 반대다 — 그때는 화면 밖에서 걸어 들어왔고, 여기서는 지도 위
+     제자리에서 앞으로 나온다. 그래서 뒷모습이 아니라 앞모습으로 온다.
+
+     안내를 봤든 안 봤든 눌리므로 `wanted()`와 상관없이 선다. */
+  function bye() {
+    if (phase !== 'off' || !data) return;
+    if (!layer) build(false);
+    if (!scrim) {
+      scrim = el('div', 'onb-scrim');
+      scrim.addEventListener('click', () => { if (phase === 'bye') sayBye(line + 1); });
+      document.body.appendChild(scrim);
+    }
+    if (!ch) greeter();
+    document.body.classList.add('dada-onboarding');
+    phase = 'entering';
+    standAt = BYE_AT;
+    track('bye_open', {});
+    runIn(() => sayBye(0));
+  }
+
+  /** 지도 위 제자리에서 전경으로 뛰어나온다 — goHome()의 반대다 */
+  function runIn(done) {
+    place();                                   // 설 자리(전경)를 잰다
+    const homeX = +ch.dataset.home;
+    const w = parseFloat(ch.style.width);
+    const b = parseFloat(ch.style.bottom);
+
+    const spot = document.querySelector('.me-spot');
+    const r = spot && spot.getBoundingClientRect();
+    if (r && r.width) {
+      ch.style.left = Math.round(r.left + r.width / 2) + 'px';
+      ch.style.bottom = Math.round(innerHeight - r.bottom) + 'px';
+      ch.style.width = Math.round(r.width) + 'px';
+    } else {
+      ch.style.left = outside() + 'px';         // 제자리가 없으면 화면 밖에서 온다
+    }
+
+    const from = parseFloat(ch.style.left);
+    const g = gait(Math.max(Math.abs(homeX - from), 120), w, 900, 1600);
+    ch.classList.remove('idle', 'beat', 'gone', 'away');
+    ch.classList.add('home', 'walking');        // `home`이 left·bottom·width를 다 전환한다
+    ch.style.setProperty('--onb-dur', g.ms + 'ms');
+    ch.style.setProperty('--onb-step', g.pace + 'ms');
+    requestAnimationFrame(() => {
+      ch.style.left = homeX + 'px';
+      ch.style.bottom = b + 'px';
+      ch.style.width = w + 'px';
+    });
+    setTimeout(() => {
+      if (phase !== 'entering') return;
+      ch.classList.remove('walking');
+      ch.classList.add('landed');
+      setTimeout(() => {
+        if (phase === 'off') return;
+        ch.classList.remove('landed');
+        ch.classList.add('idle');
+      }, reduced() ? 0 : 520);
+      done();
+    }, g.ms + 20);
+  }
+
+  /** 배웅의 말. 마지막 줄에서 남기고 싶은 말을 고르게 한다 */
+  function sayBye(i) {
+    if (i >= BYE.length) return;
+    phase = 'bye';
+    line = i;
+    const last = i === BYE.length - 1;
+    scrim.classList.toggle('quiet', last);      // 고르는 차례에는 아무 데나 눌러 넘기지 않는다
+    fill([BYE[i]], (act) => {
+      if (!last) {
+        const next = el('button', 'onb-btn go', '다음');
+        next.type = 'button';
+        next.addEventListener('click', () => sayBye(i + 1));
+        act.appendChild(next);
+        return next;
+      }
+      act.classList.add('stack');
+      /* **셋이 하는 일이 다 다르다.** 손 인사는 숫자 하나, 짧은 메시지는 글,
+         연락하기는 메일이다 — 남길 말의 무게가 저마다 달라서 문도 셋이다 */
+      const hi = el('button', 'onb-btn go', '인사 남기기 👋');
+      hi.type = 'button';
+      hi.addEventListener('click', () => waveAt(hi));
+      const msg = el('button', 'onb-btn', '짧은 메시지 남기기');
+      msg.type = 'button';
+      msg.addEventListener('click', () => {
+        track('bye_choice', { choice: 'message' });
+        /* **창을 먼저 연다.** 다원이 제자리로 돌아가는 1.2초를 기다렸다 열면
+           누른 사람은 그동안 아무 일도 안 일어난 줄 안다. 그 사이 다원은
+           창 뒤에서 걸어간다 — 창이 위에 있으므로(z-index 60) 안 겹친다 */
+        if (window.dadaTown && window.dadaTown.say) window.dadaTown.say();
+        finish('bye-msg');
+      });
+      const mail = el('a', 'onb-btn', '연락하기');
+      const to = (data.profile && data.profile.email) || '';
+      mail.href = 'mailto:' + to;
+      mail.addEventListener('click', () => { track('bye_choice', { choice: 'mail' }); finish('bye-mail'); });
+      act.append(hi, msg, mail);
+      return hi;
+    });
+  }
+
+  /* ── 손 인사 ────────────────────────────────
+     **글이 아니라 숫자다.** 남길 말이 없는 사람도 「다녀갔다」는 말은 하고 싶을
+     수 있고, 그 말에 폼을 세우면 아무도 안 한다. 화상회의의 리액션처럼 손 하나가
+     떠올랐다 사라지고, 서버에는 한 번 셌다고만 알린다(worker.js의 `/api/wave`).
+
+     **떠오르는 것은 눌린 그 자리에서 시작한다.** 화면 한가운데에서 뜨면 내가
+     누른 것과 이어지지 않아 「무슨 일이 일어났지」가 된다. */
+  function waveAt(btn) {
+    track('bye_choice', { choice: 'wave' });
+    const r = btn.getBoundingClientRect();
+    for (let i = 0; i < (reduced() ? 1 : 5); i++) {
+      const h = el('span', 'onb-wave', '👋');
+      h.setAttribute('aria-hidden', 'true');
+      h.style.left = Math.round(r.left + r.width / 2 + (Math.random() - 0.5) * r.width * 0.7) + 'px';
+      h.style.top = Math.round(r.top) + 'px';
+      h.style.setProperty('--drift', ((Math.random() - 0.5) * 90).toFixed(0) + 'px');
+      h.style.animationDelay = (i * 90) + 'ms';
+      h.addEventListener('animationend', () => h.remove(), { once: true });
+      document.body.appendChild(h);
+    }
+    /* 서버가 못 받아도 손은 이미 떠올랐다 — 인사는 우리끼리 한 일이라
+       거기서 실패했다고 사람에게 사과할 일은 아니다 */
+    fetch('/api/wave', { method: 'POST' }).catch(() => {});
+    fill(['인사 받았어요. 고마워요!'], (act) => {
+      const done = el('button', 'onb-btn go', '닫기');
+      done.type = 'button';
+      done.addEventListener('click', () => finish('bye-wave'));
+      act.appendChild(done);
+      return done;
+    });
+  }
+
   function boot(d) {
     if (phase !== 'off' || !d) return;
     data = d;
@@ -677,6 +824,11 @@
   }
 
   const stopsReady = () => stops().length > 0;
+
+  /* **손잡이는 지금 내건다.** boot() 안에서 내걸면 늦다 — 지도가 표지판을 그릴
+     때 이 이름이 없으면 그것을 「누를 수 없는 풍경」으로 세워 버린다.
+     아직 데이터가 없을 때 눌리면 bye()가 조용히 아무것도 안 한다. */
+  window.dadaBye = bye;
 
   document.addEventListener('dada:ready', (e) => boot(e.detail && e.detail.data), { once: true });
   if (window.dadaTown && window.dadaTown.data) boot(window.dadaTown.data);

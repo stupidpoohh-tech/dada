@@ -156,9 +156,46 @@ head('나머지는 에셋으로');
   }
   ok(true, '지도·목록·그림·안내서가 전부 에셋으로 넘어간다');
 
+  const noWave = await call(new Request('https://x/api/wave', { method: 'GET' }), env);
+  ok(noWave.status === 405, '/api/wave는 POST만 받는다', String(noWave.status));
+
   const bad = await call(new Request('https://x/api/word', { method: 'DELETE' }), env);
   ok(bad.status === 405, '/api/word는 POST·GET만 받는다', String(bad.status));
 }
+
+/* ── 손 인사 ────────────────────────────────────────────────
+   글이 아니라 숫자다. 남길 말이 없는 사람도 「다녀갔다」는 말은 하고 싶을 수
+   있고, 그 말에 폼을 세우면 아무도 안 한다. */
+head('손 인사');
+{
+  const env = { WORDS: fakeKV(), ADMIN_KEY: 'secret' };
+  const wave = (ip) => call(new Request('https://x/api/wave', {
+    method: 'POST', headers: ip ? { 'cf-connecting-ip': ip } : {},
+  }), env);
+
+  const a = await (await wave('1.1.1.1')).json();
+  ok(a.ok === true && a.count === 1, '한 번 누르면 하나가 센다', JSON.stringify(a));
+  const b = await (await wave('2.2.2.2')).json();
+  ok(b.count === 2, '다른 사람이 누르면 그날 수가 는다', String(b.count));
+
+  /* 날짜별로 센다 — 통짜 하나면 같은 순간에 둘이 누를 때 하나가 덮여 사라진다 */
+  const today = new Date().toISOString().slice(0, 10);
+  ok((await env.WORDS.get('v:' + today)) === '2', `날짜별로 쌓인다 (v:${today})`);
+
+  /* 도배는 글과 같은 빗장으로 막는다 — 누르고 있으면 하루치가 순식간에 는다 */
+  await wave('3.3.3.3'); await wave('3.3.3.3'); await wave('3.3.3.3');
+  const over = await wave('3.3.3.3');
+  ok(over.status === 429, '한 사람이 1분에 세 번까지다', String(over.status));
+
+  /* 글과 숫자를 따로 보러 다니게 하지 않는다 */
+  const desk = await (await call(new Request('https://x/api/word?key=secret'), env)).json();
+  ok(desk.hello === 5 && Array.isArray(desk.days) && desk.days[0].day === today,
+    '관리자 화면에서 글과 함께 인사 수도 준다', JSON.stringify({ hello: desk.hello, days: desk.days }));
+
+  const none = await call(new Request('https://x/api/wave', { method: 'POST' }), { });
+  ok(none.status === 503, 'KV가 없으면 조용히 삼키지 않고 503으로 말한다', String(none.status));
+}
+
 
 console.log(`\n${fail ? '❌' : '✅'}  통과 ${pass} · 실패 ${fail}`);
 process.exit(fail ? 1 : 0);

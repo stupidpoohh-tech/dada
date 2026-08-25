@@ -110,12 +110,52 @@ async function readWords(url, env) {
     const v = await env.WORDS.get(k.name);
     if (v) { try { words.push(JSON.parse(v)); } catch { /* 깨진 줄은 건너뛴다 */ } }
   }
-  return json({ ok: true, count: words.length, words });
+  /* 손 인사도 같이 준다 — 글과 숫자를 따로 보러 다니게 하지 않는다 */
+  const waves = await env.WORDS.list({ prefix: 'v:', limit: 400 });
+  const days = [];
+  for (const k of waves.keys) {
+    days.push({ day: k.name.slice(2), n: Number(await env.WORDS.get(k.name)) || 0 });
+  }
+  days.sort((a, b) => b.day.localeCompare(a.day));
+  const hello = days.reduce((sum, d) => sum + d.n, 0);
+
+  return json({ ok: true, count: words.length, words, hello, days });
+}
+
+/* ── 손 인사 ───────────────────────────────────────────────
+ * 표지판 앞에서 👋를 누르면 화면에 손이 하나 떠오르고, 여기로 한 번 셌다고
+ * 알린다. **글이 아니라 숫자다** — 남길 말이 없는 사람도 「다녀갔다」는 말은
+ * 하고 싶을 수 있고, 그 말에 폼을 세우면 아무도 안 한다.
+ *
+ * 날짜별로 센다(`v:2026-08-25`). 통짜 하나로 안 세는 이유는 KV에 「1 늘리기」가
+ * 없어서다 — 읽고 더해서 쓰는 수밖에 없는데, 통짜 하나면 같은 순간에 둘이
+ * 누를 때마다 하나가 덮여 사라진다. 날짜로 갈라 두면 부딪힐 일이 훨씬 적고,
+ * 언제 사람이 왔는지도 같이 남는다. (그래도 완전히 안 부딪히지는 않는다 —
+ * 이건 포트폴리오의 인사 수이지 회계 장부가 아니다.)
+ */
+const waveKey = (ms) => 'v:' + new Date(ms).toISOString().slice(0, 10);
+
+async function wave(request, env) {
+  if (!env.WORDS) return json({ ok: false, error: 'not_configured' }, 503);
+  const ip = request.headers.get('cf-connecting-ip') || '';
+  // 도배는 글과 같은 빗장으로 막는다 — 누르고 있으면 하루치가 순식간에 는다
+  if (await overRate(env, ip)) {
+    return json({ ok: false, error: 'rate', message: '조금 뒤에 다시 눌러 주세요.' }, 429);
+  }
+  const k = waveKey(Date.now());
+  const n = (Number(await env.WORDS.get(k)) || 0) + 1;
+  await env.WORDS.put(k, String(n));
+  return json({ ok: true, count: n });
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === '/api/wave') {
+      if (request.method === 'POST') return wave(request, env);
+      return json({ ok: false, error: 'method' }, 405);
+    }
 
     if (url.pathname === '/api/word') {
       if (request.method === 'POST') return leaveWord(request, env);

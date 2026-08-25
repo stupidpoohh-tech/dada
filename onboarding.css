@@ -202,6 +202,9 @@ body.dada-touring .hint { visibility: hidden; }
   cursor: pointer; white-space: nowrap;
 }
 .onb-btn:hover { background: var(--accent-tint); border-color: var(--accent); }
+/* 「연락하기」는 메일로 나가는 링크라 <a>다. 단추와 같은 옷을 입히려면
+   글자 자리를 직접 잡아 줘야 한다 — 안 그러면 혼자 왼쪽으로 붙는다 */
+a.onb-btn { display: block; text-align: center; text-decoration: none; }
 /* 「다음」만은 대사를 넘기는 손잡이라 눈에 띄어야 한다 — 갈림길의 두 버튼과는 다른 것이다 */
 .onb-btn.go { background: var(--accent); color: var(--accent-ink); border-color: transparent; flex: 0 0 auto; }
 .onb-btn.go:hover { background: var(--accent); filter: brightness(1.08); }
@@ -211,6 +214,25 @@ body.dada-touring .hint { visibility: hidden; }
   font-size: 12.5px; color: var(--sub); cursor: pointer; flex: 0 0 auto;
 }
 .onb-skip:hover { color: var(--ink); text-decoration: underline; }
+
+/* ── 떠오르는 손 인사 ───────────────────────
+   화상회의의 리액션과 같은 몸짓이다. **누른 그 자리에서 떠오른다** — 화면
+   한가운데에서 뜨면 내가 누른 것과 이어지지 않아 「무슨 일이 일어났지」가 된다.
+   몇 개가 시차를 두고 올라가며 좌우로 조금씩 흩어진다(`--drift`).
+
+   `position: fixed`인 것은 몸이 아니라 **화면**을 기준으로 떠올라야 해서다 —
+   말풍선 안에 두면 말풍선이 갈릴 때 같이 사라진다. */
+.onb-wave {
+  position: fixed; z-index: 70; pointer-events: none;
+  font-size: 30px; line-height: 1;
+  animation: onb-wave-up 1.7s cubic-bezier(.22, .6, .36, 1) both;
+}
+@keyframes onb-wave-up {
+  0%   { opacity: 0; transform: translate(-50%, 6px) scale(.6); }
+  14%  { opacity: 1; transform: translate(-50%, -14px) scale(1.15); }
+  70%  { opacity: .9; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--drift, 0px)), -190px) scale(.95); }
+}
 
 /* ── 투어 그늘 ─────────────────────────────
    **구멍 뚫린 덮개 한 장이 아니라 넉 장이다.** `clip-path`로 구멍을 뚫으면
@@ -331,6 +353,9 @@ body.dada-touring .hint { visibility: hidden; }
    대신 **테두리 숨쉬기(onb-pulse)는 세운다** — 끝없이 되풀이되며 시선을 끄는 것이
    하는 일이 오직 강조뿐이라, 가만히 있는 테두리로도 그 일은 된다. */
 @media (prefers-reduced-motion: reduce) {
+  /* 손 인사는 남기되 **덜 멀리 간다** — 떠오른 것 자체가 「받았다」는 표시라
+     빼면 눌러도 아무 일이 없는 것이 된다 */
+  .onb-wave { animation-duration: .9s; }
   /* 같은 박자로 같은 시간을 걷되 **몸짓만 얕다** */
   .onb-char.walking .onb-step { animation: onb-step-soft var(--onb-step, .34s) linear infinite; }
   .onb-bubble, .onb-tour { animation: onb-fade .2s ease-out both; }

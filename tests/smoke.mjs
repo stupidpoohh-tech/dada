@@ -2369,8 +2369,15 @@ if (head('안내 — 키보드')) {
   ok(await p.evaluate(() => !!document.querySelector('.onb-bubble').contains(document.activeElement)),
     '탭이 말풍선 안에서만 돈다');
 
-  await p.keyboard.press('Escape'); await p.waitForTimeout(800);
-  ok(await p.locator('.onb-char').count() === 0, 'Esc로 안내를 건너뛴다');
+  /* **건너뛰어도 제자리로 걸어 돌아간다**(2026-08-25). 한때 짧은 페이드로
+     끝냈는데, 그러면 안내를 건너뛴 사람만 다원이 뿅 사라지는 것을 본다 —
+     건너뛰는 것은 인사를 그만 듣겠다는 뜻이지 인사한 사람이 없던 일이 되라는
+     뜻이 아니다. 그래서 걸어가는 시간만큼 더 기다린다. */
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  ok(await p.locator('.onb-char').count() === 1 && await p.locator('.onb-scrim').count() === 0,
+    'Esc로 안내를 건너뛰면 말풍선만 걷히고 다원은 걸어간다');
+  await p.waitForTimeout(2200);
+  ok(await p.locator('.onb-char').count() === 0, '걸어가고 나면 안내가 흔적 없이 걷힌다');
   await p.close();
 }
 
@@ -2435,6 +2442,15 @@ if (head('목록 — 프로세스 보기')) {
   });
   ok(await off() < 4, '고른 단계가 축의 한가운데에 선다', `${Math.round(await off())}px`);
 
+  /* **축은 정해진 틀 안에서만 미끄러진다.** 예전에는 모달 가장자리까지 흘러 나가
+     칸이 창 밖으로 잘렸다 — 어디까지가 축인지 알 수 없었다 */
+  const framed = await p.evaluate(() => {
+    const box = document.getElementById('procBody').getBoundingClientRect();
+    const f = document.querySelector('.proc-railwrap').getBoundingClientRect();
+    return f.left >= box.left - 1 && f.right <= box.right + 1 && f.width > 200;
+  });
+  ok(framed, '축이 본문 폭 안에 갇힌다 (모달 밖으로 안 흘러나간다)');
+
   /* **축이 주인공이다.** 선반이 길어 화면이 굴러도 축이 위로 사라지면 안 된다 —
      그러면 「사고축 아래에 산출물이 깔려 있다」가 뒤집힌다 */
   const stuck = await p.evaluate(() => {
@@ -2471,6 +2487,13 @@ if (head('목록 — 프로세스 보기')) {
       `${st.label}의 산출물이 원래 문서의 그 화면을 가리킨다`, seen.join(' '));
     ok(await p.locator('.proc-frame').count() === 1,
       `${st.label}에서는 한 장만 크게 선다 (여러 장을 늘어놓지 않는다)`);
+    /* **샘플은 샘플이라고 말한다.** 진짜 산출물처럼 걸어 두면 보는 사람이
+       「이게 결과물이구나」로 읽는다 */
+    const tag = await p.evaluate(() => ({
+      sample: !!document.querySelector('.proc-frame.is-sample'),
+      tagged: document.querySelectorAll('.proc-sample-tag').length,
+    }));
+    ok(tag.sample === (tag.tagged === 1), `${st.label} — 자리만 잡아 둔 그림에는 이름표가 붙는다`);
     ok(await off() < 4, `${st.label}에서도 축이 가운데로 온다`);
   }
   ok((await p.textContent('.proc-of')) === `${want.length} / ${want.length}`,
@@ -2526,6 +2549,131 @@ if (head('목록 — 축을 끌면 단계가 바뀐다')) {
     await p.textContent('.vw-count'));
   ok((await p.$eval('.vw-panel:not([inert]) .room-title', (n) => n.textContent)).includes('Playgrown'),
     '가리킨 그 화면부터 열린다', await p.$eval('.vw-panel:not([inert]) .room-title', (n) => n.textContent));
+  await p.close();
+}
+
+/* ── 마을 나가는 길의 표지판 ───────────────────────────────
+   다리 왼쪽, 마을 밖으로 난 길목에 선다. 누르면 다원이 제자리에서 총총 뛰어나와
+   배웅하고, 남기고 싶은 말이 있는지 묻는다. 셋 중 하나를 고를 수 있다 —
+   손 인사(숫자 하나) · 짧은 메시지(글) · 연락하기(메일). 하는 일이 다 다르다. */
+if (head('표지판 — 배웅')) {
+  const p = await desktop();
+  await town(p);
+  await p.waitForTimeout(400);
+
+  const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
+  ok(!!data.sign && !!data.sign.sprite, '표지판이 데이터에 있다');
+  ok(await p.locator('.sign-spot.sign-live').count() === 1, '지도에 표지판이 눌리는 문으로 선다');
+
+  /* **좌표는 데이터가 정한다.** 화면에 박아 두면 다원님이 옮길 수 없다 */
+  const put = await p.evaluate(() => {
+    const m = document.getElementById('map').getBoundingClientRect();
+    const g = document.querySelector('.sign-spot').getBoundingClientRect();
+    return { x: (g.left + g.width / 2 - m.left) / m.width * 100,
+             y: (g.bottom - m.top) / m.height * 100,
+             w: g.width / m.width * 100 };
+  });
+  ok(Math.abs(put.x - data.sign.at[0]) < 1 && Math.abs(put.y - data.sign.at[1]) < 1,
+    '적어 둔 자리에 선다', `${put.x.toFixed(1)}, ${put.y.toFixed(1)}`);
+  ok(Math.abs(put.w - data.sign.w) < 1, '적어 둔 크기다', put.w.toFixed(1));
+  /* 밑변으로 앉힌다 — `top` + `translateY(-100%)`는 iOS에서 마을을 흘러내리게 한다 */
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector('.sign-spot')).bottom) !== 'auto',
+    '밑변으로 앉는다 (top으로 매달지 않는다)');
+
+  /* 눌러서 배웅. **다원은 지도 위 제자리에서 나온다** — 들어올 때의 반대다 */
+  const from = await p.evaluate(() => {
+    const s = document.querySelector('.me-spot').getBoundingClientRect();
+    return { x: s.left + s.width / 2, w: s.width };
+  });
+  await p.click('.sign-spot');
+  await p.waitForTimeout(500);
+  const mid = await p.evaluate(() => {
+    const c = document.querySelector('.onb-char');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return { x: r.left + r.width / 2, w: r.width,
+             step: getComputedStyle(c.querySelector('.onb-step')).animationName };
+  });
+  ok(mid !== null, '표지판을 누르면 다원이 나온다');
+  ok(mid && mid.step === 'onb-step', '뛰어온다 (걸음이 걸려 있다)', mid && mid.step);
+  ok(mid && mid.w > from.w, '제자리에서 나오며 커진다',
+    mid && `${Math.round(from.w)} → ${Math.round(mid.w)}`);
+
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  await p.waitForTimeout(400);
+  ok(await p.textContent('.onb-line') === '와줘서 고마워요.', '첫 마디');
+  /* **표지판을 가리지 않는다** — 눌러서 부른 것이 가려지면 무엇에 대한 대답인지
+     알 수 없다. 그래서 배웅 때는 인사할 때보다 오른쪽에 선다 */
+  const clear = await p.evaluate(() => {
+    const c = document.querySelector('.onb-char').getBoundingClientRect();
+    const g = document.querySelector('.sign-spot').getBoundingClientRect();
+    return c.left > g.right - 4;
+  });
+  ok(clear, '표지판을 덮지 않고 옆에 선다');
+
+  await p.click('.onb-btn.go'); await p.waitForTimeout(350);
+  ok(await p.textContent('.onb-line') === '혹시 저에게 남기고 싶은 말이 있나요?', '둘째 마디');
+  const btns = await p.$$eval('.onb-act .onb-btn', (n) => n.map((x) => x.textContent));
+  ok(btns.join(' / ') === '인사 남기기 👋 / 짧은 메시지 남기기 / 연락하기',
+    '남길 말을 셋 중에 고른다', btns.join(' / '));
+  ok(await p.$eval('.onb-act a.onb-btn', (a) => a.getAttribute('href'))
+    === 'mailto:' + data.profile.email, '연락하기는 메일로 간다');
+  await p.close();
+}
+
+if (head('표지판 — 손 인사')) {
+  const p = await desktop();
+  /* 서버는 가로채서 대신 답한다 — 검사가 진짜 KV에 인사를 쌓으면 안 된다 */
+  let sent = 0;
+  await p.route('**/api/wave', (r) => {
+    sent++;
+    return r.fulfill({ contentType: 'application/json', body: '{"ok":true,"count":42}' });
+  });
+  await town(p);
+  await p.waitForTimeout(400);
+  await p.click('.sign-spot');
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  await p.waitForTimeout(400);
+  await p.click('.onb-btn.go'); await p.waitForTimeout(350);
+  await p.click('.onb-btn.go');            // 인사 남기기 👋
+  await p.waitForTimeout(250);
+
+  /* **글이 아니라 숫자다.** 남길 말이 없는 사람도 다녀갔다는 말은 하고 싶을 수 있고,
+     그 말에 폼을 세우면 아무도 안 한다 */
+  ok(await p.locator('.onb-wave').count() > 0, '손이 떠오른다');
+  const up = await p.evaluate(() => {
+    const w = document.querySelector('.onb-wave');
+    const btn = [...document.querySelectorAll('.onb-btn')].find((b) => b.textContent.includes('인사'));
+    return { name: getComputedStyle(w).animationName, fixed: getComputedStyle(w).position };
+  });
+  ok(up.name === 'onb-wave-up' && up.fixed === 'fixed', '위로 떠오르는 몸짓이다', JSON.stringify(up));
+  ok(sent === 1, '서버에 한 번 셌다고 알린다', `${sent}번`);
+  ok((await p.textContent('.onb-line')).includes('인사 받았어요'), '받았다고 말해 준다',
+    await p.textContent('.onb-line'));
+
+  /* 떠오른 손은 스스로 사라진다 — 안 걷으면 화면에 쌓인다 */
+  await p.waitForTimeout(2200);
+  ok(await p.locator('.onb-wave').count() === 0, '떠오른 손은 스스로 걷힌다');
+  await p.close();
+}
+
+if (head('표지판 — 짧은 메시지')) {
+  const p = await desktop();
+  await town(p);
+  await p.waitForTimeout(400);
+  await p.click('.sign-spot');
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  await p.waitForTimeout(400);
+  await p.click('.onb-btn.go'); await p.waitForTimeout(350);
+  await p.evaluate(() => {
+    [...document.querySelectorAll('.onb-btn')].find((b) => b.textContent.includes('짧은')).click();
+  });
+  await p.waitForTimeout(400);
+  /* **창을 먼저 연다.** 다원이 걸어 돌아가는 것을 기다렸다 열면 누른 사람은
+     그동안 아무 일도 안 일어난 줄 안다 */
+  ok(!await p.evaluate(() => document.getElementById('sayModal').hidden),
+    '「제작자에게 한마디」 창이 곧바로 열린다');
+  ok(await p.locator('#sayForm textarea').count() === 1, '이미 있는 그 창이다 (새로 만들지 않는다)');
   await p.close();
 }
 

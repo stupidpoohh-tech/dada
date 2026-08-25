@@ -194,6 +194,40 @@
     });
 
     makeFloater(wrap);
+    makeSign(wrap);
+  }
+
+  /** 마을 나가는 길의 표지판 — 구역이 아니라 지도 위에 따로 선 문이다
+   *  (우편함·확성기와 같은 결). 누르면 다원이 총총 뛰어와 배웅한다.
+   *
+   *  **여기서는 배웅을 만들지 않는다.** 그건 안내(onboarding.js)의 일이라
+   *  손잡이만 두드린다 — 그쪽이 없으면 표지판은 그냥 풍경으로 선다.
+   *  좌표는 다른 것들과 같은 밑변 기준(at/w)이라 `bottom`으로 앉힌다
+   *  (`top` + `translateY(-100%)`는 iOS에서 마을을 흘러내리게 한다). */
+  function makeSign(wrap) {
+    const g = data.sign;
+    if (!g || !g.sprite) return;
+    const live = typeof window.dadaBye === 'function';
+    const box = el(live ? 'button' : 'span', 'sign-spot' + (live ? ' sign-live' : ''));
+    Object.assign(box.style, { left: pct(g.at[0]), bottom: upTo(g.at[1]), width: pct(g.w) });
+
+    const fig = el('span', 'sign-fig');
+    const zoom = el('span', 'sign-zoom');   // 호버 확대를 idle과 다른 요소에 건다
+    zoom.appendChild(pixel(S + g.sprite, ''));
+    fig.appendChild(zoom);
+    box.appendChild(fig);
+
+    if (live) {
+      box.type = 'button';
+      box.setAttribute('aria-label', g.name || '마을 나가기');
+      box.addEventListener('click', () => {
+        track('sign_click', {});
+        window.dadaBye();
+      });
+    } else {
+      box.setAttribute('aria-hidden', 'true');   // 누를 수 없는 것을 읽어줄 이유가 없다
+    }
+    wrap.appendChild(box);
   }
 
   /** 확성기 — 세모집 마당. 집 테마송이 여기서 나온다.
@@ -1448,12 +1482,15 @@
       return;
     }
 
-    const frame = el('div', 'proc-frame');
+    const frame = el('div', 'proc-frame' + (m.sample ? ' is-sample' : ''));
     if (m.img) {
       const im = pixel(m.img, m.alt || m.title);
       im.className = 'proc-shot';
       im.loading = 'lazy';
       frame.appendChild(im);
+      /* **샘플은 샘플이라고 말한다.** 진짜 산출물처럼 걸어 두면 보는 사람이
+         「이게 결과물이구나」로 읽는다 — 자리만 잡아 둔 것은 그렇다고 적는다 */
+      if (m.sample) frame.appendChild(el('span', 'proc-sample-tag', '샘플 이미지'));
     } else {
       /* 그림이 없는 것은 **글로 크게 세운다.** 영상은 여기서 미리 안 받아온다 —
          케이스 스터디가 「누르기 전에는 유튜브에 아무 요청도 안 나간다」로 지어져
@@ -1969,7 +2006,9 @@
        onboarding.js가 늦게 붙어도 되도록 `window.dadaTown`에도 남긴다 —
        이벤트는 한 번 지나가면 끝이라 그때 없던 쪽은 영영 못 받는다.
        onboarding.js가 아예 없어도 이 두 줄은 그냥 아무도 안 듣는 말이 된다. */
-    window.dadaTown = { data, open: openItem };
+    /* `say`는 배웅 말풍선이 「짧은 메시지 남기기」로 여는 그 창이다 —
+       창을 거기서 다시 만들지 않는다 (같은 창이 둘이 되면 반드시 어긋난다) */
+    window.dadaTown = { data, open: openItem, say: openSay };
     document.dispatchEvent(new CustomEvent('dada:ready', { detail: { data } }));
   }
 

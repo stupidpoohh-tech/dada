@@ -54,7 +54,11 @@ town-background.png
 
 # 다원의 뒷모습 편집용 원본 — 같은 규칙이다. 다원님이 GitHub 웹으로 올리는 자리가
 # 저장소 루트라 여기 452KB짜리가 그대로 들어왔다(2026-08-25). 사이트가 쓰는 것은
-# `tools/cut_me_back.py`가 떠낸 assets/sprites/cut/me-back.png(17KB)뿐이다.
+# `tools/cut_me_back.py`가 떠낸 assets/sprites/cut/me-back.png
+
+# 표지판 편집용 원본 — 같은 규칙, 같은 함정이다. 슬래시를 빼면 어느 깊이에서나
+# 걸려서 정작 사이트가 쓰는 assets/sprites/cut/sign.png까지 같이 빠진다.
+/sign.png(17KB)뿐이다.
 # 지우지 않는 이유는 위와 같다 — 이것이 곧 원본이고, 지우면 다시 받아야 한다.
 #
 # **슬래시를 반드시 붙인다.** 안 붙이면 gitignore 규칙상 어느 깊이에서나 걸려서
