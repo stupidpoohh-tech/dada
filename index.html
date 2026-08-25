@@ -155,11 +155,16 @@
       <h2 id="modalTitle">웹서비스 한눈에 보기</h2>
       <button type="button" class="icon-btn" id="closeList" aria-label="닫기">✕</button>
     </div>
-    <div class="modal-tools">
+    <!-- 같은 것을 두 가지로 본다. 만든 순서는 「언제」를 말하고, 프로세스는
+         「어떻게」를 말한다 — 둘 다 이 목록이 가진 이야기라 탭으로 나란히 둔다 -->
+    <div class="modal-tabs" id="modalTabs" role="tablist" aria-label="보는 방식"></div>
+    <div class="modal-tools" id="modalTools">
       <input type="search" id="search" placeholder="이름이나 설명으로 검색" aria-label="검색" autocomplete="off">
       <div class="chips" id="chips" role="group" aria-label="종류 필터"></div>
     </div>
     <div class="modal-body" id="modalBody"></div>
+    <!-- 프로세스 보기 — 프로젝트를 고르면 그것의 과정이 펼쳐진다 -->
+    <div class="modal-body proc" id="procBody" hidden></div>
     <p class="modal-foot"><a href="/list.html">전체 목록 페이지로 보기 →</a></p>
   </div>
 </div>

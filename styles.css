@@ -937,6 +937,149 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 .foot-contact { margin: 0; }
 .foot-contact a { color: var(--accent); }
 
+/* ── 목록을 보는 두 방식 ────────────────────
+   만든 순서는 「언제」를 말하고, 프로세스는 「어떻게」를 말한다. 같은 목록의
+   두 얼굴이라 탭으로 나란히 둔다 — 어느 쪽도 다른 쪽의 곁가지가 아니다. */
+
+.modal-tabs {
+  flex: none; display: flex; gap: 4px;
+  padding: 10px 16px 0; border-bottom: 1px solid var(--line);
+}
+.modal-tab {
+  background: none; border: 0; cursor: pointer;
+  padding: 9px 13px 10px; font-size: 13.5px; font-weight: 700;
+  color: var(--sub); border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.modal-tab:hover { color: var(--ink); background: var(--surface-2); }
+.modal-tab.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── 프로세스 보기 ──────────────────────────
+   프로젝트를 고르면 그것이 지나온 여섯 단계가 축으로 펼쳐진다. */
+
+.proc { display: block; }
+
+.proc-pick { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 12px; }
+.proc-pick-label { font-size: 11.5px; font-weight: 700; color: var(--faint); letter-spacing: .06em; }
+.proc-pick-btn {
+  background: var(--surface); color: var(--sub);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.proc-pick-btn:hover { background: var(--surface-2); color: var(--ink); }
+.proc-pick-btn.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+/* 축 — 가로로 굴러가는 한 줄. 스냅은 브라우저에 맡긴다(손가락·트랙패드·관성이
+   공짜로 따라온다). 마우스로 끄는 것만 JS가 만든다. */
+.proc-railwrap { position: relative; margin: 0 -16px 12px; }
+.proc-rail {
+  display: flex; align-items: flex-start;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory; scrollbar-width: none;
+  padding-inline: calc(50% - var(--proc-step, 124px) / 2);
+  touch-action: pan-x; cursor: grab;
+}
+.proc-rail::-webkit-scrollbar { display: none; }
+.proc-rail.dragging { cursor: grabbing; scroll-snap-type: none; }
+/* 끄는 중에는 칸이 눌리지 않게 — 조금만 움직여도 클릭으로 새면 축이 튄다 */
+.proc-rail.dragging .proc-step { pointer-events: none; }
+
+/* **여섯 개의 독립 메뉴가 아니라 하나의 축을 지나가는 것**으로 보여야 한다.
+   그래서 칸 사이를 선으로 잇는다. 선은 0, 동그라미는 1 — 동그라미의 배경이
+   선을 덮으므로 칸마다 끊겨 보인다(음수 z-index로 두면 아예 안 보인다) */
+.proc-step {
+  flex: 0 0 var(--proc-step, 124px);
+  scroll-snap-align: center; position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: none; border: 0; padding: 6px 6px 8px; cursor: pointer;
+  color: var(--ink); opacity: .45;
+  transition: opacity .24s, transform .24s cubic-bezier(.34, 1.2, .64, 1);
+}
+.proc-step::before {
+  content: ""; position: absolute; z-index: 0;
+  left: -50%; right: -50%; top: 24px; height: 2px; background: var(--line);
+}
+.proc-step:first-child::before { left: 50%; }
+.proc-step:last-child::before { right: 50%; }
+.proc-dot {
+  position: relative; z-index: 1;
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 17px; line-height: 1;
+  background: var(--surface); border: 2px solid var(--line);
+  transition: border-color .24s, box-shadow .24s;
+}
+.proc-lab { font-size: 13px; font-weight: 800; }
+.proc-sub { font-size: 11px; color: var(--faint); }
+.proc-step:hover { opacity: .75; }
+.proc-step[aria-selected="true"] { opacity: 1; transform: scale(1.1); }
+.proc-step[aria-selected="true"] .proc-dot {
+  border-color: var(--accent); background: var(--accent-tint);
+}
+.proc-step[aria-selected="true"] .proc-lab { color: var(--accent); }
+.proc-step:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+
+.proc-line {
+  margin: 0 0 12px; text-align: center; font-size: 13.5px;
+  color: var(--sub); line-height: 1.55;
+}
+.proc-line b { display: block; color: var(--ink); font-weight: 800; margin-bottom: 2px; }
+
+/* 그 단계에서 나온 것들 — 누르면 원래 문서의 그 화면으로 간다.
+   **산출물이 축보다 커 보이면 안 된다**: 이 화면이 하려는 말은 「이렇게 생각했다」이고
+   카드는 그 증거다. 그래서 카드는 한 줄짜리로 조용히 눕는다 */
+.proc-made { display: grid; gap: 8px; }
+.proc-card {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+  gap: 4px 10px; text-decoration: none; color: inherit;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: 11px 13px;
+}
+.proc-card:hover { border-color: var(--accent); background: var(--accent-tint); }
+/* **네 칸의 자리를 다 못 박는다.** 하나라도 비워 두면 자동 배치가 남는 칸부터
+   메워서, 화살표가 이름표 옆에 서고 제목이 오른쪽 끝으로 밀렸다 */
+.proc-card-stage {
+  grid-column: 1; grid-row: 1 / 3; align-self: center;
+  font-size: 10.5px; font-weight: 800; color: var(--accent);
+  background: var(--accent-tint); border-radius: 999px; padding: 3px 8px;
+  white-space: nowrap;
+}
+.proc-card-title { grid-column: 2; grid-row: 1; font-size: 14px; font-weight: 700; }
+.proc-card-note { grid-column: 2; grid-row: 2; font-size: 12.5px; color: var(--sub); }
+.proc-card .card-go { grid-column: 3; grid-row: 1 / 3; align-self: center;
+  color: var(--faint); font-size: 17px; }
+/* 설명이 없는 산출물은 제목이 가운데 눕는다 */
+.proc-card:not(:has(.proc-card-note)) .proc-card-title { grid-row: 1 / 3; align-self: center; }
+
+.proc-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 14px;
+}
+.proc-nav-btn {
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 8px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.proc-nav-btn:hover:not([disabled]) { background: var(--surface-2); }
+.proc-nav-btn[disabled] { opacity: .35; cursor: default; }
+.proc-of {
+  font-size: 12px; font-weight: 700; color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 699px) {
+  .modal-tabs { padding: 8px 12px 0; }
+  .modal-tab { padding: 8px 10px 9px; font-size: 12.5px; }
+  .proc-railwrap { margin-inline: -12px; }
+  .proc-step { --proc-step: 106px; flex-basis: 106px; }
+  .proc-rail { padding-inline: calc(50% - 53px); }
+  .proc-lab { font-size: 12.5px; }
+  .proc-nav-btn { padding: 9px 12px; min-height: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proc-step, .proc-dot { transition: none; }
+}
+
 /* ── 모바일 ──────────────────────────────── */
 
 @media (max-width: 699px) {

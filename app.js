@@ -1316,6 +1316,224 @@
     });
   }
 
+  /* ── 프로세스 보기 ────────────────────────────
+     목록을 보는 두 번째 방식이다. **만든 순서가 「언제」를 말한다면 여기는
+     「어떻게」를 말한다** — 프로젝트를 고르면 그것이 지나온 여섯 단계
+     (문제 · 역할 · 과정 · 결과 · 판단 · 실제 서비스)가 축으로 펼쳐진다.
+
+     산출물은 여기서 다시 그리지 않는다. 각 단계의 카드는 **원래 문서의 그 화면**을
+     가리킬 뿐이다(`item.url + go`) — 케이스 스터디는 케이스 스터디대로 두고,
+     이 화면은 그 안으로 들어가는 지도 노릇만 한다.
+
+     단계 데이터는 services.json의 `items[].process`에 있다. 그것이 있는 항목만
+     여기 선다 — 없는 프로젝트를 빈 칸으로 세워 두면 「아직 안 썼다」가 아니라
+     「생각 없이 만들었다」로 읽힌다. */
+
+  let procAt = 0;                     // 지금 보고 있는 단계
+  let procItem = null;                // 지금 고른 프로젝트
+  let procRail = null, procSteps = [], procQuiet = 0, procSettle = null;
+
+  const withProcess = () => data.items.filter((i) => Array.isArray(i.process) && i.process.length);
+
+  function renderProcess() {
+    const body = $('procBody');
+    body.textContent = '';
+    const list = withProcess();
+    if (!list.length) {
+      body.appendChild(el('p', 'no-result', '아직 과정을 적어 둔 프로젝트가 없어요.'));
+      return;
+    }
+    if (!procItem || list.indexOf(procItem) < 0) { procItem = list[0]; procAt = 0; }
+
+    /* 프로젝트 고르기. **하나뿐일 때도 이름은 보여준다** — 지금 무엇의 과정을
+       보고 있는지가 화면에 없으면 여섯 단계가 누구 것인지 알 수 없다 */
+    const pick = el('div', 'proc-pick');
+    pick.appendChild(el('span', 'proc-pick-label', '프로젝트'));
+    list.forEach((it) => {
+      const b = el('button', 'proc-pick-btn' + (it === procItem ? ' on' : ''), it.name);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(it === procItem));
+      b.addEventListener('click', () => { procItem = it; procAt = 0; renderProcess(); });
+      pick.appendChild(b);
+    });
+    body.appendChild(pick);
+
+    /* 축 — 끌기·손가락·트랙패드는 브라우저의 scroll-snap이 다 한다.
+       손으로 만드는 것은 마우스로 끄는 것 하나뿐이다 */
+    const wrap = el('div', 'proc-railwrap');
+    const rail = el('div', 'proc-rail');
+    rail.id = 'procRail';
+    rail.setAttribute('role', 'tablist');
+    rail.setAttribute('aria-label', `${procItem.name}의 과정`);
+    procSteps = procItem.process.map((st, i) => {
+      const b = el('button', 'proc-step');
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(i === procAt));
+      b.setAttribute('aria-label', `${i + 1}. ${st.label} — ${st.sub}`);
+      b.append(el('span', 'proc-dot', st.icon), el('span', 'proc-lab', st.label),
+               el('span', 'proc-sub', st.sub));
+      b.addEventListener('click', () => goStage(i));
+      rail.appendChild(b);
+      return b;
+    });
+    wrap.appendChild(rail);
+    body.appendChild(wrap);
+    procRail = rail;
+
+    const st = procItem.process[procAt];
+    const line = el('p', 'proc-line');
+    line.setAttribute('aria-live', 'polite');
+    line.append(el('b', null, st.label), el('span', null, st.line));
+    body.appendChild(line);
+
+    /* 그 단계에서 실제로 나온 것들. 누르면 **원래 문서의 그 화면**으로 간다 */
+    const grid = el('div', 'proc-made');
+    (st.made || []).forEach((m) => {
+      const a = el('a', 'proc-card');
+      a.href = (procItem.url || '') + (m.go || '');
+      a.appendChild(el('span', 'proc-card-stage', st.label));
+      a.appendChild(el('strong', 'proc-card-title', m.title));
+      if (m.note) a.appendChild(el('span', 'proc-card-note', m.note));
+      a.appendChild(el('span', 'card-go', '›'));
+      a.addEventListener('click', () => track('process_open', {
+        item: procItem.id, stage: st.id, made: m.title,
+      }));
+      grid.appendChild(a);
+    });
+    body.appendChild(grid);
+
+    const foot = el('div', 'proc-nav');
+    const back = el('button', 'proc-nav-btn', '← 이전 단계');
+    const next = el('button', 'proc-nav-btn', '다음 단계 →');
+    [back, next].forEach((b) => { b.type = 'button'; });
+    back.disabled = procAt === 0;
+    next.disabled = procAt === procItem.process.length - 1;
+    back.addEventListener('click', () => goStage(procAt - 1));
+    next.addEventListener('click', () => goStage(procAt + 1));
+    foot.append(back, el('span', 'proc-of', `${procAt + 1} / ${procItem.process.length}`), next);
+    body.appendChild(foot);
+
+    wireProcRail();
+    centerStage(procAt, true);
+  }
+
+  function goStage(i) {
+    const n = procItem.process.length;
+    procAt = Math.min(Math.max(i, 0), n - 1);
+    renderProcess();
+    centerStage(procAt);
+  }
+
+  /** 고른 단계를 축의 가운데로 데려온다. 스냅이 나머지를 맞춘다 */
+  function centerStage(i, jump) {
+    const b = procSteps[i];
+    if (!procRail || !b) return;
+    const to = b.offsetLeft + b.offsetWidth / 2 - procRail.clientWidth / 2;
+    /* **내가 민 굴림은 끝날 때까지 안 듣는다.** 정해진 시간으로 막으면 부드러운
+       굴림이 아직 가는 중에 창이 닫혀, 안 닿은 자리로 가장 가까운 칸을 뽑고
+       옆 단계로 튄다. 이벤트가 올 때마다 창을 미뤄 마지막 이벤트 뒤에 닫는다 */
+    procQuiet = Date.now() + (jump ? 60 : 700);
+    clearTimeout(procSettle);
+    procRail.scrollTo({ left: to, behavior: jump ? 'auto' : 'smooth' });
+  }
+
+  function wireProcRail() {
+    const rail = procRail;
+    let id = null, x0 = 0, left0 = 0;
+
+    rail.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch') return;      // 손가락은 브라우저에 맡긴다
+      id = e.pointerId; x0 = e.clientX; left0 = rail.scrollLeft;
+      rail.classList.add('dragging');
+      rail.setPointerCapture(id);
+    });
+    rail.addEventListener('pointermove', (e) => {
+      if (id === null || e.pointerId !== id) return;
+      rail.scrollLeft = left0 - (e.clientX - x0);
+    });
+    const release = (e) => {
+      if (id === null || (e && e.pointerId !== id)) return;
+      try { rail.releasePointerCapture(id); } catch (err) { /* 이미 놓였다 */ }
+      id = null;
+      rail.classList.remove('dragging');          // 스냅이 켜지며 가까운 칸에 붙는다
+      setTimeout(nearestStage, 140);
+    };
+    rail.addEventListener('pointerup', release);
+    rail.addEventListener('pointercancel', release);
+
+    rail.addEventListener('scroll', () => {
+      if (Date.now() < procQuiet) { procQuiet = Date.now() + 140; return; }
+      clearTimeout(procSettle);
+      procSettle = setTimeout(nearestStage, 130);
+    }, { passive: true });
+
+    /* 축에서 누른 화살표가 뒤의 목록·모달까지 내려가면 안 된다 */
+    rail.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft'
+        && e.key !== 'Home' && e.key !== 'End') return;
+      e.stopPropagation();
+      e.preventDefault();
+      const n = procItem.process.length;
+      const to = e.key === 'Home' ? 0 : e.key === 'End' ? n - 1
+        : procAt + (e.key === 'ArrowRight' ? 1 : -1);
+      goStage(to);
+      const b = procSteps[Math.min(Math.max(to, 0), n - 1)];
+      if (b) b.focus({ preventScroll: true });
+    });
+  }
+
+  /** 지금 가운데에 가장 가까운 칸이 곧 지금 단계다 */
+  function nearestStage() {
+    if (!procRail || !procItem) return;
+    const mid = procRail.scrollLeft + procRail.clientWidth / 2;
+    let best = 0, gap = Infinity;
+    procSteps.forEach((b, i) => {
+      const d = Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid);
+      if (d < gap) { gap = d; best = i; }
+    });
+    if (best !== procAt) { procAt = best; renderProcess(); }
+  }
+
+  /* ── 목록을 보는 두 방식 ──────────────────── */
+
+  let listView = 'process';           // 처음 열리는 탭
+
+  const VIEWS = [
+    ['process', '프로세스 보기'],
+    ['time', '만든 시간순서 보기'],
+  ];
+
+  function makeTabs() {
+    const wrap = $('modalTabs');
+    wrap.textContent = '';
+    VIEWS.forEach(([id, label]) => {
+      const b = el('button', 'modal-tab', label);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.dataset.view = id;
+      b.addEventListener('click', () => setView(id));
+      wrap.appendChild(b);
+    });
+    setView(listView);
+  }
+
+  function setView(id) {
+    listView = id;
+    const proc = id === 'process';
+    document.querySelectorAll('.modal-tab').forEach((b) => {
+      const on = b.dataset.view === id;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    // 검색·종류 필터는 만든 순서 쪽의 도구다. 과정에는 걸 것이 없다
+    $('modalTools').hidden = proc;
+    $('modalBody').hidden = proc;
+    $('procBody').hidden = !proc;
+    if (proc) renderProcess();
+    track('list_view', { view: id });
+  }
+
   /* ── 추천 픽 ─────────────────────────────── */
 
   /** 추천 픽 — 「이것부터 보세요」.
@@ -1544,6 +1762,7 @@
     syncIdle();
     makeChips();
     renderModalList();
+    makeTabs();
     initPicks();
 
     $('footName').textContent = data.profile.tagline;
