@@ -1,0 +1,240 @@
+/* PlayGrown — 문제해결 로드맵
+ *
+ * **이건 새로 지은 페이지가 아니라 얹은 한 층이다.** 아래에는 원래 있던 화면
+ * 아홉 장(표지 + 절 여덟)이 그대로 있고, 이 층은 그 아홉을 여섯 단계로 묶어
+ * 「지금 어느 생각 단계에 있는가」를 먼저 말한다. 산출물은 그 주장을 받치는 것이지
+ * 이 화면의 주인공이 아니다 — 그래서 레일이 위에, 산출물이 아래에 온다.
+ *
+ * 색은 마을의 초록이 아니라 **이 문서가 원래 쓰던 종이+빨강**(--pg-*)이다.
+ * 여기만 초록으로 칠하면 얹은 층이 아니라 붙인 딱지가 된다.
+ *
+ * 높이를 `--rm-h`로 못 박는 이유: 아래 뷰어가 `100dvh`로 짜여 있어서, 레일이
+ * 제 높이를 스스로 정하면 그만큼 화면이 넘쳐 **굴릴 수 있는 곳이 둘**이 된다
+ * (이 문서가 한 번 그렇게 어긋났다 — playgrown.css의 「넘기는 화면」 참고).
+ */
+
+:root { --rm-h: 244px; --rm-step: 136px; }
+
+/* 레일은 문서의 첫 아이가 되어 제 높이를 차지하고, 뷰어가 남은 높이를 쓴다.
+   `position: fixed`로 띄우지 않는다 — 그러면 아래 화면이 레일 밑으로 깔려
+   표제가 가려진다. 자리를 차지하는 편이 정직하다. */
+.rm {
+  height: var(--rm-h);
+  display: flex; flex-direction: column;
+  background: var(--pg-paper);
+  border-bottom: 1px solid var(--pg-line);
+  position: relative; z-index: 20;
+  padding: 10px 0 0;
+}
+
+/* 첫 줄 — 마을로 나가는 고리(왼쪽)와 안내말(가운데).
+   고리는 원래 화면 왼쪽 위에 떠 있던 것을 JS가 여기로 옮겨 온 것이다 */
+.rm-top { position: relative; height: 26px; flex: none; }
+.rm-hint {
+  position: absolute; left: 0; right: 0; top: 50%;
+  transform: translateY(-50%);
+  margin: 0; text-align: center;
+  font-size: 12px; color: #8C877D; letter-spacing: .02em;
+}
+/* 어두운 알약 바탕은 화면 위에 떠 있을 때의 옷이다. 종이 위로 옮겼으니 벗긴다 */
+.rm-on .rm-top .doc-back {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  margin: 0; z-index: 2; font-size: 12.5px;
+  background: none; padding: 0; border-radius: 0;
+}
+.rm-on .rm-top .doc-back a {
+  color: #55514A; text-decoration: none;
+  background: none; padding: 0; border-radius: 0;
+}
+.rm-on .rm-top .doc-back a:hover { color: var(--pg-red); }
+
+/* ── 축 ────────────────────────────────────────
+   가로로 굴러가는 한 줄. 스냅은 브라우저에 맡긴다(`scroll-snap-type`) —
+   손가락·트랙패드·관성이 전부 공짜로 따라온다. 마우스로 끄는 것만 JS가 만든다. */
+/* **바닥을 깔아 둔다.** 아래 줄(문장·요약)이 두 줄로 늘어나면 flex가 레일부터
+   눌러서 어깨말(왜 시작했는가…)이 소리 없이 잘렸다 — 폰에서 그랬다 */
+.rm-railwrap { position: relative; flex: 1 1 auto; min-height: 104px; }
+
+.rm-rail {
+  height: 100%;
+  display: flex; align-items: center; gap: 0;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  /* 첫 칸과 마지막 칸도 가운데에 설 수 있어야 한다 */
+  padding-inline: calc(50% - var(--rm-step) / 2);
+  /* 손가락으로 세로로 쓸면 페이지가 굴러야 하고, 가로로 쓸면 축이 움직여야 한다 */
+  touch-action: pan-x;
+  cursor: grab;
+}
+.rm-rail::-webkit-scrollbar { display: none; }
+.rm-rail.dragging { cursor: grabbing; scroll-snap-type: none; }
+/* 끄는 중에는 칸이 눌리지 않게 — 조금만 움직여도 클릭으로 새면 축이 튄다 */
+.rm-rail.dragging .rm-step { pointer-events: none; }
+
+/* 6개의 독립 메뉴가 아니라 **하나의 축을 지나가는 것**으로 보여야 한다.
+   그래서 칸 사이를 선으로 잇는다 — 가상요소라 칸이 늘어도 따라온다 */
+.rm-step {
+  flex: 0 0 var(--rm-step);
+  scroll-snap-align: center;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: none; border: 0; padding: 30px 6px 8px;
+  cursor: pointer; color: var(--pg-black);
+  transition: transform .28s cubic-bezier(.34, 1.2, .64, 1), opacity .28s;
+  opacity: .42;
+}
+/* 축을 잇는 선. **음수 z-index로 두면 안 된다** — 레일이 제 배경을 가진
+   쌓임 맥락이라 선이 그 아래로 내려가 아예 안 보인다. 선은 0, 동그라미는 1이고
+   동그라미의 배경이 선을 덮으므로 칸마다 끊겨 보인다 */
+.rm-step::before {
+  content: ""; position: absolute; z-index: 0;
+  left: -50%; right: -50%; top: 54px; height: 2px;
+  background: var(--pg-stone);
+}
+.rm-step:first-child::before { left: 50%; }
+.rm-step:last-child::before { right: 50%; }
+
+.rm-dot {
+  position: relative; z-index: 1;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 19px; line-height: 1;
+  background: var(--pg-paper); border: 2px solid var(--pg-stone);
+  transition: border-color .28s, background .28s, box-shadow .28s;
+}
+.rm-lab { font-size: 14px; font-weight: 800; letter-spacing: -.01em; }
+.rm-sub { font-size: 11.5px; color: #8C877D; }
+
+/* 지금 서 있는 단계 — 크기 · 테두리 · 또렷함으로만 말한다. 빛이나 게임 UI는 안 쓴다 */
+.rm-step[aria-selected="true"] { opacity: 1; transform: scale(1.14); }
+.rm-step[aria-selected="true"] .rm-dot {
+  background: #fff; border-color: var(--pg-red);
+  box-shadow: 0 4px 14px rgba(230, 59, 46, .22);
+}
+.rm-step[aria-selected="true"] .rm-lab { color: var(--pg-red); }
+.rm-step:hover { opacity: .8; }
+.rm-step[aria-selected="true"]:hover { opacity: 1; }
+.rm-step:focus-visible { outline: 3px solid var(--pg-red); outline-offset: 4px; border-radius: 12px; }
+
+/* 다원이 지금 단계 위에 서 있다. **축을 끌면 같이 따라간다** — 칸 안에 들어
+   있으므로 저절로 그렇게 된다. NPC가 아니라 「여기 서 있다」는 표시다. */
+.rm-me {
+  position: absolute; top: 0; left: 50%; width: 30px; z-index: 2;
+  transform: translateX(-50%);
+  opacity: 0; transition: opacity .28s;
+  pointer-events: none;
+}
+.rm-me img { width: 100%; height: auto; display: block;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .25)); }
+.rm-step[aria-selected="true"] .rm-me { opacity: 1; }
+
+/* 양 끝의 화살표 — 끄는 것이 주된 방식이고 이건 곁들이다. 그래서 작고 조용하다 */
+.rm-nudge {
+  position: absolute; top: 52px; z-index: 3;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--pg-line); background: #fff; color: var(--pg-black);
+  font-size: 13px; line-height: 1; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(17, 17, 17, .08);
+}
+.rm-nudge--prev { left: 10px; }
+.rm-nudge--next { right: 10px; }
+.rm-nudge[disabled] { opacity: .25; cursor: default; }
+
+/* ── 지금 단계가 하는 말 ──────────────────────── */
+.rm-line {
+  margin: 0; padding: 6px 20px 8px; text-align: center;
+  font-size: 13.5px; color: #55514A; line-height: 1.5;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  flex-wrap: wrap;
+}
+.rm-line b { color: var(--pg-black); font-weight: 800; }
+.rm-of {
+  font-size: 11.5px; font-weight: 700; color: var(--pg-red);
+  background: #fff; border: 1px solid var(--pg-line);
+  border-radius: 999px; padding: 2px 9px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* ── 지금 보고 있는 프로젝트가 무엇인지 ────────
+   **로드맵보다 낮은 위계다.** 한 줄짜리 띠로만 둔다 — 여기가 커지면
+   「사고축이 주인공」이 무너진다. */
+.rm-sum {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 0 16px 9px; font-size: 12.5px; color: #55514A;
+  flex-wrap: nowrap; overflow: hidden;
+}
+.rm-sum-thumb {
+  width: 34px; height: 34px; flex: none; border-radius: 8px;
+  object-fit: cover; border: 1px solid var(--pg-line); background: #fff;
+}
+.rm-sum b { color: var(--pg-black); font-weight: 800; font-size: 13.5px; }
+.rm-sum-tags { color: #8C877D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-sum a {
+  flex: none; color: var(--pg-red); font-weight: 700; text-decoration: none;
+  border: 1px solid currentColor; border-radius: 999px; padding: 3px 11px;
+}
+.rm-sum a:hover { background: var(--pg-red); color: #fff; }
+
+/* ── 단계가 바뀔 때 ────────────────────────────
+   **미끄러지지 않고 짧게 갈린다.** 아래 아홉 장은 문서 순서대로 놓여 있는데
+   여섯 단계는 그 순서와 꼭 같지 않다(표지가 「역할」이다). 미끄러지게 두면
+   축은 오른쪽으로 가는데 화면은 왼쪽으로 가는 일이 생긴다 — 그 어긋남이
+   「지금 뭐가 움직인 거지」를 만든다. 갈아 끼우는 편이 정직하다. */
+.viewer.rm-on .vw-track { transition: none; }
+.viewer.rm-on .vw-panel { transition: opacity .2s ease-out; }
+.viewer.rm-on.rm-turning .vw-panel { opacity: 0; }
+
+/* ── 뷰어에게 남은 높이를 준다 ────────────────── */
+.viewer.rm-on .case,
+.viewer.rm-on .vw-track { height: calc(100dvh - var(--rm-h)); }
+/* 위쪽 여백은 「돌아가기」 고리가 앉던 자리였는데 그 고리가 레일 안으로 옮겼다 */
+.viewer.rm-on .vw-panel { padding-top: 26px; }
+.viewer.rm-on .doc-back { top: 14px; left: 16px; }
+.viewer.rm-on .doc-back a { color: #55514A; }
+.viewer.rm-on .doc-back a:hover { color: var(--pg-red); }
+/* 화살표는 남은 화면의 가운데에 온다 (레일만큼 내려온 자리) */
+.viewer.rm-on .vw-arrow { top: calc(var(--rm-h) + (100dvh - var(--rm-h)) / 2); }
+
+@media (max-width: 760px) {
+  :root { --rm-h: 238px; --rm-step: 112px; }
+  /* 폰에서는 고리와 안내말이 한 줄에서 겹친다. 끄는 것은 손가락에게 저절로
+     알려지는 일이라, 자리를 다투면 안내말 쪽을 접는다 */
+  .rm-hint { display: none; }
+  .rm-me { width: 24px; }
+  .rm-dot { width: 34px; height: 34px; font-size: 16px; }
+  .rm-step { padding: 26px 4px 6px; }
+  .rm-step::before { top: 47px; }
+  /* 칸을 덜 가리도록 안쪽으로 당기고 작게 */
+  .rm-nudge { top: 42px; width: 26px; height: 26px; font-size: 11px; }
+  .rm-nudge--prev { left: 4px; }
+  .rm-nudge--next { right: 4px; }
+  .rm-lab { font-size: 13px; }
+  .rm-sub { font-size: 10.5px; }
+  /* 폰에서는 어차피 두 줄이다. 「과정 + 개수」를 한 줄로 묶고 문장을 아래로
+     내리면, 아무렇게나 접히는 것보다 읽는 차례가 분명하다 */
+  .rm-line { font-size: 12.5px; line-height: 1.4; padding: 4px 14px 6px; gap: 6px; }
+  .rm-line b { order: -2; }
+  .rm-of { order: -1; }
+  .rm-line { flex-direction: row; }
+  .rm-msg { flex: 0 0 100%; text-align: center; }
+  /* 요약 띠는 한 줄로 못 박는다 — 줄바꿈을 허용했더니 「어른의 놀이가 자라는
+     곳」이 세 줄로 쏟아져 레일 높이를 통째로 넘겼다. 한 줄에 안 들어가는 것부터
+     접는다: 먼저 한 줄 소개, 그다음 태그가 말줄임으로 잘린다 */
+  .rm-sum { font-size: 11.5px; gap: 7px; padding: 0 12px 8px; }
+  .rm-sum-thumb { width: 26px; height: 26px; }
+  .rm-sum-line { display: none; }
+  .rm-sum a { padding: 3px 9px; }
+  .viewer.rm-on .vw-panel { padding-top: 20px; }
+  .viewer.rm-on .vw-arrow { top: auto; }
+}
+
+/* 세로가 짧은 화면에서는 요약 띠부터 접는다 — 축과 지금 단계가 먼저다 */
+@media (max-height: 700px) {
+  :root { --rm-h: 196px; }
+  .rm-sum { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rm-step, .rm-dot, .rm-me { transition: none; }
+  .viewer.rm-on .vw-panel { transition: none; }
+}

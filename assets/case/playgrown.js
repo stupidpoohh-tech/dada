@@ -92,10 +92,17 @@ if (track && panels.length > 1) {
     b.setAttribute('aria-label', label);
     return b;
   };
+  /* **다음 장이 늘 문서의 다음 장인 것은 아니다.** 위에 얹힌 층(로드맵)이 아홉
+     장을 여섯 단계로 묶으면 그 순서가 문서 순서와 달라진다 — 그때는 그쪽이
+     「이 장 다음은 저 장」을 알려 준다. 없으면 문서 순서 그대로다.
+     양 끝에서 범위를 벗어난 값을 돌려주면 go()가 마을로 내보내는 것도 그대로다. */
+  const step = (d) => (typeof window.dadaCaseOrder === 'function'
+    ? window.dadaCaseOrder(at, d) : at + d);
+
   const prev = arrow('prev', '←', '이전 화면');
   const next = arrow('next', '→', '다음 화면');
-  prev.addEventListener('click', () => go(at - 1));
-  next.addEventListener('click', () => go(at + 1));
+  prev.addEventListener('click', () => go(step(-1)));
+  next.addEventListener('click', () => go(step(1)));
 
   /* 화면이 바뀐 것을 눈으로 안 보는 사람에게 말해 준다 */
   const live = el('p', 'vw-live');
@@ -128,14 +135,17 @@ if (track && panels.length > 1) {
     /* **마지막을 지나치는 것은 문 밖으로 나가는 일이라 실수로 되면 안 된다.**
        화살표를 누르고 있으면 자동 반복으로 아홉 장을 훑고 그대로 마을까지 나갔다.
        마지막 화면에 잠깐이라도 머문 뒤에야 문이 열린다 */
+    /* **끝인지도 차례에게 묻는다.** 위에 얹힌 층이 순서를 바꾸면 마지막으로
+       읽는 장이 문서의 마지막 장이 아니다 — 「at이 여덟 번째냐」로 못 박아 뒀더니
+       나가는 문이 그 장에만 남아, 정작 마지막 장에서는 안 열렸다 */
     if (i >= panels.length) {
-      if (at === panels.length - 1 && Date.now() - arrived > 400) home();
+      if (step(1) >= panels.length && Date.now() - arrived > 400) home();
       return;
     }
     /* 첫 화면에서 왼쪽으로 가는 것도 같다. `at`이 아직 -1인 첫 그리기에서는
-       아무 일도 일어나지 않아야 해서 `at === 0`을 함께 본다 */
+       아무 일도 일어나지 않아야 해서 그때는 열리지 않는다 */
     if (i < 0) {
-      if (at === 0 && Date.now() - arrived > 400) home();
+      if (at >= 0 && step(-1) < 0 && Date.now() - arrived > 400) home();
       return;
     }
     const to = Math.min(panels.length - 1, i);
@@ -157,8 +167,11 @@ if (track && panels.length > 1) {
     count.textContent = `${at + 1} / ${panels.length}`;
     /* **양 끝에서도 화살표는 살아 있다** — 다만 가는 곳이 옆 화면이 아니라 마을이다.
        빨갛게 물드는 것(`--out`)이 「이 문은 밖으로 난다」는 표시다 */
-    const first = at === 0;
-    const last = at === panels.length - 1;
+    /* **양 끝은 문서 순서의 양 끝이 아닐 수 있다.** 위에 얹힌 층이 차례를 바꾸면
+       (로드맵이 아홉 장을 여섯 단계로 묶는다) 마지막으로 읽는 장도 달라진다 —
+       그래서 「끝인가」도 그 차례에게 물어본다. `step()`이 범위 밖을 돌려주면 끝이다. */
+    const first = step(-1) < 0;
+    const last = step(1) >= panels.length;
     prev.disabled = false;
     prev.classList.toggle('vw-arrow--out', first);
     prev.setAttribute('aria-label', first ? '문서를 닫고 마을로' : '이전 화면');
@@ -182,6 +195,11 @@ if (track && panels.length > 1) {
     const url = ids[at] ? `#${ids[at]}` : location.pathname;
     if (opt.push === false) history.replaceState({ at }, '', url);
     else history.pushState({ at }, '', url);
+
+    /* **위에 얹힌 층에게 알린다** (assets/case/roadmap.js의 로드맵).
+       그쪽이 없어도 아무도 안 듣는 말이 될 뿐이다. 화살표·쓸기·점·주소 —
+       어느 길로 장이 바뀌든 여기를 지나므로, 알릴 자리는 여기 하나면 된다. */
+    document.dispatchEvent(new CustomEvent('case:panel', { detail: { at, id: ids[at] } }));
   }
 
   addEventListener('popstate', (e) => {
@@ -198,8 +216,8 @@ if (track && panels.length > 1) {
     /* **누르고 있는 것은 한 번으로 친다.** 자동 반복을 그대로 받으면 1초도 안 되어
        아홉 장을 지나 마을까지 나가 버린다 — 한 장 한 장 눌러야 한 장씩 넘어간다 */
     if (e.repeat) return;
-    if (e.key === 'ArrowRight') go(at + 1);
-    if (e.key === 'ArrowLeft') go(at - 1);
+    if (e.key === 'ArrowRight') go(step(1));
+    if (e.key === 'ArrowLeft') go(step(-1));
   });
 
   /* 손가락 쓸기. **세로로 쓴 것은 넘기지 않는다** — 절 안을 굴리는 동작이라
@@ -217,9 +235,20 @@ if (track && panels.length > 1) {
     if (multi || x0 === null) return;
     const dx = e.changedTouches[0].clientX - x0;
     const dy = e.changedTouches[0].clientY - y0;
-    if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4) go(at + (dx < 0 ? 1 : -1));
+    if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4) go(step(dx < 0 ? 1 : -1));
     x0 = y0 = null;
   }, { passive: true });
+
+  /* **위에 얹히는 층에게 내주는 손잡이.** 로드맵(roadmap.js)이 이것으로 장을
+     펴고 지금 몇 번째인지 묻는다. 여는 규칙은 전부 여기 남아 있고, 그쪽은
+     「어느 장을 펼까」만 정한다 — 그래서 로드맵이 없어도 이 문서는 그대로다. */
+  /* `deep` — 주소에 화면 이름표를 달고 들어왔는가. **이것을 여기서 재 둬야 한다** —
+     아래에서 go()가 곧 replaceState로 이름표를 붙이므로, 나중에 물으면 누구나
+     「이름표를 달고 왔다」가 된다(위 층이 그것을 보고 시작 자리를 정한다) */
+  window.dadaCase = {
+    go, ids, at: () => at, count: panels.length,
+    deep: ids.indexOf(location.hash.slice(1)) >= 0,
+  };
 
   /* 주소에 화면 이름표가 붙어 온 것이면 그 화면부터 편다.
      처음에는 초점을 옮기지 않는다 — 들어오자마자 화면이 스스로 움직이면 놀란다 */

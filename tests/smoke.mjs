@@ -1447,6 +1447,20 @@ if (want('방문 통계')) {
    안 멈춘다 — 굴릴 때마다 조금씩 움직이기 때문이다. 실제로 프로세스가 안 끝났다.
    그래서 누르는 것은 evaluate 안에서 element.click()으로 한다. */
 const CASE = '/case/playgrown.html';
+
+/** 케이스 스터디에서 **축이 정한 차례의** 양 끝으로 간다.
+ *  로드맵이 아홉 장을 여섯 단계로 묶으면서 차례가 문서 순서와 달라졌다 —
+ *  첫 장은 표지가 아니라 「문제」의 리서치이고, 마지막은 「실제 서비스」의 영상이다.
+ *  나가는 문(양 끝에서 한 번 더 밀기)도 그 끝에 있다. */
+const toEdge = (p, d) => p.evaluate((dir) => {
+  let at = window.dadaCase.at();
+  for (let i = 0; i < 12; i++) {
+    const n = window.dadaCaseOrder(at, dir);
+    if (n < 0 || n >= window.dadaCase.count) break;
+    at = n;
+  }
+  window.dadaCase.go(at);
+}, d);
 if (head('케이스 스터디 — 뼈대')) {
   const p = await desktop();
   await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
@@ -1538,16 +1552,28 @@ if (head('케이스 스터디 — 넘기는 화면')) {
   ok(await p.evaluate(() => [...document.querySelectorAll('.vw-panel')].filter((x) => !x.inert).length) === 1,
     '지금 화면 말고는 훑기에서 빠져 있다');
 
+  /* **처음 서는 자리가 표지가 아니다**(2026-08-25). 위에 얹힌 로드맵이 축의
+     처음(「문제」)에 세우므로 두 번째 장에서 시작한다 — 여기서 지키려는 것은
+     「뒤로 가기가 마을로 나가 버리지 않는다」이지 몇 번째 장이냐가 아니다 */
   await p.goBack(); await p.waitForTimeout(600);
-  ok((await p.textContent('.vw-count')).startsWith('1 /'),
-    '뒤로 가기가 마을이 아니라 앞 화면으로 온다', await p.textContent('.vw-count'));
+  ok(new URL(p.url()).pathname.includes('playgrown'),
+    '뒤로 가기가 마을이 아니라 앞 화면으로 온다', p.url());
+  ok((await p.textContent('.vw-count')).startsWith('2 /'),
+    '들어온 자리(축의 처음)로 돌아온다', await p.textContent('.vw-count'));
 
   /* 화면보다 긴 절을 가운데 두면 위쪽이 굴려도 안 닿는 데로 밀려난다.
      브랜드 보드가 그래서 표제가 통째로 사라진 적이 있다 */
+  /* **화면 자기 기준으로 잰다.** 뷰포트 기준으로 재던 것을 고쳤다(2026-08-25) —
+     위에 로드맵 층이 얹히면서 화면이 그 높이만큼 내려왔는데, 그건 밀려난 것이
+     아니라 제자리다. 여기서 지키려는 것은 「넘치는 절이 가운데 놓여 표제가
+     굴려도 안 닿는 데로 밀려나지 않는가」이고, 그건 절 안에서의 자리다. */
   await go(4);
-  const top = await p.evaluate(() => Math.round(
-    document.querySelectorAll('.vw-panel')[4].querySelector('.room-no').getBoundingClientRect().top));
-  ok(top > 0 && top < 200, '넘치는 화면은 위에서 시작한다', `top=${top}`);
+  const top = await p.evaluate(() => {
+    const panel = document.querySelectorAll('.vw-panel')[4];
+    const no = panel.querySelector('.room-no');
+    return Math.round(no.getBoundingClientRect().top - panel.getBoundingClientRect().top);
+  });
+  ok(top > 0 && top < 200, '넘치는 화면은 그 화면 위에서 시작한다', `top=${top}`);
   await p.close();
 }
 
@@ -1688,9 +1714,22 @@ if (head('케이스 스터디 — 마지막에서 나간다')) {
   const p = await desktop();
   await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
   await p.waitForTimeout(500);
-  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[8].click());
+  /* **마지막으로 읽는 장은 문서의 마지막 장이 아니다**(2026-08-25). 위에 얹힌
+     로드맵이 아홉 장을 여섯 단계로 묶으면서 차례가 바뀌었다 — 마지막은
+     「실제 서비스」의 홍보 영상이다. 나가는 문도 그리로 옮겨졌다. */
+  await p.evaluate(() => {
+    const order = [];
+    let at = window.dadaCase.at();
+    for (let i = 0; i < 12; i++) {
+      const n = window.dadaCaseOrder(at, 1);
+      if (n < 0 || n >= window.dadaCase.count) break;
+      at = n; order.push(at);
+    }
+    window.dadaCase.go(at);
+  });
   await p.waitForTimeout(600);
-  ok((await p.textContent('.vw-count')).startsWith('9 /'), '마지막 화면이다');
+  ok(await p.evaluate(() => window.dadaCaseOrder(window.dadaCase.at(), 1) >= window.dadaCase.count),
+    '차례의 마지막 장이다');
   ok(!await p.evaluate(() => document.querySelector('.vw-arrow--next').disabled),
     '마지막에서도 오른쪽 단추는 살아 있다');
   ok(await p.evaluate(() => document.querySelector('.vw-arrow--next').classList.contains('vw-arrow--out')),
@@ -1720,18 +1759,19 @@ if (head('케이스 스터디 — 실수로 안 나가진다')) {
   });
   await p.waitForTimeout(500);
   ok(new URL(p.url()).pathname === CASE, '화살표를 눌러도 문서 밖으로 안 나간다', p.url());
-  ok((await p.textContent('.vw-count')).startsWith('2 /'),
+  /* 축의 처음(두 번째 장)에서 한 장만 나아가므로 세 번째다 */
+  ok((await p.textContent('.vw-count')).startsWith('3 /'),
     '자동 반복은 한 장으로 친다', await p.textContent('.vw-count'));
 
   /* 마지막에 닿자마자 미는 것도 안 통한다 — 잠깐 머물러야 문이 열린다 */
-  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[8].click());
+  await toEdge(p, 1);
   await p.evaluate(() => document.querySelector('.vw-arrow--next').click());
   await p.waitForTimeout(400);
   ok(new URL(p.url()).pathname === CASE,
     '마지막에 닿자마자 밀면 안 나간다', p.url());
 
   /* 첫 화면의 왼쪽도 같은 문이라 같은 빗장이 걸려 있어야 한다 */
-  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[0].click());
+  await toEdge(p, -1);
   await p.evaluate(() => document.querySelector('.vw-arrow--prev').click());
   await p.waitForTimeout(400);
   ok(new URL(p.url()).pathname === CASE,
@@ -1775,7 +1815,7 @@ if (head('케이스 스터디 — 양 끝이 다 문이다')) {
     '가운데 화면에서는 양쪽 다 그냥 화살표다', JSON.stringify(s));
 
   /* 잠깐 머문 뒤 왼쪽으로 밀면 마을로 나간다 */
-  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[0].click());
+  await toEdge(p, -1);
   await p.waitForTimeout(600);
   await p.evaluate(() => document.querySelector('.vw-arrow--prev').click());
   await p.waitForTimeout(600);
@@ -2372,6 +2412,184 @@ if (head('안내 — 키보드')) {
   await p.keyboard.press('Escape'); await p.waitForTimeout(800);
   ok(await p.locator('.onb-char').count() === 0, 'Esc로 안내를 건너뛴다');
   await p.close();
+}
+
+/* ── 문제해결 로드맵 ───────────────────────────────────────
+   케이스 스터디 아홉 장 위에 얹은 층이다. 여기서 지키는 것은 넷이다.
+   ① **위계** — 로드맵이 화면 맨 위, 프로젝트 소개는 그 아래
+   ② **축이 움직인다** — 고른 단계가 늘 가운데에 온다
+   ③ **아홉 장이 하나도 안 빠진다** — 여섯 단계에 전부 들어간다
+   ④ **두 가로 동작이 안 섞인다** — 축을 쓸면 단계, 화면을 쓸면 산출물 */
+if (head('로드맵 — 뼈대와 위계')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.rm-step', { timeout: 4000 });
+  await p.waitForTimeout(700);
+
+  ok(await p.locator('.rm-step').count() === 6, '단계가 여섯이다');
+  const labels = await p.$$eval('.rm-lab', (n) => n.map((x) => x.textContent));
+  ok(labels.join('/') === '문제/역할/과정/결과/판단 / 배운 점/실제 서비스',
+    '순서가 문제 → 역할 → 과정 → 결과 → 판단 → 실제 서비스', labels.join(' / '));
+  ok((await p.$$eval('.rm-sub', (n) => n.map((x) => x.textContent))).every((t) => t.length > 3),
+    '단계마다 어깨말이 있다');
+
+  /* **로드맵이 프로젝트 소개보다 위다.** 이 위계가 뒤집히면 이번 작업은 실패다 */
+  const order = await p.evaluate(() => {
+    const rm = document.querySelector('.rm').getBoundingClientRect();
+    const sum = document.querySelector('.rm-sum').getBoundingClientRect();
+    const panel = document.querySelector('.vw-panel').getBoundingClientRect();
+    return { rmTop: rm.top, rmH: rm.height, sumTop: sum.top, panelTop: panel.top };
+  });
+  ok(order.rmTop < order.sumTop && order.sumTop < order.panelTop,
+    '로드맵 → 프로젝트 소개 → 산출물 순서다');
+  ok(order.rmH > 180, '로드맵이 작은 탭 줄이 아니라 제 높이를 차지한다', `${Math.round(order.rmH)}px`);
+
+  /* **아홉 장이 하나도 안 빠진다.** 여섯 단계에 전부 들어가야 한다 —
+     빠진 장은 로드맵으로는 영영 못 닿는다 */
+  const reach = [];
+  for (let i = 0; i < 6; i++) {
+    await p.evaluate((n) => document.querySelectorAll('.rm-step')[n].click(), i);
+    await p.waitForTimeout(650);          // 갈아 끼우는 데 0.13초 + 축이 붙는 데 0.42초
+    // 그 단계 안의 산출물을 끝까지 훑는다
+    /* **슬래시로 자르면 안 된다.** 「판단 / 배운 점의 산출물 1 / 1」처럼 단계
+       이름에 이미 슬래시가 든 것이 있어서, 앞의 것에 걸려 개수가 NaN이 됐다 —
+       그 단계만 조용히 건너뛰어 「아홉 중 여덟」로 보였다 */
+    const of = await p.textContent('.rm-of');
+    const total = parseInt(/(\d+)\s*$/.exec(of)[1], 10);
+    for (let k = 0; k < total; k++) {
+      reach.push(await p.evaluate(() => window.dadaCase.at()));
+      if (k < total - 1) {
+        await p.evaluate(() => document.querySelector('.vw-arrow--next').click());
+        await p.waitForTimeout(500);
+      }
+    }
+  }
+  ok(new Set(reach).size === 9, '아홉 장이 여섯 단계에 하나도 안 빠지고 들어간다',
+    `차례대로 ${reach.join(',')}`);
+  await p.close();
+}
+
+if (head('로드맵 — 축이 움직인다')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.rm-step', { timeout: 4000 });
+  await p.waitForTimeout(700);
+
+  /** 고른 단계가 레일 가운데에서 얼마나 벗어나 있나 */
+  const off = () => p.evaluate(() => {
+    const rail = document.getElementById('rmRail');
+    const cur = document.querySelector('.rm-step[aria-selected="true"]');
+    const c = cur.getBoundingClientRect();
+    const r = rail.getBoundingClientRect();
+    return Math.abs((c.left + c.width / 2) - (r.left + r.width / 2));
+  });
+
+  ok(await p.textContent('.rm-lab') && await p.$eval('.rm-step[aria-selected="true"] .rm-lab',
+    (n) => n.textContent) === '문제', '그냥 들어오면 문제부터다 (표지가 아니라)');
+  ok(await off() < 4, '고른 단계가 축의 한가운데에 선다', `${Math.round(await off())}px 벗어남`);
+
+  await p.evaluate(() => document.querySelectorAll('.rm-step')[4].click());
+  await p.waitForTimeout(800);
+  ok(await p.$eval('.rm-step[aria-selected="true"] .rm-lab', (n) => n.textContent) === '판단 / 배운 점',
+    '누른 단계가 켜진다');
+  ok(await off() < 4, '축 자체가 움직여 그 단계를 가운데로 데려온다',
+    `${Math.round(await off())}px 벗어남`);
+
+  /* **끌면 축이 따라오고, 놓으면 가까운 단계가 가운데로 붙는다** */
+  const before = await p.$eval('.rm-step[aria-selected="true"] .rm-lab', (n) => n.textContent);
+  const box = await p.locator('#rmRail').boundingBox();
+  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await p.mouse.down();
+  for (let i = 1; i <= 8; i++) {
+    await p.mouse.move(box.x + box.width / 2 - i * 34, box.y + box.height / 2);
+  }
+  await p.mouse.up();
+  await p.waitForTimeout(900);
+  const after = await p.$eval('.rm-step[aria-selected="true"] .rm-lab', (n) => n.textContent);
+  ok(after !== before, '마우스로 끌면 단계가 바뀐다', `${before} → ${after}`);
+  ok(await off() < 4, '손을 놓으면 가장 가까운 단계가 가운데로 붙는다',
+    `${Math.round(await off())}px 벗어남`);
+  await p.close();
+}
+
+if (head('로드맵 — 산출물과 안 섞인다')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.rm-step', { timeout: 4000 });
+  await p.waitForTimeout(700);
+
+  // 과정(산출물 셋)으로 간다
+  await p.evaluate(() => document.querySelectorAll('.rm-step')[2].click());
+  await p.waitForTimeout(800);
+  ok((await p.textContent('.rm-of')).includes('1 / 3'), '과정에는 산출물이 셋이다',
+    await p.textContent('.rm-of'));
+
+  /* **산출물을 넘겨도 단계는 그대로다.** 둘이 같이 움직이면 한 덩어리로 보인다 */
+  await p.evaluate(() => document.querySelector('.vw-arrow--next').click());
+  await p.waitForTimeout(500);
+  ok((await p.textContent('.rm-of')).includes('2 / 3'), '화살표로 산출물이 넘어간다',
+    await p.textContent('.rm-of'));
+  ok(await p.$eval('.rm-step[aria-selected="true"] .rm-lab', (n) => n.textContent) === '과정',
+    '산출물을 넘겨도 단계는 과정 그대로다');
+
+  /* **단계를 바꾸면 산출물은 그 단계의 첫 번째로 돌아간다** (17항) */
+  await p.evaluate(() => document.querySelectorAll('.rm-step')[3].click());
+  await p.waitForTimeout(800);
+  await p.evaluate(() => document.querySelectorAll('.rm-step')[2].click());
+  await p.waitForTimeout(800);
+  ok((await p.textContent('.rm-of')).includes('1 / 3'), '단계를 다시 고르면 첫 산출물부터다',
+    await p.textContent('.rm-of'));
+
+  /* 아래에서 장을 바꾸면 축이 따라온다 — 점을 눌러 다른 단계의 장으로 간다 */
+  await p.evaluate(() => document.querySelectorAll('.vw-pager button')[8].click());
+  await p.waitForTimeout(700);
+  ok(await p.$eval('.rm-step[aria-selected="true"] .rm-lab', (n) => n.textContent) === '판단 / 배운 점',
+    '아래에서 장을 바꾸면 축이 따라온다');
+  await p.close();
+}
+
+if (head('로드맵 — 키보드와 폰')) {
+  const p = await desktop();
+  await p.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.rm-step', { timeout: 4000 });
+  await p.waitForTimeout(700);
+
+  /* **끌 수 있어도 키보드만으로 모든 단계에 닿아야 한다**(23항) */
+  await p.evaluate(() => document.querySelectorAll('.rm-step')[0].focus());
+  await p.keyboard.press('ArrowRight'); await p.waitForTimeout(600);
+  ok(await p.$eval('.rm-step[aria-selected="true"] .rm-lab', (n) => n.textContent) === '역할',
+    '오른쪽 화살표로 다음 단계에 간다');
+  await p.keyboard.press('End'); await p.waitForTimeout(900);
+  const last = await p.$eval('.rm-step[aria-selected="true"] .rm-lab', (n) => n.textContent);
+  ok(last === '실제 서비스', 'End로 마지막 단계에 간다', last);
+  /* 축에서 누른 화살표가 아래 화면까지 내려가면 단계도 장도 같이 움직인다 */
+  ok((await p.textContent('.rm-of')).includes('1 / 1'),
+    '축에서 누른 화살표가 아래 산출물까지 넘기지 않는다', await p.textContent('.rm-of'));
+  await p.close();
+
+  const q = await phone();
+  await q.goto(BASE + CASE, { waitUntil: 'networkidle' });
+  await q.waitForSelector('.rm-step', { timeout: 4000 });
+  await q.waitForTimeout(1000);
+  const m = await q.evaluate(() => {
+    const rm = document.querySelector('.rm').getBoundingClientRect();
+    /* **`innerWidth`로 재면 안 된다.** 폰 흉내를 낸 창에서는 그 값이 실제로
+       칠해진 폭과 다르게 나온다(390으로 그려 놓고 1560이라고 답했다) — 그러면
+       화면 밖 칸까지 「보인다」로 세어 여섯 개가 다 보이는 것이 된다.
+       축이 실제로 차지한 자리로 잰다. */
+    const rail = document.getElementById('rmRail').getBoundingClientRect();
+    const vis = [...document.querySelectorAll('.rm-step')].filter((b) => {
+      const r = b.getBoundingClientRect();
+      return r.right > rail.left + 2 && r.left < rail.right - 2;
+    }).length;
+    return { h: rm.height, vis, vh: rm.height / 0.35 };
+  });
+  ok(m.vis >= 2 && m.vis <= 5, '폰에서는 앞뒤 단계가 조금씩만 보인다 (여섯을 다 우겨넣지 않는다)',
+    `${m.vis}개`);
+  ok(m.h < 260, '로드맵이 폰에서 지나치게 높지 않다', `${Math.round(m.h)}px`);
+  ok(await q.evaluate(() => getComputedStyle(document.getElementById('rmRail')).touchAction) === 'pan-x',
+    '축은 가로로만 끌린다 (세로로 쓸면 그 절이 굴러야 한다)');
+  await q.close();
 }
 
 /* ── 마무리 ─────────────────────────────────────────────── */
