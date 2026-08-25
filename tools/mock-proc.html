@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>프로세스 보기 A+B 시안</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+/* ── A+B 시안 전용 ──
+   지금 화면의 값(토큰·둥근 정도·글자 크기)은 그대로 두고, 바뀌는 것만 여기 적는다.
+   그래야 「고치면 이렇게 된다」가 그대로 옮겨진다. */
+
+/* styles.css의 `body { display: flex }`를 되돌린다 — 그대로 두면 `margin: 0 auto`가
+   먹혀 모달이 내용 폭으로 쪼그라들고, 축이 여섯 칸을 못 펴서 굴러 버린다 */
+body { background: #8b8b8b; margin: 0; padding: 24px; display: block; }
+.mock-modal {
+  max-width: 980px; margin: 0 auto;
+  background: var(--surface); border-radius: 20px; box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.mock-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px 0;
+}
+.mock-head h2 { margin: 0; font-size: 20px; }
+.mock-x {
+  width: 36px; height: 36px; border-radius: 10px;
+  border: 0; background: var(--surface-2); cursor: pointer; font-size: 15px;
+}
+.mock-tabs { display: flex; gap: 6px; padding: 12px 24px 0; border-bottom: 1px solid var(--line); }
+.mock-tab {
+  background: none; border: 0; border-bottom: 3px solid transparent;
+  padding: 8px 12px 10px; font-size: 14px; font-weight: 700; color: var(--faint); cursor: pointer;
+}
+.mock-tab.on { color: var(--accent); border-bottom-color: var(--accent); }
+.mock-body { padding: 14px 24px 20px; }
+
+/* ── ① 프로젝트 고르기 — 그대로 ── */
+.proc-pick { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.proc-pick-label { font-size: 11.5px; font-weight: 700; color: var(--faint); letter-spacing: .06em; }
+.proc-pick-btn {
+  background: var(--surface); color: var(--sub);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 11px; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.proc-pick-btn.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+/* ── ② 축 — 「길」이 된다 ──
+   A. 지금은 첫 칸이 가운데 서서 왼쪽 절반이 텅 비어 「덜 만든 화면」으로 보인다.
+      선을 틀 끝까지 긋고 **지나온 길만 초록으로 칠해** 빈자리를 「이미 지나온
+      길·앞으로 갈 길」로 읽히게 한다. 칸 디자인 자체는 건드리지 않는다.
+   B. 축은 이제 조작 도구가 아니라 **지금 어디쯤인지 알려주는 지도**다.
+      (눌러서 점프는 그대로 되고, 끄는 것도 그대로 된다) */
+/* **축의 고유 폭을 틀 안에 가둔다(`contain: inline-size`).**
+   굴림 상자(overflow-x:auto)면 알아서 줄 것 같지만 아니었다 — 칸 여섯 개의
+   폭 648px이 그대로 새어 나가 폰에서 **페이지 전체가 390이 아니라 678**이 됐다.
+   모달이 화면 밖으로 밀려 나가고, 오른쪽이 잘려 보인다. */
+.m-railwrap {
+  position: relative; margin: 14px 0 0;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface); overflow: hidden; contain: inline-size;
+}
+.m-railwrap::before, .m-railwrap::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 34px; z-index: 2; pointer-events: none;
+}
+.m-railwrap::before { left: 0; background: linear-gradient(90deg, var(--surface), transparent); }
+.m-railwrap::after { right: 0; background: linear-gradient(270deg, var(--surface), transparent); }
+
+/* **가운데 맞춤 여백을 걷어낸다.** 지금은 고른 칸을 한가운데 세우려고 양옆에
+   반 폭짜리 여백을 두는데, 첫 칸에서는 그 여백이 그대로 「텅 빈 왼쪽 절반」이 되어
+   덜 만든 화면처럼 보였다. 대신 칸이 폭을 나눠 갖게 하고(데스크톱은 여섯이 딱 차서
+   굴릴 일이 없다), 폰처럼 모자란 데서만 틀 안에서 미끄러진다. */
+/* **폭을 100%로 못 박는다.** 안 박으면 굴림 상자인데도 칸 여섯 개만큼 넓어져서
+   축이 모달을 통째로 밀어 버린다 — 폰에서 화면 폭이 390이 아니라 678이 됐다. */
+.m-rail {
+  position: relative; display: flex; align-items: flex-start; padding: 10px 0 8px;
+  width: 100%; min-width: 0;
+  overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+  touch-action: pan-x; cursor: grab;
+}
+.m-rail::-webkit-scrollbar { display: none; }
+/* 길: 칸이 놓인 폭 전체에 깔린다. 빈 곳이 「없는 것」이 아니라 「길」이 된다 */
+.m-road { position: absolute; left: 0; top: 40px; height: 3px; background: var(--line); }
+.m-road-done { position: absolute; left: 0; top: 40px; height: 3px; background: var(--accent); opacity: .55; }
+
+.m-step {
+  position: relative; z-index: 1; flex: 1 0 132px; scroll-snap-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: none; border: 0; padding: 6px 6px 4px; cursor: pointer; color: var(--ink);
+  opacity: .4;
+}
+.m-step.done { opacity: .62; }
+.m-step.on { opacity: 1; transform: scale(1.12); }
+.m-dot {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 20px; line-height: 1;
+  background: var(--surface); border: 2px solid var(--line);
+}
+.m-step.done .m-dot { border-color: var(--accent); background: var(--accent-tint); }
+.m-step.on .m-dot {
+  border-color: var(--accent); background: var(--accent-tint);
+  box-shadow: 0 3px 12px rgba(61, 122, 78, .2);
+}
+.m-lab { font-size: 14px; font-weight: 800; letter-spacing: -.01em; }
+.m-step.on .m-lab { color: var(--accent); }
+/* A. 부제(왜 시작했는가)는 **고른 칸에만** 남긴다. 여섯 개가 다 달고 있으면
+      축이 글 덩어리가 되고, 정작 아래 한 줄 설명과 뜻이 겹친다 */
+.m-sub { font-size: 11px; color: var(--faint); height: 16px; }
+.m-step:not(.on) .m-sub { visibility: hidden; }
+
+/* ── ③ 단계 한 줄 ──
+   A. 지금은 축의 「문제」 + 큰 표제 「문제」 + 설명 한 줄로 **같은 말이 세 번** 나온다.
+      표제를 지우고 문장만 남긴다. 단계 이름은 축이 이미 초록으로 말하고 있다. */
+.m-line {
+  margin: 12px 0 12px; text-align: center;
+  font-size: 15px; color: var(--ink); line-height: 1.5; font-weight: 600;
+}
+
+/* ── ④ 산출물 — 하나뿐인 슬라이더 ──
+   B. 이전/다음 「단계」 버튼을 없앤다. 넘기는 곳은 여기 한 군데뿐이고,
+      단계 끝에서 더 넘기면 다음 단계로 그냥 넘어간다. 슬라이더 안에 슬라이더가
+      있던 구조가 사라져 「장표 넘기듯」이 된다. */
+.m-stage {
+  position: relative;
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: inset 0 2px 10px rgba(31, 36, 28, .07);
+  padding: 16px 52px 14px;
+}
+.m-frame { height: min(38dvh, 340px); display: flex; align-items: center; justify-content: center; position: relative; }
+.m-shot {
+  max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain;
+  border-radius: 10px; background: #fff; box-shadow: 0 6px 20px rgba(31, 36, 28, .14);
+}
+.m-sample {
+  position: absolute; right: 8px; bottom: 8px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .04em;
+  color: var(--sub); background: rgba(255, 255, 255, .92);
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px;
+}
+.m-cap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.m-cap-stage {
+  font-size: 10.5px; font-weight: 800; color: var(--accent);
+  background: var(--accent-tint); border-radius: 999px; padding: 3px 9px; white-space: nowrap;
+}
+.m-cap-title { font-size: 14.5px; font-weight: 800; }
+.m-cap-note { font-size: 12.5px; color: var(--sub); }
+.m-cap-go { font-size: 12.5px; font-weight: 700; color: var(--accent); text-decoration: none; white-space: nowrap; }
+.m-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font-size: 14px; cursor: pointer; box-shadow: var(--shadow);
+}
+.m-arrow.prev { left: 8px; }
+.m-arrow.next { right: 8px; }
+
+/* ── ⑤ 진행 표시 하나 ──
+   B. 「1/2」(이 단계 안)과 「1/6」(단계)이 따로 놀던 것을 **하나로 합친다.**
+      점은 전체 산출물 열한 장이고, 단계가 바뀌는 자리만 사이를 띄워 둔다.
+      지금 어디쯤인지가 한 줄로 읽히고, 넘길 곳이 한 군데라는 것도 같이 보인다. */
+.m-dots { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; }
+.m-d { width: 7px; height: 7px; border-radius: 50%; border: 0; background: var(--line); padding: 0; cursor: pointer; }
+.m-d.done { background: var(--accent); opacity: .38; }
+.m-d.on { background: var(--accent); width: 18px; border-radius: 999px; }
+.m-gap { width: 9px; }
+.m-count { font-size: 11.5px; font-weight: 700; color: var(--faint); margin-left: 8px; font-variant-numeric: tabular-nums; }
+
+.m-foot { margin: 14px 0 0; text-align: center; font-size: 13px; }
+.m-foot a { color: var(--accent); }
+
+/* 폰: 산출물과 손잡이가 **한 화면에** 들어와야 한다 — 지금은 카드가 반쯤 잘리고
+   점·화살표는 굴려야 나온다. 그림 높이를 줄이고 화살표를 그림 밖으로 뺀다 */
+@media (max-width: 699px) {
+  body { padding: 0; }
+  .mock-modal { border-radius: 0; }
+  .mock-body { padding: 12px 14px 16px; }
+  .m-step { flex: 0 0 108px; }   /* 폰에서는 나눠 갖지 않고 제 폭대로 서서 미끄러진다 */
+  .m-dot { width: 38px; height: 38px; font-size: 17px; }
+  .m-road, .m-road-done { top: 36px; }
+  .m-frame { height: min(34dvh, 260px); }
+  .m-stage { padding: 12px; }
+  .m-arrow { display: none; }
+  .m-line { font-size: 14px; margin: 10px 0; }
+}
+</style>
+</head>
+<body>
+<div class="mock-modal">
+  <div class="mock-head">
+    <h2>웹서비스 한눈에 보기</h2>
+    <button class="mock-x">✕</button>
+  </div>
+  <div class="mock-tabs">
+    <button class="mock-tab on">프로세스 보기</button>
+    <button class="mock-tab">만든 시간순서 보기</button>
+  </div>
+  <div class="mock-body">
+
+    <div class="proc-pick">
+      <span class="proc-pick-label">프로젝트</span>
+      <button class="proc-pick-btn on">PlayGrown 케이스 스터디</button>
+    </div>
+
+    <div class="m-railwrap">
+      <div class="m-rail" id="rail">
+        <div class="m-road"></div>
+        <div class="m-road-done" id="roadDone"></div>
+      </div>
+    </div>
+
+    <p class="m-line" id="line"></p>
+
+    <div class="m-stage">
+      <button class="m-arrow prev">←</button>
+      <div class="m-frame">
+        <img class="m-shot" id="shot" alt="">
+        <span class="m-sample" id="sample">샘플 이미지</span>
+      </div>
+      <button class="m-arrow next">→</button>
+      <div class="m-cap">
+        <span class="m-cap-stage" id="capStage"></span>
+        <span class="m-cap-title" id="capTitle"></span>
+        <span class="m-cap-note" id="capNote"></span>
+        <a class="m-cap-go" href="#">원래 문서에서 보기 →</a>
+      </div>
+    </div>
+
+    <div class="m-dots" id="dots"></div>
+
+    <p class="m-foot"><a href="#">전체 목록 페이지로 보기 →</a></p>
+  </div>
+</div>
+
+<script>
+/* 시안이라 데이터는 지금 services.json에서 그대로 옮겨 적는다 */
+const STAGES = [
+  { icon: '🔎', lab: '문제', sub: '왜 시작했는가',
+    line: '집도 직장도 아닌 곳이 사라지고 있다는 이야기에서 시작했어요.',
+    made: [
+      { title: '어른이 놀 곳이 왜 없나', note: '제3의 공간이 사라진다는 리서치',
+        img: '/assets/case/playgrown/column.jpg' },
+      { title: '경쟁 서비스 지도', note: '비슷한 것들이 놓친 자리',
+        img: '/assets/case/sample/shot.png', sample: true } ] },
+  { icon: '🙋', lab: '역할', sub: '내가 맡은 일',
+    line: '기획부터 화면 설계, 만드는 것까지 혼자 맡았어요.',
+    made: [ { title: '역할 정의', note: '', img: '/assets/case/sample/shot.png', sample: true } ] },
+  { icon: '⚒️', lab: '과정', sub: '어떻게 풀었는가',
+    line: '가설을 세우고, 만들어 보고, 사람들에게 물어보기를 반복했어요.',
+    made: [
+      { title: '포지셔닝', note: '', img: '/assets/case/playgrown/positioning.jpg' },
+      { title: '브랜드 보드', note: '', img: '/assets/case/playgrown/brand-board.jpg' },
+      { title: '화면 흐름', note: '', img: '/assets/case/sample/shot.png', sample: true } ] },
+  { icon: '📊', lab: '결과', sub: '무엇이 나왔는가',
+    line: '어른들이 놀 곳을 찾는 지도 서비스가 되었어요.',
+    made: [ { title: '서비스 지도', note: '', img: '/assets/case/playgrown/map.jpg' } ] },
+  { icon: '💡', lab: '판단', sub: '배운 점',
+    line: '만들면서 알게 된 것과, 다시 한다면 바꿀 것을 남겼어요.',
+    made: [ { title: '회고', note: '', img: '/assets/case/sample/shot.png', sample: true } ] },
+  { icon: '🌱', lab: '실제 서비스', sub: '지금은',
+    line: '지금도 열려 있고, 계속 손보고 있어요.',
+    made: [ { title: '지금의 PlayGrown', note: '', img: '/assets/case/sample/shot.png', sample: true } ] },
+];
+
+/* 산출물을 한 줄로 편다 — **넘기는 것은 이 한 줄뿐이다.** 단계는 이 줄 위에
+   찍힌 눈금일 뿐이라, 끝에서 넘기면 다음 단계로 그냥 이어진다 */
+const FLAT = [];
+STAGES.forEach((s, si) => s.made.forEach((m, mi) => FLAT.push({ ...m, si, mi, first: mi === 0 })));
+
+let at = 0;   // 시안은 3번째(과정 첫 장)를 보여 준다
+const rail = document.getElementById('rail');
+const dots = document.getElementById('dots');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'm-step';
+  b.innerHTML = `<span class="m-dot">${s.icon}</span><span class="m-lab">${s.lab}</span><span class="m-sub">${s.sub}</span>`;
+  b.onclick = () => { at = FLAT.findIndex((f) => f.si === i); paint(); };
+  rail.appendChild(b);
+});
+
+FLAT.forEach((f, i) => {
+  if (f.first && i) { const g = document.createElement('span'); g.className = 'm-gap'; dots.appendChild(g); }
+  const d = document.createElement('button');
+  d.className = 'm-d';
+  d.onclick = () => { at = i; paint(); };
+  dots.appendChild(d);
+});
+const count = document.createElement('span');
+count.className = 'm-count';
+dots.appendChild(count);
+
+function paint() {
+  const cur = FLAT[at], s = STAGES[cur.si];
+  [...rail.querySelectorAll('.m-step')].forEach((b, i) => {
+    b.className = 'm-step' + (i === cur.si ? ' on' : i < cur.si ? ' done' : '');
+  });
+  /* 지나온 길을 칠한다 — 지금 칸의 가운데까지.
+     **길은 굴러가는 안쪽 폭에 맞춘다.** left/right로 두면 보이는 폭에만 깔려서
+     폰에서 축을 밀 때 길만 제자리에 남는다(축은 굴림 상자다). */
+  const on = rail.querySelectorAll('.m-step')[cur.si];
+  document.querySelector('.m-road').style.width = rail.scrollWidth + 'px';
+  document.getElementById('roadDone').style.width =
+    (on.offsetLeft + on.offsetWidth / 2) + 'px';
+  on.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+
+  document.getElementById('line').textContent = s.line;
+  document.getElementById('shot').src = cur.img;
+  document.getElementById('sample').hidden = !cur.sample;
+  document.getElementById('capStage').textContent = s.lab + '의 산출물';
+  document.getElementById('capTitle').textContent = cur.title;
+  document.getElementById('capNote').textContent = cur.note;
+
+  [...dots.querySelectorAll('.m-d')].forEach((d, i) => {
+    d.className = 'm-d' + (i === at ? ' on' : i < at ? ' done' : '');
+  });
+  count.textContent = (at + 1) + ' / ' + FLAT.length;
+}
+
+document.querySelector('.m-arrow.prev').onclick = () => { at = Math.max(0, at - 1); paint(); };
+document.querySelector('.m-arrow.next').onclick = () => { at = Math.min(FLAT.length - 1, at + 1); paint(); };
+
+at = 3;   /* 「과정」 한가운데 — 지나온 길이 칠해진 모습이 보이게 */
+paint();
+</script>
+</body>
+</html>
