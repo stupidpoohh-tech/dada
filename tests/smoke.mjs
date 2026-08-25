@@ -1911,18 +1911,50 @@ if (head('첫 방문 안내 — 탐험하기')) {
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await p.waitForSelector('.onb-bubble', { timeout: 5000 });
   for (let i = 0; i < 3; i++) { await p.click('.onb-btn.go'); await p.waitForTimeout(180); }
-  await p.click('.onb-act .onb-btn:first-child');     // 탐험하기
-  await p.waitForTimeout(800);
 
-  const left = await p.evaluate(() => ({
-    scrim: !!document.querySelector('.onb-scrim'),
-    char: !!document.querySelector('.onb-char'),
-    cls: document.body.className,
-    me: getComputedStyle(document.querySelector('.me-spot')).visibility,
-  }));
+  /* **다원은 제자리로 걸어 돌아간다.** 마중 나온 이야기를 마중 나온 자리에서
+     끝내면 「사라졌다」로 읽힌다. 목적지는 좌표로 적혀 있지 않고 `.me-spot`을
+     실제로 재서 쓰므로, 다원님이 `character` 좌표를 옮겨도 여기가 따라간다. */
+  const from = await p.evaluate(() => {
+    const c = document.querySelector('.onb-char').getBoundingClientRect();
+    const m = document.querySelector('.me-spot').getBoundingClientRect();
+    return { x: c.left + c.width / 2, w: c.width,
+             mx: m.left + m.width / 2, mw: m.width };
+  });
+  ok(from.w > from.mw * 2, '돌아가기 전 다원은 지도 위 "나"보다 훨씬 크다',
+    `${Math.round(from.w)}px vs ${Math.round(from.mw)}px`);
+
+  await p.click('.onb-act .onb-btn:first-child');     // 탐험하기
+  await p.waitForTimeout(600);
+  const mid = await p.evaluate(() => {
+    const c = document.querySelector('.onb-char');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return { x: r.left + r.width / 2, w: r.width, cls: c.className,
+             step: getComputedStyle(c.querySelector('.onb-step')).animationName };
+  });
+  ok(mid !== null, '고르자마자 사라지지 않고 걸어간다');
+  ok(mid && mid.step === 'onb-step', '돌아갈 때도 뒤뚱거린다 (들어올 때와 같은 걸음)',
+    mid && mid.step);
+  ok(mid && mid.x > from.x && mid.x <= from.mx + 2, '제자리 쪽으로 간다',
+    mid && `${Math.round(from.x)} → ${Math.round(mid.x)} → ${Math.round(from.mx)}`);
+  ok(mid && mid.w < from.w && mid.w >= from.mw - 2, '멀어지듯 작아진다',
+    mid && `${Math.round(from.w)} → ${Math.round(mid.w)} → ${Math.round(from.mw)}`);
+
+  await p.waitForTimeout(1400);
+  const left = await p.evaluate(() => {
+    const m = document.querySelector('.me-spot');
+    return {
+      scrim: !!document.querySelector('.onb-scrim'),
+      char: !!document.querySelector('.onb-char'),
+      cls: document.body.className,
+      me: getComputedStyle(m).visibility, op: +getComputedStyle(m).opacity,
+    };
+  });
   ok(!left.scrim && !left.char, '안내가 흔적 없이 걷힌다');
   ok(left.cls.indexOf('dada-onboarding') === -1, 'body 표시도 걷힌다', left.cls);
-  ok(left.me === 'visible', '지도 위 "나"가 제자리로 돌아온다');
+  ok(left.me === 'visible' && left.op === 1, '도착한 자리에서 지도 위 "나"로 겹쳐 바뀐다',
+    `${left.me} / opacity ${left.op}`);
 
   // 마을이 원래대로 — 건물을 누르면 원래 열리던 것이 열린다
   await p.click('.spot[data-district="museum"]');
@@ -1938,6 +1970,10 @@ if (head('투어가이드')) {
   for (let i = 0; i < 3; i++) { await p.click('.onb-btn.go'); await p.waitForTimeout(180); }
   const url0 = p.url();
   await p.click('.onb-act .onb-btn:nth-child(2)');    // 투어가이드 받을래요
+  /* **투어는 제자리로 걸어 돌아가지 않는다.** 「탐험하기」는 1.2초 걸어가는 것이
+     닫는 말이 되지만, 투어는 지도가 곧바로 필요하다 — 그만큼 붙들면 안 된다. */
+  await p.waitForTimeout(620);
+  ok(await p.locator('.onb-char').count() === 0, '투어를 고르면 다원이 짧게 물러난다');
   await p.waitForSelector('.onb-tour', { timeout: 4000 });
   await p.waitForTimeout(400);
 

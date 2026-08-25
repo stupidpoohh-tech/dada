@@ -53,7 +53,15 @@
      됐다(2026-08-25). 여기서 줄일 것은 **화면을 가로지르는 거리**지 제자리에서
      몸이 들썩이는 폭이 아니다. 뒤뚱거림은 얕게 남는다(CSS의 onb-step-soft). */
   const SLIP = 900;
-  const S = 'assets/sprites/cut/me.png';
+  const SPR = 'assets/sprites/cut/';
+  const FRONT = 'me.png';
+  /* **뒷모습 그림이 오면 여기 파일 이름만 적는다** (`'me-back.png'`).
+     그러면 「탐험하기」를 고른 뒤 다원이 **돌아서서** 제자리로 걸어간다.
+     비워 두면 앞모습 그대로 물러난다 — 그림이 없다고 연출이 멈추지는 않게.
+     없는 파일을 미리 적어 두지 않는 이유: 404가 콘솔에 오류로 남고,
+     `npm test`의 「JS 오류」 절이 그것을 잡는다. */
+  const BACK = '';
+  const HOME = 1200;                 // 제자리로 돌아가는 시간(ms)
 
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -256,9 +264,9 @@
   }
 
   /* ── 안내를 접는다 ────────────────────────
-     다원은 마을 쪽으로 몇 걸음 걸어 들어가며 사라지고, 지도 위 제자리("나")가
-     다시 보인다. **마을 조작은 사라지기를 기다리지 않는다** — 걸어 나가는 동안에도
-     이미 누를 수 있다(12항: 애니메이션이 상호작용을 막지 않는다). */
+     **마을 조작은 다원이 사라지기를 기다리지 않는다** — 걸어가는 동안에도 이미
+     누를 수 있다(12항: 애니메이션이 상호작용을 막지 않는다). 다원은 그동안
+     `pointer-events: none`이라 지나가며 무엇을 가리지도 않는다. */
   function finish(how, then) {
     if (phase === 'off') return;
     track('intro_choice', { choice: how });
@@ -271,6 +279,12 @@
       document.body.classList.remove('dada-onboarding');
       if (then) then();
     };
+
+    /* **「탐험하기」를 고른 사람에게만 제자리로 돌아가는 것을 보여준다.**
+       투어는 지도가 곧바로 필요하고, 「건너뛰기」는 「그만 보고 싶다」는 뜻이라
+       둘 다 1.2초를 더 붙들면 안 된다 — 그쪽은 아래 짧은 갈음으로 끝낸다. */
+    if (how === 'explore' && goHome(done)) return;
+
     /* 나갈 때도 **페이드는 남긴다.** 사라지는 것을 못 보면 「없어졌다」가 아니라
        「끊겼다」로 읽힌다. 줄여 달라고 한 사람에게서 빼는 것은 옆으로 걸어가는
        것뿐이다 — 자리 이동이 없으면 흐려지는 것만으로도 충분히 읽힌다. */
@@ -280,6 +294,51 @@
     }
     ch.classList.add('gone');
     setTimeout(done, 520);
+  }
+
+  /** 다원이 **제자리로 걸어 돌아간다.**
+   *
+   *  마중 나온 이야기를 마중 나온 자리에서 끝내면 「사라졌다」로 읽힌다. 지도 위
+   *  "나"(services.json의 `character`)가 원래 서 있던 그 자리로 뒤뚱뒤뚱 걸어가서,
+   *  거기서 **겹쳐 바뀐다** — 그래야 지도 위의 그 캐릭터가 왜 거기 있는지도 말이 된다.
+   *
+   *  목적지는 좌표로 적지 않고 **`.me-spot`을 실제로 재서** 쓴다. 안내 중에는
+   *  `visibility: hidden`이지만 자리는 그대로 차지하고 있어 잴 수 있다. 좌표를
+   *  베껴 두면 다원님이 `character`를 옮겼을 때 여기만 옛 자리에 남는다.
+   *  **버튼을 재는 것도 이유가 있다** — 흔들리는 것은 안쪽 `.me-figure`고 버튼은
+   *  가만히 있다(styles.css). 안쪽을 재면 착지점이 숨쉬기 박자만큼 흔들린다.
+   *
+   *  가로로 가면서 **위로 조금 오르고 작아진다.** 멀어지는 것처럼 보이려면 그래야
+   *  하고, 도착했을 때 크기가 지도 위 "나"와 같아야 겹쳐 바뀌는 것이 티가 안 난다.
+   *
+   *  잴 것이 없으면(캐릭터 구역이 없는 데이터) `false`를 돌려 짧은 갈음으로 보낸다. */
+  function goHome(done) {
+    const spot = document.querySelector('.me-spot');
+    if (!spot) return false;
+    const r = spot.getBoundingClientRect();
+    if (!r.width || !r.height) return false;
+
+    const ms = reduced() ? 700 : HOME;
+    ch.classList.remove('idle', 'beat');
+    if (BACK) ch.classList.add('away');        // 돌아선다 (뒷모습으로 빠르게 바뀐다)
+    ch.classList.add('home', 'walking');       // 뒤뚱뒤뚱은 들어올 때와 같은 것을 쓴다
+    ch.style.setProperty('--onb-dur', ms + 'ms');
+    // 한 프레임 뒤에 목적지를 준다 — 같은 프레임에 두 값을 넣으면 전환 없이 순간이동한다
+    requestAnimationFrame(() => {
+      ch.style.left = Math.round(r.left + r.width / 2) + 'px';
+      ch.style.bottom = Math.round(innerHeight - r.bottom) + 'px';
+      ch.style.width = Math.round(r.width) + 'px';
+    });
+
+    setTimeout(() => {
+      /* 도착 — 여기서 **겹쳐 바꾼다.** 지도 위 "나"를 먼저 켜고(같은 자리·같은 크기)
+         안내 쪽을 흐린다. 순서가 반대면 한 프레임 동안 아무도 없는 자리가 생겨
+         깜빡인 것처럼 보인다. */
+      document.body.classList.remove('dada-onboarding');
+      ch.classList.add('gone');
+      setTimeout(done, 260);
+    }, ms);
+    return true;
   }
 
   /* ── 투어 ──────────────────────────────────
@@ -459,9 +518,18 @@
     const step2 = el('span', 'onb-step');
     const beatBox = el('span', 'onb-beat');
     const img = new Image();
-    img.src = S;
+    img.className = 'onb-front';
+    img.src = SPR + FRONT;
     img.alt = '';                      // 옆의 말풍선이 이미 누구인지 말한다
     beatBox.appendChild(img);
+    // 뒷모습은 앞모습 **위에 겹쳐** 둔다. 자리를 나눠 쓰면 돌아설 때 키가 튄다
+    if (BACK) {
+      const back = new Image();
+      back.className = 'onb-back';
+      back.src = SPR + BACK;
+      back.alt = '';
+      beatBox.appendChild(back);
+    }
     step2.appendChild(beatBox);
     ch.appendChild(step2);
     layer.appendChild(ch);

@@ -18,7 +18,11 @@
       같은 사람이 서 있으면 둘이 된다. 안내가 끝나면 제자리로 돌아온다.
    ② 안내 문구를 숨긴다 — 지금 무엇을 눌러야 하는지는 말풍선이 말하고 있다.
       `.hint.gone`과 같은 방식(visibility)이라 자리는 그대로 남아 들썩이지 않는다. */
-body.dada-onboarding .me-spot { visibility: hidden; }
+/* 안내가 걷힐 때 **흐려지며 켜진다.** 다원이 제자리에 도착하면 여기 "나"가
+   켜지고 안내 쪽이 흐려져 그 자리에서 겹쳐 바뀐다 — 딱 끊기면 깜빡인 것처럼 보인다.
+   `visibility`는 즉시 갈리고(그래야 바로 눌린다) 겉모습만 0.26초 겹친다. */
+.me-spot { transition: opacity .26s ease-out; }
+body.dada-onboarding .me-spot { visibility: hidden; opacity: 0; }
 body.dada-onboarding .hint,
 body.dada-touring .hint { visibility: hidden; }
 
@@ -59,6 +63,13 @@ body.dada-touring .hint { visibility: hidden; }
   width: 100%; height: auto; display: block;
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .3));
 }
+/* 앞모습·뒷모습은 **겹쳐** 둔다. 자리를 나눠 쓰면 돌아설 때 키가 튄다.
+   뒷모습 그림이 없으면(onboarding.js의 BACK이 비어 있으면) .onb-back은
+   아예 안 만들어지고, 다원은 앞모습 그대로 물러난다. */
+.onb-front, .onb-back { transition: opacity .16s linear; }
+.onb-back { position: absolute; inset: 0; opacity: 0; }
+.onb-char.away .onb-back { opacity: 1; }
+.onb-char.away .onb-front { opacity: 0; }
 .onb-step { display: block; transform-origin: 50% 100%; }
 
 /* 걷기 스프라이트가 없다(me.png는 한 장이다). 그래서 걸음은 **반동으로만** 만든다 —
@@ -81,6 +92,18 @@ body.dada-touring .hint { visibility: hidden; }
   100% { transform: translateY(0)   rotate(0deg)   scale(1, 1); }
 }
 .onb-char.gone { opacity: 0; }
+
+/* 제자리로 돌아가는 길. 들어올 때는 `left`만 움직이지만 여기서는 **작아지며
+   위로도 오른다** — 멀어지는 것처럼 보이려면 그래야 한다. 이 셋을 기본
+   `transition`에 넣지 않고 클래스로 따로 두는 이유: 창 크기가 바뀔 때마다
+   place()가 width·bottom을 다시 넣는데, 기본에 있으면 그때마다 1.5초씩
+   느릿느릿 따라간다. 돌아갈 때만 켠다. */
+.onb-char.home {
+  transition: left var(--onb-dur) cubic-bezier(.36, .05, .38, 1),
+              bottom var(--onb-dur) cubic-bezier(.36, .05, .38, 1),
+              width var(--onb-dur) cubic-bezier(.36, .05, .38, 1),
+              opacity .26s ease-out;
+}
 
 /* 도착해서 **선 채로 숨쉰다.** 예전에는 착지에서 끝이라(`both`가 마지막 프레임을
    붙들고 있다) 말풍선이 세 번 넘어가는 동안 내내 목석처럼 서 있었다.
