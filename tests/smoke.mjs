@@ -49,19 +49,19 @@ const listen = (p) => {
   p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   return p;
 };
-/* **검사 페이지는 전부 「이미 와 본 사람」으로 연다.**
-   첫 방문 안내(onboarding.js)는 화면 전체에 덮개를 깔고 시작한다. 그대로 두면
+/* **검사 페이지는 전부 안내를 꺼 두고 연다.**
+   안내(onboarding.js)는 **올 때마다** 화면 전체에 덮개를 깔고 시작한다. 그대로 두면
    마을을 누르는 검사 서른몇 개가 전부 그 덮개를 누르게 되고, 화면에는 아무 일도
-   안 일어나 「지도가 죽었다」로만 보인다. 안내 자체는 아래 「첫 방문 안내」 절이
-   first()로 표시 없는 페이지를 따로 열어 검사한다. */
+   안 일어나 「지도가 죽었다」로만 보인다. 안내 자체는 아래 「안내」 절들이
+   first()로 끄지 않은 페이지를 따로 열어 검사한다. */
 const watch = async (p) => {
   listen(p);
   await p.addInitScript(() => {
-    try { localStorage.setItem('dada.onboarded', '1'); } catch (e) { /* 시크릿 창 */ }
+    try { localStorage.setItem('dada.introOff', '1'); } catch (e) { /* 시크릿 창 */ }
   });
   return p;
 };
-/** 처음 온 사람. 방문 표시를 심지 않는다 — 안내를 실제로 보는 유일한 통로다.
+/** 안내를 끄지 않은 페이지 — 안내를 실제로 보는 유일한 통로다.
  *
  *  **다원이 어디서 출발했는지는 나중에 물어서는 못 안다.** 걸어 들어오는 데
  *  1.5초인데, waitForSelector가 돌아오는 데만 그 절반이 간다 — 그때 재면
@@ -1844,6 +1844,13 @@ if (head('첫 방문 안내')) {
   await p.click('.onb-btn.go'); await p.waitForTimeout(200);
   ok(await lineNow() === '여기는 제가 만든 것들이 사는 Dada Town이에요.', '셋째 대사');
 
+  /* **마지막 줄에는 단추가 하나뿐이다.** 세 줄을 다 읽은 사람에게 「건너뛸래요?」는
+     이미 늦은 말이라(건너뛸 것이 안 남았다) 그 자리에서는 뺐다. */
+  const endBtns = await p.evaluate(() =>
+    [...document.querySelectorAll('.onb-act button')].map((n) => n.textContent));
+  ok(endBtns.length === 1 && endBtns[0] === '반가워!', '마지막 줄은 「반가워!」 하나뿐',
+    endBtns.join(' / '));
+
   await p.click('.onb-btn.go'); await p.waitForTimeout(250);
   const choice = await p.evaluate(() => ({
     lines: [...document.querySelectorAll('.onb-line')].map((n) => n.textContent),
@@ -1985,22 +1992,43 @@ if (head('투어가이드 — 열어보기')) {
   await p.close();
 }
 
-if (head('안내는 한 번만')) {
+if (head('안내는 올 때마다')) {
   const p = await first();
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await p.waitForSelector('.onb-char', { timeout: 4000 });
-  ok(await p.evaluate(() => localStorage.getItem('dada.onboarded')) === '1',
-    '안내가 뜨는 순간 다녀갔다고 적는다 (중간에 새로고침해도 처음부터 다시 하지 않게)');
+  ok(await p.evaluate(() => localStorage.getItem('dada.introOff')) === null,
+    '안내가 떴다고 아무것도 적지 않는다');
+
+  /* **새로고침하면 다시 나온다**(2026-08-25). 예전에는 첫 방문에만 뜨고 다녀갔다고
+     적었는데 다원님이 뒤집었다 — 이 절이 그 결정을 붙들고 있는 자리다. */
+  await p.reload({ waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-char', { timeout: 4000 });
+  ok(true, '새로고침해도 다시 나온다');
 
   await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-char', { timeout: 4000 });
+  ok(true, '다시 들어와도 나온다');
+
+  /* 먼저 올라간 판을 본 브라우저에는 `dada.onboarded`가 '1'로 남아 있다. 그 칸을
+     그대로 끄는 스위치로 재활용했다면 **그 사람들에게는 영영 안 떴을 것이다** —
+     다원님 폰이 그중 하나다. 뜻이 달라졌으니 칸도 새로 팠다는 것을 여기서 붙든다. */
+  await p.evaluate(() => localStorage.setItem('dada.onboarded', '1'));
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-char', { timeout: 4000 });
+  ok(true, '예전 방문 표시(dada.onboarded)가 남아 있어도 나온다');
+
+  // 끄는 문은 남아 있다 — 「다시 보지 않기」를 붙이기로 하면 이 한 칸이다
+  await p.evaluate(() => localStorage.setItem('dada.introOff', '1'));
+  await p.goto(BASE, { waitUntil: 'networkidle' });
   await p.waitForTimeout(700);
-  ok(await p.locator('.onb-char').count() === 0, '재방문에는 안내가 뜨지 않는다');
+  ok(await p.locator('.onb-char').count() === 0, 'dada.introOff로 끌 수 있다');
   ok(await p.locator('.onb-scrim').count() === 0, '덮개도 없다');
 
-  // 「다시 안내받기」가 붙을 자리 — 단추는 아직 안 내보내지만 문은 열려 있다
+  // 꺼 두어도 ?intro는 언제나 뜬다
   await p.goto(BASE + '/?intro', { waitUntil: 'networkidle' });
   await p.waitForSelector('.onb-char', { timeout: 4000 });
-  ok(true, '?intro로는 언제든 다시 볼 수 있다');
+  ok(true, '?intro는 꺼 두어도 뜬다');
+  await p.evaluate(() => localStorage.removeItem('dada.introOff'));
 
   /* 공유받은 책 링크로 온 사람 앞을 막지 않는다 — 그 사람은 볼 것을 정하고 왔다 */
   await p.goto(BASE + '/#art', { waitUntil: 'networkidle' });

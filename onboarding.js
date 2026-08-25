@@ -42,7 +42,11 @@
   ];
   const CHOICE = ['천천히 마을을 구경해도 좋고,', '대표 프로젝트부터 빠르게 볼 수도 있어요.'];
 
-  const SEEN = 'dada.onboarded';
+  /* **이름을 바꿨다.** 예전에는 `dada.onboarded`에 「다녀갔다」를 적었는데,
+     그 칸이 이미 '1'로 남아 있는 브라우저가 있다(먼저 올라간 판을 본 사람들).
+     같은 칸을 끄는 스위치로 재활용하면 **그 사람들에게는 영영 안 뜬다** —
+     다원님 폰이 그중 하나다. 뜻이 달라졌으니 칸도 새로 판다. */
+  const OFF = 'dada.introOff';
   const WALK = 1500;                 // 걸어 들어오는 시간(ms). 1.2~2초 사이
   const S = 'assets/sprites/cut/me.png';
 
@@ -64,18 +68,25 @@
   let onMapClick = null;
 
   /* ── 뜰 자리인가 ──────────────────────────
-     `?intro`는 언제든 다시 보는 문이다(9항의 「다시 안내받기」가 붙을 자리).
-     해시가 붙어 온 사람은 이미 볼 것을 정하고 온 것이다 — 공유받은 책을 열러
-     왔는데 안내가 앞을 막으면 안 된다. `?tune`은 좌표 재는 중이라 방해하지 않는다. */
+     **올 때마다 뜬다.** 한때 첫 방문에만 뜨게 하고 localStorage에 다녀갔다고
+     적었는데, 다원님이 뒤집었다(2026-08-25) — 새로고침해도 다시 나와야 한다.
+     그래서 **여기서는 아무것도 적지 않는다.** 뒤로가기로 돌아와도, 새로 열어도,
+     매번 처음처럼 인사한다.
+
+     끄는 문은 남겨 뒀다(`OFF`). 지금은 그것을 켜는 UI가 없고 회귀 테스트만
+     쓴다 — 검사 페이지 서른몇 개가 매번 안내 덮개를 누르지 않도록.
+     「다시 보지 않기」를 붙이기로 하면 이 한 칸에 '1'만 넣으면 된다.
+
+     안 뜨는 자리는 셋이다.
+       ?intro   — 반대로 **언제나** 뜬다 (「다시 안내받기」가 붙을 자리)
+       ?tune    — 좌표 재는 중이라 방해하지 않는다
+       #해시    — 공유받은 책을 열러 온 사람이다. 볼 것을 정하고 왔다 */
   function wanted() {
     const q = new URLSearchParams(location.search);
     if (q.has('intro')) return true;
     if (q.has('tune') || location.hash) return false;
-    try { return !localStorage.getItem(SEEN); } catch (e) { return true; }
+    try { return !localStorage.getItem(OFF); } catch (e) { return true; }
   }
-  /* 시작할 때 표시한다(끝날 때가 아니라). 대사 중간에 새로고침한 사람에게
-     처음부터 다시 시키지 않기 위해서다 — 안내는 한 번이면 족하다. */
-  function mark() { try { localStorage.setItem(SEEN, '1'); } catch (e) { /* 시크릿 창 */ } }
 
   /* ── 자리 재기 ────────────────────────────
      다원과 말풍선은 **지도에서 잰다.** 겹 자체는 `position: fixed`(뷰포트)라
@@ -153,15 +164,21 @@
   function say(i) {
     phase = 'intro';
     line = i;
+    const last = i === LINES.length - 1;
     fill([LINES[i]], (act) => {
-      const next = el('button', 'onb-btn go', i < LINES.length - 1 ? '다음' : '네, 좋아요');
+      const next = el('button', 'onb-btn go', last ? '반가워!' : '다음');
       next.type = 'button';
       next.addEventListener('click', advance);
       act.appendChild(next);
-      const skip = el('button', 'onb-skip', '안내 건너뛰기');
-      skip.type = 'button';
-      skip.addEventListener('click', () => finish('skip'));
-      act.appendChild(skip);
+      /* **마지막 줄에는 건너뛰기를 안 붙인다.** 세 줄을 다 읽은 사람에게
+         「건너뛸래요?」는 이미 늦은 말이다 — 건너뛸 것이 남아 있지 않다.
+         그 자리에 남는 단추는 인사를 받는 말 하나여야 한다. */
+      if (!last) {
+        const skip = el('button', 'onb-skip', '안내 건너뛰기');
+        skip.type = 'button';
+        skip.addEventListener('click', () => finish('skip'));
+        act.appendChild(skip);
+      }
       return next;
     });
   }
@@ -441,7 +458,6 @@
     if (phase !== 'off' || !d) return;
     data = d;
     if (!wanted()) return;
-    mark();
     build();
     enter();
   }
