@@ -1918,11 +1918,19 @@ if (head('첫 방문 안내 — 탐험하기')) {
   const from = await p.evaluate(() => {
     const c = document.querySelector('.onb-char').getBoundingClientRect();
     const m = document.querySelector('.me-spot').getBoundingClientRect();
+    const f = document.querySelector('.onb-front'), k = document.querySelector('.onb-back');
+    const box = (n) => JSON.stringify(n.getBoundingClientRect());
     return { x: c.left + c.width / 2, w: c.width,
-             mx: m.left + m.width / 2, mw: m.width };
+             mx: m.left + m.width / 2, mw: m.width,
+             faceFront: +getComputedStyle(f).opacity === 1 && +getComputedStyle(k).opacity === 0,
+             stacked: box(f) === box(k) };
   });
   ok(from.w > from.mw * 2, '돌아가기 전 다원은 지도 위 "나"보다 훨씬 크다',
     `${Math.round(from.w)}px vs ${Math.round(from.mw)}px`);
+  /* 앞모습·뒷모습은 **같은 상자에 포개져** 있다. 어긋나면 돌아설 때 키가 튀거나
+     발이 어긋난다 — tools/cut_me_back.py가 같은 캔버스·같은 밑변으로 떠낸다. */
+  ok(from.faceFront, '돌아서기 전에는 앞모습이다');
+  ok(from.stacked, '앞모습과 뒷모습이 같은 상자에 포개져 있다');
 
   await p.click('.onb-act .onb-btn:first-child');     // 탐험하기
   await p.waitForTimeout(600);
@@ -1930,12 +1938,15 @@ if (head('첫 방문 안내 — 탐험하기')) {
     const c = document.querySelector('.onb-char');
     if (!c) return null;
     const r = c.getBoundingClientRect();
+    const f = c.querySelector('.onb-front'), k = c.querySelector('.onb-back');
     return { x: r.left + r.width / 2, w: r.width, cls: c.className,
-             step: getComputedStyle(c.querySelector('.onb-step')).animationName };
+             step: getComputedStyle(c.querySelector('.onb-step')).animationName,
+             back: +getComputedStyle(k).opacity === 1 && +getComputedStyle(f).opacity === 0 };
   });
   ok(mid !== null, '고르자마자 사라지지 않고 걸어간다');
   ok(mid && mid.step === 'onb-step', '돌아갈 때도 뒤뚱거린다 (들어올 때와 같은 걸음)',
     mid && mid.step);
+  ok(mid && mid.back, '돌아서서 간다 (뒷모습으로 크로스페이드)');
   ok(mid && mid.x > from.x && mid.x <= from.mx + 2, '제자리 쪽으로 간다',
     mid && `${Math.round(from.x)} → ${Math.round(mid.x)} → ${Math.round(from.mx)}`);
   ok(mid && mid.w < from.w && mid.w >= from.mw - 2, '멀어지듯 작아진다',

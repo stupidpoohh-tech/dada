@@ -66,6 +66,7 @@ body.dada-touring .hint { visibility: hidden; }
 /* 앞모습·뒷모습은 **겹쳐** 둔다. 자리를 나눠 쓰면 돌아설 때 키가 튄다.
    뒷모습 그림이 없으면(onboarding.js의 BACK이 비어 있으면) .onb-back은
    아예 안 만들어지고, 다원은 앞모습 그대로 물러난다. */
+.onb-beat { position: relative; }   /* 뒷모습이 앞모습 상자에 정확히 포개지게 */
 .onb-front, .onb-back { transition: opacity .16s linear; }
 .onb-back { position: absolute; inset: 0; opacity: 0; }
 .onb-char.away .onb-back { opacity: 1; }
