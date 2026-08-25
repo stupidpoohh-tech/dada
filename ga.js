@@ -37,6 +37,12 @@
  *   guide_chapter   안내서 챕터를 골랐다      game/guide.js goStack
  *   guide_zoom      안내서 면을 확대했다      game/guide.js openZoom
  *   guide_end       안내서를 끝까지 봤다      game/guide.js mount
+ *   intro_start     첫 방문 안내가 떴다        onboarding.js enter
+ *   intro_choice    안내 끝에 무엇을 골랐다    onboarding.js finish
+ *   tour_start      투어가이드를 시작했다      onboarding.js startTour
+ *   tour_step       투어의 몇 번째를 봤다      onboarding.js step
+ *   tour_open       투어에서 항목을 열었다     onboarding.js step
+ *   tour_end        투어를 끝냈다(어떻게 끝났는지 함께) onboarding.js endTour
  */
 (function () {
   'use strict';

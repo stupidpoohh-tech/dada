@@ -44,9 +44,39 @@ const browser = await chromium.launch({ executablePath: CHROME }).catch(() =>
   chromium.launch());   // 로컬에 브라우저가 따로 깔려 있으면 그것을 쓴다
 
 const errors = [];
-const watch = (p) => {
+const listen = (p) => {
   p.on('pageerror', (e) => errors.push(String(e.message)));
   p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  return p;
+};
+/* **검사 페이지는 전부 「이미 와 본 사람」으로 연다.**
+   첫 방문 안내(onboarding.js)는 화면 전체에 덮개를 깔고 시작한다. 그대로 두면
+   마을을 누르는 검사 서른몇 개가 전부 그 덮개를 누르게 되고, 화면에는 아무 일도
+   안 일어나 「지도가 죽었다」로만 보인다. 안내 자체는 아래 「첫 방문 안내」 절이
+   first()로 표시 없는 페이지를 따로 열어 검사한다. */
+const watch = async (p) => {
+  listen(p);
+  await p.addInitScript(() => {
+    try { localStorage.setItem('dada.onboarded', '1'); } catch (e) { /* 시크릿 창 */ }
+  });
+  return p;
+};
+/** 처음 온 사람. 방문 표시를 심지 않는다 — 안내를 실제로 보는 유일한 통로다.
+ *
+ *  **다원이 어디서 출발했는지는 나중에 물어서는 못 안다.** 걸어 들어오는 데
+ *  1.5초인데, waitForSelector가 돌아오는 데만 그 절반이 간다 — 그때 재면
+ *  이미 화면 안이라 「밖에서 들어왔다」를 검사할 수가 없다. 그래서 붙는 순간을
+ *  MutationObserver로 잡아 `__onbFrom`에 적어 둔다(관찰자 콜백은 그 일감이
+ *  끝난 뒤·다음 프레임 전에 돌아서, 출발값이 그대로 남아 있다). */
+const first = async (opts = { viewport: { width: 1280, height: 900 } }) => {
+  const p = listen(await browser.newPage(opts));
+  await p.addInitScript(() => {
+    window.__onbFrom = null;
+    new MutationObserver(() => {
+      const c = document.querySelector('.onb-char');
+      if (c && window.__onbFrom === null) window.__onbFrom = c.getBoundingClientRect().right;
+    }).observe(document, { childList: true, subtree: true });
+  });
   return p;
 };
 const desktop = () => browser.newPage({ viewport: { width: 1280, height: 900 } }).then(watch);
@@ -1769,6 +1799,288 @@ if (head('케이스 스터디 — 문 셋이 같이 열린다')) {
   const door = JSON.stringify(svc).includes('/case/playgrown.html');
   ok(hidden !== door, '마을의 문도 같이 열리고 같이 닫힌다',
     `noindex=${hidden} services=${door}`);
+  await p.close();
+}
+
+/* ── 첫 방문 안내 · 투어가이드 ─────────────────────────────
+   마을 위에 잠깐 얹히는 겹이다. 여기서 지키는 것은 셋이다.
+   ① **지도는 처음부터 보인다** — 안내가 마을을 가리는 인트로 화면이 되면 안 된다.
+   ② **다원은 뷰포트 바깥에서 걸어 들어온다** — 이 연출이 이 안내의 핵심이라
+      그냥 나타나는 것으로 바뀌면 안 된다(폰에서도 그렇다).
+   ③ **안내가 끝나면 마을이 원래대로다** — 덮개도 그늘도 남지 않는다. */
+if (head('첫 방문 안내')) {
+  const p = await first();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-char', { timeout: 4000 });
+
+  // 지도가 처음부터 보인다 (안내가 마을을 덮는 별도 화면이 아니다)
+  const mapSeen = await p.evaluate(() => {
+    const r = document.getElementById('map').getBoundingClientRect();
+    return r.width > 300 && r.height > 200 && getComputedStyle(document.getElementById('map')).visibility === 'visible';
+  });
+  ok(mapSeen, '안내가 떠 있어도 지도가 그대로 보인다');
+
+  // 출발점이 화면 **바깥**이다. 조금 걸쳐 있으면 「밖에서 들어온다」가 아니다
+  const startX = await p.evaluate(() => window.__onbFrom);
+  ok(startX !== null && startX <= 0, '다원이 뷰포트 왼쪽 바깥에서 출발한다', `right=${startX}`);
+
+  await p.waitForSelector('.onb-bubble', { timeout: 4000 });
+  const inX = await p.evaluate(() => {
+    const r = document.querySelector('.onb-char').getBoundingClientRect();
+    const m = document.getElementById('map').getBoundingClientRect();
+    return { left: r.left, mapLeft: m.left, mapRight: m.right };
+  });
+  ok(inX.left > inX.mapLeft && inX.left < inX.mapRight, '걸어 들어와 마을 안(전경)에 선다',
+    `left=${Math.round(inX.left)} map=${Math.round(inX.mapLeft)}~${Math.round(inX.mapRight)}`);
+
+  // 대사 셋 — 자동으로 넘어가지 않고, 누르는 만큼만 간다
+  const lineNow = () => p.evaluate(() => document.querySelector('.onb-line').textContent);
+  ok(await lineNow() === '안녕하세요! 다원하는 다원이에요.', '첫 대사');
+  await p.waitForTimeout(900);
+  ok(await lineNow() === '안녕하세요! 다원하는 다원이에요.', '가만두면 저절로 넘어가지 않는다');
+
+  await p.click('.onb-btn.go'); await p.waitForTimeout(200);
+  ok(await lineNow() === '저는 기획하고, 디자인하고, 실제로 만드는 사람이에요.', '둘째 대사');
+  await p.click('.onb-btn.go'); await p.waitForTimeout(200);
+  ok(await lineNow() === '여기는 제가 만든 것들이 사는 Dada Town이에요.', '셋째 대사');
+
+  await p.click('.onb-btn.go'); await p.waitForTimeout(250);
+  const choice = await p.evaluate(() => ({
+    lines: [...document.querySelectorAll('.onb-line')].map((n) => n.textContent),
+    btns: [...document.querySelectorAll('.onb-act .onb-btn')].map((n) => n.textContent),
+  }));
+  ok(choice.lines.join(' ') === '천천히 마을을 구경해도 좋고, 대표 프로젝트부터 빠르게 볼 수도 있어요.',
+    '갈림길 문구', choice.lines.join(' / '));
+  ok(choice.btns.length === 2 && choice.btns[0] === '탐험하기' && choice.btns[1] === '투어가이드 받을래요',
+    '버튼 둘', choice.btns.join(' / '));
+
+  /* **두 버튼의 위계는 같다.** 한쪽만 진하게 칠하면 고른 게 아니라 떠밀린 게 된다.
+     재기 전에 마우스를 치운다 — 방금 「다음」을 누른 자리에 그대로 얹혀 있으면
+     그 자리에 새로 뜬 「탐험하기」만 hover 상태라 색이 달라 보인다 */
+  await p.mouse.move(4, 4); await p.waitForTimeout(120);
+  const same = await p.evaluate(() => {
+    const [a, b] = document.querySelectorAll('.onb-act .onb-btn');
+    const g = (n) => getComputedStyle(n);
+    return g(a).backgroundColor === g(b).backgroundColor && g(a).color === g(b).color
+        && g(a).borderTopWidth === g(b).borderTopWidth;
+  });
+  ok(same, '두 선택지의 생김새가 같다 (추천을 앞세우지 않는다)');
+  await p.close();
+}
+
+if (head('첫 방문 안내 — 탐험하기')) {
+  const p = await first();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  for (let i = 0; i < 3; i++) { await p.click('.onb-btn.go'); await p.waitForTimeout(180); }
+  await p.click('.onb-act .onb-btn:first-child');     // 탐험하기
+  await p.waitForTimeout(800);
+
+  const left = await p.evaluate(() => ({
+    scrim: !!document.querySelector('.onb-scrim'),
+    char: !!document.querySelector('.onb-char'),
+    cls: document.body.className,
+    me: getComputedStyle(document.querySelector('.me-spot')).visibility,
+  }));
+  ok(!left.scrim && !left.char, '안내가 흔적 없이 걷힌다');
+  ok(left.cls.indexOf('dada-onboarding') === -1, 'body 표시도 걷힌다', left.cls);
+  ok(left.me === 'visible', '지도 위 "나"가 제자리로 돌아온다');
+
+  // 마을이 원래대로 — 건물을 누르면 원래 열리던 것이 열린다
+  await p.click('.spot[data-district="museum"]');
+  await p.waitForSelector('#bookOverlay:not([hidden])', { timeout: 4000 });
+  ok(await p.textContent('#bkTotal') === '11', '기존 지도 조작이 그대로다 (아트북 11쪽)');
+  await p.close();
+}
+
+if (head('투어가이드')) {
+  const p = await first();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  for (let i = 0; i < 3; i++) { await p.click('.onb-btn.go'); await p.waitForTimeout(180); }
+  const url0 = p.url();
+  await p.click('.onb-act .onb-btn:nth-child(2)');    // 투어가이드 받을래요
+  await p.waitForSelector('.onb-tour', { timeout: 4000 });
+  await p.waitForTimeout(400);
+
+  ok(p.url() === url0, '페이지가 바뀌지 않는다 (같은 지도 위다)');
+  ok(await p.locator('.onb-dim').count() === 4 && await p.locator('.onb-ring').count() === 1,
+    '지도에 그늘이 깔리고 한 곳만 밝다');
+
+  /* **화면 전체가 어두워지지 않는다.** 그늘은 지도 안에만 있어야 한다 —
+     `.map`의 overflow가 잘라 주는지 실제 좌표로 확인한다 */
+  const inside = await p.evaluate(() => {
+    const m = document.getElementById('map').getBoundingClientRect();
+    return [...document.querySelectorAll('.onb-dim')].every((d) => {
+      const r = d.getBoundingClientRect();
+      return r.left >= m.left - 1 && r.right <= m.right + 1 && r.top >= m.top - 1 && r.bottom <= m.bottom + 1;
+    });
+  });
+  ok(inside, '그늘이 지도 밖으로 새지 않는다');
+
+  const doors = ['[data-district="company"]', '.crow-spot', '[data-district="cafe"]'];
+  const names = ['사업팀 운영보드', 'PlayGrown 케이스 스터디', '아니그래서'];
+  for (let i = 0; i < 3; i++) {
+    ok(await p.textContent('.onb-count') === `${i + 1} / 3`, `${i + 1} / 3 표시`);
+    ok(await p.textContent('.onb-tour-name') === names[i], `${i + 1}번은 ${names[i]}`);
+    // 밝힌 자리가 정말 그 문 위인가 — 테두리 한가운데가 문의 판정 영역 안에 든다
+    const on = await p.evaluate((sel) => {
+      const r = document.querySelector('.onb-ring').getBoundingClientRect();
+      const d = document.querySelector(sel).getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      return cx >= d.left && cx <= d.right && cy >= d.top && cy <= d.bottom;
+    }, doors[i]);
+    ok(on, `${i + 1}번 하이라이트가 그 문 위에 앉는다`);
+    if (i < 2) { await p.click('.onb-tour-act .onb-btn:last-child'); await p.waitForTimeout(400); }
+  }
+
+  // 되돌아갈 수 있다
+  await p.click('.onb-tour-act .onb-btn:first-child'); await p.waitForTimeout(400);
+  ok(await p.textContent('.onb-count') === '2 / 3', '이전으로 돌아온다');
+  const back = await p.evaluate(() =>
+    document.querySelector('.onb-tour-act .onb-btn').disabled);
+  ok(back === false, '2번에서는 이전이 살아 있다');
+  await p.click('.onb-tour-act .onb-btn:first-child'); await p.waitForTimeout(400);
+  ok(await p.evaluate(() => document.querySelector('.onb-tour-act .onb-btn').disabled),
+    '1번에서는 이전이 꺼져 있다');
+
+  // 셋을 다 안 봐도 언제든 나간다
+  await p.click('.onb-tour-close'); await p.waitForTimeout(300);
+  const clean = await p.evaluate(() => ({
+    dim: document.querySelectorAll('.onb-dim').length,
+    ring: document.querySelectorAll('.onb-ring').length,
+    card: document.querySelectorAll('.onb-tour').length,
+    cls: document.body.className,
+  }));
+  ok(clean.dim === 0 && clean.ring === 0 && clean.card === 0, '투어를 걷으면 그늘도 테두리도 남지 않는다');
+  ok(clean.cls.indexOf('dada-touring') === -1, 'body 표시도 걷힌다', clean.cls);
+
+  await p.click('.spot[data-district="museum"]');
+  await p.waitForSelector('#bookOverlay:not([hidden])', { timeout: 4000 });
+  ok(true, '투어 뒤에도 마을이 그대로다');
+  await p.close();
+}
+
+if (head('투어가이드 — 열어보기')) {
+  const p = await first();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  for (let i = 0; i < 3; i++) { await p.click('.onb-btn.go'); await p.waitForTimeout(180); }
+  await p.click('.onb-act .onb-btn:nth-child(2)');
+  await p.waitForSelector('.onb-tour', { timeout: 4000 });
+  await p.waitForTimeout(400);
+
+  /* 「열어보기」는 **마을이 원래 여는 방식을 그대로 두드린다.** 1번(회사)은
+     구역 패널이 열리는 문이라, 그늘이 먼저 걷히고 그 아래에서 패널이 떠야 한다 —
+     순서가 뒤집히면 패널이 그늘 밑에서 열려 아무것도 안 보인다. */
+  await p.click('.onb-tour-act .onb-btn.go');
+  await p.waitForTimeout(500);
+  const after = await p.evaluate(() => ({
+    dim: document.querySelectorAll('.onb-dim').length,
+    panel: !document.getElementById('panelWrap').hidden,
+    title: document.querySelector('.panel-title')?.textContent || '',
+  }));
+  ok(after.dim === 0, '열면서 그늘이 먼저 걷힌다');
+  ok(after.panel && after.title.indexOf('회사') >= 0, '마을이 원래 열던 구역 패널이 뜬다', after.title);
+  await p.close();
+}
+
+if (head('안내는 한 번만')) {
+  const p = await first();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-char', { timeout: 4000 });
+  ok(await p.evaluate(() => localStorage.getItem('dada.onboarded')) === '1',
+    '안내가 뜨는 순간 다녀갔다고 적는다 (중간에 새로고침해도 처음부터 다시 하지 않게)');
+
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(700);
+  ok(await p.locator('.onb-char').count() === 0, '재방문에는 안내가 뜨지 않는다');
+  ok(await p.locator('.onb-scrim').count() === 0, '덮개도 없다');
+
+  // 「다시 안내받기」가 붙을 자리 — 단추는 아직 안 내보내지만 문은 열려 있다
+  await p.goto(BASE + '/?intro', { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-char', { timeout: 4000 });
+  ok(true, '?intro로는 언제든 다시 볼 수 있다');
+
+  /* 공유받은 책 링크로 온 사람 앞을 막지 않는다 — 그 사람은 볼 것을 정하고 왔다 */
+  await p.goto(BASE + '/#art', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(700);
+  ok(await p.locator('.onb-char').count() === 0, '해시로 곧장 온 사람에게는 안내가 안 뜬다');
+  await p.close();
+}
+
+if (head('안내 — 움직임 줄이기')) {
+  const p = await first({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-char', { timeout: 4000 });
+  await p.waitForTimeout(250);
+  const put = await p.evaluate(() => {
+    const r = document.querySelector('.onb-char').getBoundingClientRect();
+    const m = document.getElementById('map').getBoundingClientRect();
+    return { left: r.left, mapLeft: m.left, bubble: !!document.querySelector('.onb-bubble') };
+  });
+  ok(put.left > put.mapLeft, '걷지 않고 곧장 제자리에 선다', `left=${Math.round(put.left)}`);
+  ok(put.bubble, '대사는 그대로 나온다');
+  ok(await p.textContent('.onb-line') === '안녕하세요! 다원하는 다원이에요.', '첫 대사도 그대로');
+  await p.close();
+}
+
+if (head('안내 — 폰')) {
+  const p = await first({
+    viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
+  });
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-char', { timeout: 4000 });
+  const out = await p.evaluate(() => window.__onbFrom);
+  ok(out !== null && out <= 0, '폰에서도 화면 밖에서 출발한다', `right=${out}`);
+
+  await p.waitForSelector('.onb-bubble', { timeout: 4000 });
+  await p.waitForTimeout(200);
+  const m = await p.evaluate(() => {
+    const b = document.querySelector('.onb-bubble').getBoundingClientRect();
+    const c = document.querySelector('.onb-char').getBoundingClientRect();
+    const btn = document.querySelector('.onb-btn').getBoundingClientRect();
+    return { b: { l: b.left, r: b.right, h: b.height }, cw: c.width, btnH: btn.height,
+             vw: innerWidth, vh: innerHeight };
+  });
+  ok(m.b.l >= 6 && m.b.r <= m.vw - 6, '말풍선이 화면 폭 안에 여백을 두고 든다',
+    `${Math.round(m.b.l)}~${Math.round(m.b.r)} / ${m.vw}`);
+  ok(m.cw < 100, '다원이 폰에서는 작아진다', `${Math.round(m.cw)}px`);
+  ok(m.btnH >= 44, '버튼이 터치 크기를 넘긴다', `${Math.round(m.btnH)}px`);
+  ok((m.b.h + m.cw * 130 / 98) < m.vh * 0.62, '다원+말풍선이 화면 대부분을 덮지 않는다');
+
+  // 투어 카드는 폰에서 아래 시트로 올라온다 (추천 픽 패널과 같은 방식)
+  for (let i = 0; i < 3; i++) { await p.click('.onb-btn.go'); await p.waitForTimeout(180); }
+  await p.click('.onb-act .onb-btn:nth-child(2)');
+  await p.waitForSelector('.onb-tour', { timeout: 4000 });
+  await p.waitForTimeout(400);
+  const sheet = await p.evaluate(() => {
+    const r = document.querySelector('.onb-tour').getBoundingClientRect();
+    return { l: r.left, r: r.right, bottom: r.bottom, vw: innerWidth, vh: innerHeight };
+  });
+  ok(sheet.l >= 8 && sheet.r <= sheet.vw - 8 && sheet.bottom > sheet.vh - 40,
+    '투어 카드가 화면 아래 시트로 붙는다');
+  await p.close();
+}
+
+if (head('안내 — 키보드')) {
+  const p = await first();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  await p.waitForTimeout(200);
+  ok(await p.evaluate(() => document.activeElement.className.indexOf('onb-btn') >= 0),
+    '말풍선이 뜨면 포커스가 「다음」에 간다');
+  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  ok(await p.textContent('.onb-line') === '저는 기획하고, 디자인하고, 실제로 만드는 사람이에요.',
+    '엔터로 대사가 넘어간다');
+
+  // 포커스가 뒤의 지도로 새지 않는다 (덮개가 막고 있어 눌리지도 않는 곳이다)
+  for (let i = 0; i < 6; i++) await p.keyboard.press('Tab');
+  ok(await p.evaluate(() => !!document.querySelector('.onb-bubble').contains(document.activeElement)),
+    '탭이 말풍선 안에서만 돈다');
+
+  await p.keyboard.press('Escape'); await p.waitForTimeout(800);
+  ok(await p.locator('.onb-char').count() === 0, 'Esc로 안내를 건너뛴다');
   await p.close();
 }
 

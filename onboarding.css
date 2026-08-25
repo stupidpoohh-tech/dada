@@ -1,0 +1,247 @@
+/* DADA TOWN — 첫 방문 안내 · 투어가이드
+ *
+ * **마을 위에 얹는 한 겹이다.** styles.css는 한 줄도 건드리지 않는다 —
+ * 여기 있는 것을 전부 지워도 마을은 그대로 굴러가야 한다(실제로 JS가 없으면
+ * 그렇게 된다). 색·둥근모서리·그림자는 마을이 쓰는 변수를 그대로 빌린다.
+ *
+ * 겹 순서 (styles.css의 것과 어긋나지 않게 여기 모아 둔다)
+ *   45·46  추천 픽 패널
+ *   50     책 팝업
+ *   55     안내 덮개 (onb-scrim)
+ *   56     다원 · 말풍선 · 투어 카드
+ *   60     목록·한마디 모달  ← 안내보다 위다. 열려 있으면 안내가 가린다
+ *   8·9    투어 그늘·테두리 (이건 .map 안이라 위 숫자와 겨루지 않는다)
+ */
+
+/* ── 안내 중에는 마을을 잠시 조용히 ────────
+   ① 지도 위 "나"를 숨긴다. 다원이 앞으로 나와 인사하는 동안 마을 안에도
+      같은 사람이 서 있으면 둘이 된다. 안내가 끝나면 제자리로 돌아온다.
+   ② 안내 문구를 숨긴다 — 지금 무엇을 눌러야 하는지는 말풍선이 말하고 있다.
+      `.hint.gone`과 같은 방식(visibility)이라 자리는 그대로 남아 들썩이지 않는다. */
+body.dada-onboarding .me-spot { visibility: hidden; }
+body.dada-onboarding .hint,
+body.dada-touring .hint { visibility: hidden; }
+
+/* ── 덮개 ──────────────────────────────────
+   지도를 가리지 않는다(거의 투명하다). 하는 일은 둘뿐이다 —
+   ① 안내를 보는 동안 엉뚱한 곳이 눌리지 않게 받아내고
+   ② 그 받아낸 클릭으로 다음 대사를 넘긴다. */
+.onb-scrim {
+  position: fixed; inset: 0; z-index: 55;
+  background: rgba(20, 23, 15, .06);
+  cursor: pointer;
+}
+.onb-scrim.quiet { cursor: default; }   /* 고르는 차례에는 아무 데나 눌러 넘기지 않는다 */
+
+/* ── 안내 겹 ───────────────────────────────
+   화면 전체를 덮는다. `.map` 안에 두면 `overflow: hidden`에 잘려 **프레임 밖에서
+   걸어 들어오는 것 자체가 안 보이고**, `.map-holder`에 두면 지도 왼쪽 여백까지밖에
+   못 나간다 — 넓은 화면에서는 그게 200px도 안 된다. 자리는 JS가 지도에서 재서
+   넣고, 굴리거나 창이 바뀌면 다시 잰다. */
+.onb {
+  position: fixed; inset: 0; z-index: 56;
+  pointer-events: none;
+}
+
+/* ── 다원 ──────────────────────────────────
+   left·bottom·width는 JS가 px로 넣는다(지도 크기에서 잰다).
+   가로 이동은 이 상자가, 걸음(위아래 반동·기우뚱)은 안쪽 .onb-step이 맡는다 —
+   마을의 다른 것들과 같은 규칙이다(누를 자리와 움직이는 것을 나눈다). */
+.onb-char {
+  position: absolute;
+  transform: translateX(-50%);
+  line-height: 0;
+  pointer-events: none;
+  transition: left var(--onb-dur, 1.5s) cubic-bezier(.36, .05, .38, 1),
+              opacity .42s ease-out;
+}
+.onb-char img {
+  width: 100%; height: auto; display: block;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .3));
+}
+.onb-step { display: block; transform-origin: 50% 100%; }
+
+/* 걷기 스프라이트가 없다(me.png는 한 장이다). 그래서 걸음은 **반동으로만** 만든다 —
+   한 걸음마다 몸이 살짝 뜨고 좌우로 기우뚱한다. 0.34초는 사람 걸음 박자다.
+   마을의 idle(2.4초)보다 훨씬 빠른 것이 맞다 — 지금은 걸어오는 중이다. */
+.onb-char.walking .onb-step { animation: onb-step .34s ease-in-out infinite; }
+@keyframes onb-step {
+  0%, 100% { transform: translateY(0)   rotate(-3deg) scale(1, 1); }
+  25%      { transform: translateY(-8%) rotate(0deg)  scale(.98, 1.04); }
+  50%      { transform: translateY(0)   rotate(3deg)  scale(1.02, .98); }
+  75%      { transform: translateY(-8%) rotate(0deg)  scale(.98, 1.04); }
+}
+/* 도착 — 멈춰 서며 한 번 굽혔다 편다. 여기서 걸음이 끝난 것이 눈에 보여야
+   말풍선이 뜰 차례라는 게 읽힌다. */
+.onb-char.landed .onb-step { animation: onb-land .52s cubic-bezier(.34, 1.4, .64, 1) both; }
+@keyframes onb-land {
+  0%   { transform: translateY(-6%) rotate(1.5deg) scale(1, 1); }
+  40%  { transform: translateY(0)   rotate(0deg)   scale(1.07, .93); }
+  70%  { transform: translateY(-3%) rotate(0deg)   scale(.97, 1.04); }
+  100% { transform: translateY(0)   rotate(0deg)   scale(1, 1); }
+}
+.onb-char.gone { opacity: 0; }
+
+/* ── 말풍선 ────────────────────────────────
+   자리는 JS가 넣는다. 데스크톱은 다원 오른쪽 어깨 위, 폰은 다원 머리 위로
+   화면 폭을 다 쓴다 — 좁은 화면에서 옆에 붙이면 글이 두 글자씩 끊긴다. */
+.onb-bubble {
+  position: absolute;
+  left: var(--onb-bx, 0); bottom: var(--onb-by, 0); right: auto;
+  width: min(340px, 62%);
+  pointer-events: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 15px 16px 13px;
+  animation: onb-bubble-in .26s cubic-bezier(.34, 1.3, .64, 1) both;
+}
+/* 말풍선 꼬리 — 왼쪽 아래를 가리킨다(다원이 서 있는 쪽). 테두리와 바탕을
+   겹쳐 두 겹으로 만든다: 아래가 테두리색, 위가 바탕색 */
+.onb-bubble::before, .onb-bubble::after {
+  content: ""; position: absolute; left: 24px;
+  border: 9px solid transparent; border-top-color: var(--line);
+}
+.onb-bubble::before { bottom: -18px; }
+.onb-bubble::after  { bottom: -16px; border-top-color: var(--surface); }
+
+@keyframes onb-bubble-in {
+  from { opacity: 0; transform: translateY(6px) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+.onb-line {
+  margin: 0; font-size: 14.5px; font-weight: 600; line-height: 1.62;
+  animation: onb-line-in .24s ease-out both;
+}
+.onb-line + .onb-line { margin-top: 2px; font-weight: 500; color: var(--sub); }
+@keyframes onb-line-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+.onb-act { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.onb-act.stack { flex-direction: column; align-items: stretch; }
+
+/* **두 갈래의 위계는 같다.** 어느 쪽을 고르든 마을을 보러 온 것이고,
+   추천을 앞세우려고 한쪽만 진하게 칠하면 고른 게 아니라 떠밀린 게 된다. */
+.onb-btn {
+  flex: 1 1 auto;
+  background: var(--surface); color: var(--ink);
+  border: 1.5px solid var(--line); border-radius: 999px;
+  padding: 9px 16px; font-size: 13.5px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+.onb-btn:hover { background: var(--accent-tint); border-color: var(--accent); }
+/* 「다음」만은 대사를 넘기는 손잡이라 눈에 띄어야 한다 — 갈림길의 두 버튼과는 다른 것이다 */
+.onb-btn.go { background: var(--accent); color: var(--accent-ink); border-color: transparent; flex: 0 0 auto; }
+.onb-btn.go:hover { background: var(--accent); filter: brightness(1.08); }
+/* 「안 볼래요」 — 안내를 건너뛰는 문. 있어야 하지만 앞에 나설 것은 아니다 */
+.onb-skip {
+  background: none; border: 0; padding: 9px 6px;
+  font-size: 12.5px; color: var(--sub); cursor: pointer; flex: 0 0 auto;
+}
+.onb-skip:hover { color: var(--ink); text-decoration: underline; }
+
+/* ── 투어 그늘 ─────────────────────────────
+   **구멍 뚫린 덮개 한 장이 아니라 넉 장이다.** `clip-path`로 구멍을 뚫으면
+   한 장으로 되지만, 그 구멍이 손가락까지 통과시키느냐는 브라우저마다 다르다.
+   위·아래·왼·오른 넉 장으로 둘러싸면 **가운데는 애초에 덮인 적이 없어서**
+   추천 대상은 언제나 그냥 눌린다. 나머지는 이 넉 장이 받아내 막는다.
+
+   `.map` 안에 넣는 이유: 거기 `overflow: hidden`이 있어 그늘이 지도 밖으로
+   새지 않는다. 화면 전체가 어두워지는 게 아니라 **지도만** 어두워진다. */
+.onb-dim {
+  position: absolute; z-index: 8;
+  background: rgba(18, 22, 14, .58);
+  pointer-events: auto;
+  animation: onb-fade .3s ease-out both;
+}
+@keyframes onb-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* 테두리는 그늘 위에 뜨지만 **손가락은 통과시킨다** — 이게 없으면 추천 대상
+   한가운데가 도리어 안 눌린다 */
+.onb-ring {
+  position: absolute; z-index: 9;
+  border-radius: 14px;
+  pointer-events: none;
+  box-shadow: 0 0 0 3px var(--accent), 0 0 0 6px rgba(255, 255, 255, .55),
+              0 0 26px 6px rgba(143, 214, 162, .55);
+  animation: onb-pulse 2s ease-in-out infinite;
+  transition: left .3s ease, top .3s ease, width .3s ease, height .3s ease;
+}
+@keyframes onb-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--accent), 0 0 0 6px rgba(255, 255, 255, .5),
+                         0 0 20px 4px rgba(143, 214, 162, .45); }
+  50%      { box-shadow: 0 0 0 3px var(--accent), 0 0 0 7px rgba(255, 255, 255, .7),
+                         0 0 30px 9px rgba(143, 214, 162, .7); }
+}
+
+/* ── 투어 카드 ─────────────────────────────
+   지도 위·아래 중 **추천 대상이 없는 쪽**에 붙는다(JS가 정한다).
+   그늘 위에 얹히므로 대비를 충분히 — 바탕은 마을과 같은 흰 카드다. */
+/* 가운데 맞추기를 `transform: translateX(-50%)`으로 하지 않는다 — 뜰 때 쓰는
+   `onb-bubble-in`이 마지막에 `transform: none`을 넣어 그것을 지운다(카드가
+   오른쪽으로 반쪽 밀려나 지도 밖으로 나갔다). left·right를 지도에 맞춰 두고
+   `margin-inline: auto`로 그 안에서 가운데 놓는다 — 애니메이션과 다투지 않는다. */
+.onb-tour {
+  position: absolute; z-index: 56;
+  pointer-events: auto;
+  margin-inline: auto;
+  width: min(430px, calc(100% - 28px));
+  background: var(--surface);
+  border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 12px 38px rgba(0, 0, 0, .3);
+  padding: 13px 15px 12px;
+  animation: onb-bubble-in .24s cubic-bezier(.34, 1.3, .64, 1) both;
+}
+
+.onb-tour-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.onb-count {
+  font-size: 11.5px; font-weight: 800; letter-spacing: .06em;
+  color: var(--accent); background: var(--accent-tint);
+  border-radius: 999px; padding: 3px 9px;
+  font-variant-numeric: tabular-nums;
+}
+.onb-tour-close { margin-left: auto; }
+/* 마을의 ✕와 같은 단추다. `.icon-btn`은 styles.css 것이라 여기서는 자리만 잡는다 */
+.onb-tour-name { margin: 0; font-size: 15.5px; font-weight: 800; line-height: 1.4; }
+.onb-tour-desc { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-height: 1.55; }
+.onb-tour-act { display: flex; align-items: center; gap: 7px; margin-top: 11px; }
+.onb-tour-act .onb-btn { padding: 8px 13px; font-size: 13px; flex: 0 0 auto; }
+.onb-tour-act .spacer { flex: 1 1 auto; }
+.onb-btn[disabled] { opacity: .4; cursor: default; }
+.onb-btn[disabled]:hover { background: var(--surface); border-color: var(--line); }
+
+/* ── 폰 ────────────────────────────────────
+   데스크톱을 그냥 줄이지 않는다. 다원은 작아지고, 말풍선은 화면 폭을 쓰고,
+   투어 카드는 아래에서 시트처럼 올라온다(추천 픽 패널과 같은 방식).
+   **다원이 화면 밖에서 걸어 들어오는 것은 여기서도 그대로다.** */
+@media (max-width: 699px) {
+  .onb-bubble {
+    left: 12px; right: 12px; width: auto;   /* 마을이 폰에서 쓰는 여백(14px)과 같은 결 */
+    padding: 13px 14px 12px;
+  }
+  .onb-bubble::before, .onb-bubble::after { left: 20px; }
+  .onb-line { font-size: 14px; }
+  /* 손가락으로 누를 것들이라 44px을 넘긴다 */
+  .onb-btn { padding: 11px 16px; font-size: 13.5px; min-height: 44px; }
+  .onb-act { gap: 7px; }
+  .onb-act.stack .onb-btn { flex: 1 1 auto; }
+
+  .onb-tour {
+    left: 12px; right: 12px; bottom: 12px;
+    top: auto; width: auto; transform: none;
+  }
+  .onb-tour-act .onb-btn { min-height: 44px; }
+}
+
+/* ── 움직임을 줄여 달라고 한 사람 ───────────
+   걸어 들어오는 것이 이 안내의 핵심이지만, 그건 **연출**이지 정보가 아니다.
+   여기서는 그 자리에 그냥 서 있는 것으로 갈음한다 — 대사와 갈림길은 그대로다. */
+@media (prefers-reduced-motion: reduce) {
+  .onb-char { transition: opacity .01s linear; }
+  .onb-char.walking .onb-step,
+  .onb-char.landed .onb-step { animation: none; }
+  .onb-bubble, .onb-tour, .onb-dim { animation: none; }
+  .onb-line { animation: none; }
+  .onb-ring { animation: none; transition: none; }
+}

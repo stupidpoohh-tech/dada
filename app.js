@@ -1587,6 +1587,18 @@
     window.addEventListener('hashchange', openFromHash);
 
     if (new URLSearchParams(location.search).has('tune')) enableTuning();
+
+    /* **첫 방문 안내(onboarding.js)와 닿는 유일한 자리다.**
+       안내는 마을 위에 잠깐 얹히는 겹이라 app.js 안에 두지 않았다. 대신 마을을
+       다 그린 뒤 데이터를 한 번 실어 보낸다 — 안내가 하는 일은 「지도 위의 어떤
+       문을 밝힐까」와 「그 문에 걸린 항목의 이름·설명이 무엇인가」뿐이고, 둘 다
+       여기 있는 데이터에서 나온다(services.json을 또 받지 않게).
+
+       onboarding.js가 늦게 붙어도 되도록 `window.dadaTown`에도 남긴다 —
+       이벤트는 한 번 지나가면 끝이라 그때 없던 쪽은 영영 못 받는다.
+       onboarding.js가 아예 없어도 이 두 줄은 그냥 아무도 안 듣는 말이 된다. */
+    window.dadaTown = { data };
+    document.dispatchEvent(new CustomEvent('dada:ready', { detail: { data } }));
   }
 
   init();

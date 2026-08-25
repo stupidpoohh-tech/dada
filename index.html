@@ -25,6 +25,8 @@
 <link rel="canonical" href="https://dada-town.com/">
 <link rel="preload" as="image" href="assets/map/town-web.jpg">
 <link rel="stylesheet" href="styles.css">
+<!-- 첫 방문 안내 · 투어가이드. 마을 위에 잠깐 얹히는 한 겹이라 파일이 따로다 -->
+<link rel="stylesheet" href="onboarding.css">
 <!-- 방문 통계. 켜지는 곳은 ga.js의 HOSTS뿐이다 (localhost에서는 아무것도 하지 않는다) -->
 <script src="/ga.js" defer></script>
 </head>
@@ -163,5 +165,7 @@
 </div>
 
 <script src="app.js"></script>
+<!-- app.js가 마을을 다 그린 뒤 쏘는 `dada:ready`를 기다린다. 순서는 상관없다 -->
+<script src="onboarding.js"></script>
 </body>
 </html>

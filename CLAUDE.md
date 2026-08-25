@@ -83,6 +83,10 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
   굴리지 않는다.** locator는 「요소가 멈출 때까지」 기다리는데 굴릴 때마다 조금씩
   움직여서 **영영 안 멈춘다.** `evaluate` 안에서 `element.click()`으로 한다
   (케이스 스터디에서 프로세스가 안 끝난 적 있다).
+- **playwright로 마을을 열 때는 「이미 와 본 사람」으로 연다.** 첫 방문 안내가 화면
+  전체에 덮개를 깔아서, 안 그러면 누르는 것마다 덮개가 먹고 「지도가 죽었다」로만 보인다.
+  `tests/smoke.mjs`의 `watch()`가 이미 심어 주니 그 헬퍼를 쓴다 (직접 열 때는
+  `addInitScript`로 `localStorage['dada.onboarded'] = '1'`). 안내 자체는 `first()`로 연다.
 - 편집용 원본(`assets/sprites/*.png`, `assets/map/town.jpg`)은 `.gitignore`에 있어
   **새 컨테이너에는 없다.** 꺼내는 법은 README 「편집용 원본」.
 

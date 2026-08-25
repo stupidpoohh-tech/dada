@@ -1,0 +1,451 @@
+/* DADA TOWN — 첫 방문 안내 · 투어가이드
+ *
+ * 처음 온 사람에게 **다원이 마을 밖에서 걸어 들어와** 인사하고, 앞으로 어떻게
+ * 볼지를 고르게 한다. 고른 뒤에는 둘 중 하나다 — 그냥 마을(=원래 사이트)이거나,
+ * 같은 지도 위에서 세 곳만 짚어 주는 투어다. **다른 페이지로 보내지 않는다.**
+ *
+ * 왜 파일이 따로인가
+ *   app.js는 마을을 그리는 곳이고 여기는 마을 위에 잠깐 얹히는 겹이다. 섞어 두면
+ *   나중에 안내를 걷어낼 때 마을까지 들춰야 한다. 여기서 마을에 하는 일은
+ *   **이미 있는 문을 대신 눌러 주는 것**뿐이다(`door.click()`) — 그래서 항목을
+ *   어떻게 여는지(책·외부 링크·구역 패널)를 이 파일은 하나도 몰라도 된다.
+ *
+ * app.js와 닿는 곳은 딱 하나
+ *   `dada:ready` — 마을을 다 그린 뒤 app.js가 services.json을 실어 보낸다.
+ *   (늦게 붙어도 되도록 `window.dadaTown.data`도 같이 본다)
+ *
+ * 언제 뜨는가
+ *   첫 방문에만. 본 적이 있으면 그냥 마을이다. 주소에 `?intro`를 붙이면 언제든
+ *   다시 뜬다 — 「다시 안내받기」 단추를 나중에 어디에 달든 이 주소만 열면 된다.
+ */
+(() => {
+  'use strict';
+
+  /* ── 투어가 데려갈 세 곳 ────────────────────
+     **여기 세 줄이 투어의 전부다.** 이름·설명·주소는 적지 않는다 — id로
+     services.json에서 찾아 쓴다. 한 군데에만 적혀 있어야 어긋나지 않는다.
+
+     `door`는 지도 위에서 무엇을 밝힐지다. 안 적으면 그 항목이 사는 구역의
+     건물이 문이다. 카페에는 항목이 둘(아니그래서·PlayGrown)인데 PlayGrown은
+     까마귀가 따로 물고 있어서 그것만 적어 준다 — 안 그러면 2번과 3번이
+     같은 건물을 두 번 밝힌다. */
+  const TOUR = [
+    { item: 'sindorang-demo' },
+    { item: 'playgrown', door: '.crow-spot' },
+    { item: 'anih' },
+  ];
+
+  const LINES = [
+    '안녕하세요! 다원하는 다원이에요.',
+    '저는 기획하고, 디자인하고, 실제로 만드는 사람이에요.',
+    '여기는 제가 만든 것들이 사는 Dada Town이에요.',
+  ];
+  const CHOICE = ['천천히 마을을 구경해도 좋고,', '대표 프로젝트부터 빠르게 볼 수도 있어요.'];
+
+  const SEEN = 'dada.onboarded';
+  const WALK = 1500;                 // 걸어 들어오는 시간(ms). 1.2~2초 사이
+  const S = 'assets/sprites/cut/me.png';
+
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const narrow = () => matchMedia('(max-width: 699px)').matches;
+  const track = (name, params) => { if (window.dadaTrack) window.dadaTrack(name, params); };
+
+  let data = null;
+  let phase = 'off';                 // off · entering · intro · choice · tour
+  let line = 0, at = 0;              // 몇 번째 대사 · 몇 번째 투어
+  let scrim, layer, ch, bubble, card;
+  let dims = [], ring = null;
+  let onMapClick = null;
+
+  /* ── 뜰 자리인가 ──────────────────────────
+     `?intro`는 언제든 다시 보는 문이다(9항의 「다시 안내받기」가 붙을 자리).
+     해시가 붙어 온 사람은 이미 볼 것을 정하고 온 것이다 — 공유받은 책을 열러
+     왔는데 안내가 앞을 막으면 안 된다. `?tune`은 좌표 재는 중이라 방해하지 않는다. */
+  function wanted() {
+    const q = new URLSearchParams(location.search);
+    if (q.has('intro')) return true;
+    if (q.has('tune') || location.hash) return false;
+    try { return !localStorage.getItem(SEEN); } catch (e) { return true; }
+  }
+  /* 시작할 때 표시한다(끝날 때가 아니라). 대사 중간에 새로고침한 사람에게
+     처음부터 다시 시키지 않기 위해서다 — 안내는 한 번이면 족하다. */
+  function mark() { try { localStorage.setItem(SEEN, '1'); } catch (e) { /* 시크릿 창 */ } }
+
+  /* ── 자리 재기 ────────────────────────────
+     다원과 말풍선은 **지도에서 잰다.** 겹 자체는 `position: fixed`(뷰포트)라
+     지도 밖으로 걸어 나갈 수 있고, 그 안에서 자리만 지도를 따라간다.
+     굴리거나 창 크기가 바뀌면 다시 잰다. */
+  function place() {
+    if (phase === 'off' || !layer) return;
+    const map = document.getElementById('map');
+    if (!map) return;
+    const m = map.getBoundingClientRect();
+    const small = narrow();
+
+    const w = small ? Math.min(88, Math.max(62, m.width * 0.20))
+                    : Math.min(152, Math.max(96, m.width * 0.135));
+    const h = w * 130 / 98;                       // me.png 원래 비율
+    const cx = m.left + m.width * (small ? 0.20 : 0.15);
+    const cb = innerHeight - m.bottom + m.height * (small ? 0.04 : 0.02);
+
+    if (ch && ch.isConnected) {          // 투어 중이면 다원은 이미 걸어 나갔다
+      ch.dataset.home = String(Math.round(cx));
+      ch.style.width = Math.round(w) + 'px';
+      ch.style.bottom = Math.round(cb) + 'px';
+      if (ch.dataset.walked) ch.style.left = Math.round(cx) + 'px';
+    }
+
+    if (bubble) {
+      bubble.style.setProperty('--onb-by', Math.round(cb + h * (small ? 1 : .6) + (small ? 12 : 0)) + 'px');
+      bubble.style.setProperty('--onb-bx', small ? '' : Math.round(cx + w * 0.44) + 'px');
+    }
+    /* 투어 중이라면 밝힌 자리도 다시 잰다 — 창 크기가 바뀌면 지도가 줄어드는데
+       그늘과 테두리는 지도 픽셀로 박혀 있어서, 다시 안 재면 엉뚱한 곳이 밝다 */
+    if (card) {
+      const cur = phase === 'tour' && stops()[at];
+      if (cur) spotlight(cur.door);
+      placeCard(m);
+    }
+  }
+
+  /* 뷰포트 왼쪽 **바깥**. 다원 폭까지 빼서 몸이 완전히 나가 있게 한다 —
+     조금이라도 걸쳐 있으면 「밖에서 들어온다」가 아니라 「끝에서 미끄러진다」가 된다. */
+  const outside = () => -(Math.round(parseFloat(ch.style.width) || 120) + 40);
+
+  /* ── 다원이 들어온다 ──────────────────────── */
+  function enter() {
+    phase = 'entering';
+    document.body.classList.add('dada-onboarding');
+    track('intro_start', {});
+
+    place();
+    ch.style.setProperty('--onb-dur', reduced() ? '.01s' : WALK + 'ms');
+    ch.style.left = outside() + 'px';
+    ch.classList.add('walking');
+
+    // 한 프레임 뒤에 목적지를 준다 — 같은 프레임에 두 값을 넣으면 브라우저가
+    // 마지막 것만 보고 전환 없이 순간이동한다
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      ch.dataset.walked = '1';
+      ch.style.left = ch.dataset.home + 'px';
+    }));
+
+    const arrive = () => {
+      if (phase !== 'entering') return;
+      ch.classList.remove('walking');
+      ch.classList.add('landed');
+      say(0);
+    };
+    ch.addEventListener('transitionend', (e) => { if (e.propertyName === 'left') arrive(); }, { once: true });
+    // 전환이 아예 안 걸리는 경우(움직임 줄이기·탭이 뒤에 있었다)를 위한 보험
+    setTimeout(arrive, (reduced() ? 40 : WALK) + 260);
+  }
+
+  /* ── 말풍선 ────────────────────────────────
+     대사는 한 줄씩. 자동으로 넘어가지 않는다 — 「다음」을 누르거나 아무 데나
+     누르면 넘어간다. 읽는 속도는 사람마다 다르다. */
+  function say(i) {
+    phase = 'intro';
+    line = i;
+    fill([LINES[i]], (act) => {
+      const next = el('button', 'onb-btn go', i < LINES.length - 1 ? '다음' : '네, 좋아요');
+      next.type = 'button';
+      next.addEventListener('click', advance);
+      act.appendChild(next);
+      const skip = el('button', 'onb-skip', '안내 건너뛰기');
+      skip.type = 'button';
+      skip.addEventListener('click', () => finish('skip'));
+      act.appendChild(skip);
+      return next;
+    });
+  }
+
+  function advance() {
+    if (phase !== 'intro') return;
+    if (line < LINES.length - 1) say(line + 1);
+    else choose();
+  }
+
+  /* ── 갈림길 ────────────────────────────────
+     **두 버튼의 위계는 같다.** 어느 쪽이 옳은 선택이라고 말하지 않는다. */
+  function choose() {
+    phase = 'choice';
+    scrim.classList.add('quiet');       // 여기서는 아무 데나 눌러 넘기지 않는다
+    fill(CHOICE, (act) => {
+      act.classList.add('stack');
+      const a = el('button', 'onb-btn', '탐험하기');
+      a.type = 'button';
+      a.addEventListener('click', () => finish('explore'));
+      const b = el('button', 'onb-btn', '투어가이드 받을래요');
+      b.type = 'button';
+      b.addEventListener('click', startTour);
+      act.append(a, b);
+      return a;
+    });
+  }
+
+  /** 말풍선 속을 갈아 끼운다. 상자는 그대로 두고 글과 단추만 바꾼다 —
+   *  대사마다 새로 만들면 말풍선이 매번 뽀용 하고 다시 뜬다(과하다). */
+  function fill(lines, buttons) {
+    if (!bubble) {
+      bubble = el('div', 'onb-bubble');
+      bubble.setAttribute('role', 'dialog');
+      bubble.setAttribute('aria-label', '다원의 인사');
+      /* **읽어 주는 자리는 살아남는 요소에 건다.** 대사마다 새 div를 만들어
+         거기에 aria-live를 걸면, 스크린리더가 그 자리를 알기도 전에 내용이 이미
+         들어 있어 아무 말도 안 한다 — 말풍선은 처음 한 번만 만들고 속만 간다. */
+      bubble.setAttribute('aria-live', 'polite');
+      layer.appendChild(bubble);
+    }
+    bubble.textContent = '';
+    const body = el('div', 'onb-body');
+    lines.forEach((t) => body.appendChild(el('p', 'onb-line', t)));
+    bubble.appendChild(body);
+    const act = el('div', 'onb-act');
+    const focusMe = buttons(act);
+    bubble.appendChild(act);
+    place();
+    focusMe.focus({ preventScroll: true });
+  }
+
+  /* ── 안내를 접는다 ────────────────────────
+     다원은 마을 쪽으로 몇 걸음 걸어 들어가며 사라지고, 지도 위 제자리("나")가
+     다시 보인다. **마을 조작은 사라지기를 기다리지 않는다** — 걸어 나가는 동안에도
+     이미 누를 수 있다(12항: 애니메이션이 상호작용을 막지 않는다). */
+  function finish(how, then) {
+    if (phase === 'off') return;
+    track('intro_choice', { choice: how });
+    phase = 'off';
+    scrim.remove();
+    if (bubble) { bubble.remove(); bubble = null; }
+
+    const done = () => {
+      ch.remove();
+      document.body.classList.remove('dada-onboarding');
+      if (then) then();
+    };
+    if (reduced()) { done(); return; }
+    ch.style.setProperty('--onb-dur', '.5s');
+    ch.style.left = Math.round(parseFloat(ch.style.left) + parseFloat(ch.style.width) * 0.7) + 'px';
+    ch.classList.add('gone');
+    setTimeout(done, 520);
+  }
+
+  /* ── 투어 ──────────────────────────────────
+     같은 지도 위에서 벌어진다. 지도만 그늘지고 추천 대상만 밝다 —
+     화면 전체를 어둡게 하지도, 다른 테마를 꺼내지도 않는다. */
+  function stops() {
+    return TOUR.map((t) => {
+      const item = data.items.find((x) => x.id === t.item);
+      if (!item) return null;
+      const sel = t.door || `[data-district="${item.district}"]`;
+      const door = document.querySelector(sel);
+      return door ? { item, door } : null;
+    }).filter(Boolean);
+  }
+
+  function startTour() {
+    const list = stops();
+    if (!list.length) return finish('explore');
+    finish('tour', () => {
+      document.body.classList.add('dada-touring');
+      phase = 'tour';
+      at = 0;
+      const map = document.getElementById('map');
+      dims = ['t', 'r', 'b', 'l'].map((side) => {
+        const d = el('div', 'onb-dim');
+        d.dataset.side = side;
+        d.addEventListener('click', (e) => e.stopPropagation());
+        map.appendChild(d);
+        return d;
+      });
+      ring = el('div', 'onb-ring');
+      map.appendChild(ring);
+
+      card = el('div', 'onb-tour');
+      card.setAttribute('role', 'dialog');
+      card.setAttribute('aria-label', '투어가이드');
+      card.setAttribute('aria-live', 'polite');   // 말풍선과 같은 이유로 여기 건다
+      layer.appendChild(card);
+
+      /* 밝혀 둔 것을 **직접** 눌러도 된다. 그때는 투어를 먼저 걷어야 한다 —
+         안 그러면 구역 패널이 그늘 밑에서 열린다(실제로 그렇게 만들어 봤다). */
+      onMapClick = (e) => {
+        const cur = stops()[at];
+        if (cur && cur.door.contains(e.target)) endTour('target');
+      };
+      map.addEventListener('click', onMapClick, true);
+
+      track('tour_start', {});
+      step(0);
+    });
+  }
+
+  function step(i) {
+    const list = stops();
+    at = Math.max(0, Math.min(i, list.length - 1));
+    const { item, door } = list[at];
+    spotlight(door);
+
+    card.textContent = '';
+    const head = el('div', 'onb-tour-head');
+    head.appendChild(el('span', 'onb-count', `${at + 1} / ${list.length}`));
+    const x = el('button', 'icon-btn onb-tour-close', '✕');
+    x.type = 'button';
+    x.setAttribute('aria-label', '투어 종료');
+    x.addEventListener('click', () => endTour('close'));
+    head.appendChild(x);
+    card.appendChild(head);
+
+    const body = el('div', null);
+    body.appendChild(el('p', 'onb-tour-name', item.name));
+    body.appendChild(el('p', 'onb-tour-desc', item.description || ''));
+    card.appendChild(body);
+
+    const act = el('div', 'onb-tour-act');
+    const prev = el('button', 'onb-btn', '이전');
+    prev.type = 'button';
+    prev.disabled = at === 0;
+    prev.addEventListener('click', () => step(at - 1));
+    act.appendChild(prev);
+
+    const open = el('button', 'onb-btn go', '열어보기');
+    open.type = 'button';
+    open.addEventListener('click', () => {
+      track('tour_open', { item: item.id, step: at + 1 });
+      endTour('open');
+      door.click();                       // 마을이 원래 여는 방식 그대로
+    });
+    act.appendChild(open);
+
+    act.appendChild(el('span', 'spacer'));
+
+    const next = el('button', 'onb-btn', at === list.length - 1 ? '마치기' : '다음');
+    next.type = 'button';
+    next.addEventListener('click', () => (at === list.length - 1 ? endTour('done') : step(at + 1)));
+    act.appendChild(next);
+    card.appendChild(act);
+
+    place();
+    next.focus({ preventScroll: true });
+    track('tour_step', { step: at + 1, item: item.id });
+  }
+
+  /** 추천 대상만 남기고 지도를 덮는다. 덮개가 **넉 장**인 이유는 onboarding.css 참고
+   *  (가운데는 애초에 덮인 적이 없어야 그냥 눌린다).
+   *  구멍은 판정 영역(버튼 전체)이 아니라 **눈에 보이는 그림**에 맞춘다 — 회사 구역
+   *  상자는 지도의 18×34%나 돼서, 그대로 뚫으면 무엇을 가리키는지 알 수 없다. */
+  function spotlight(door) {
+    const map = document.getElementById('map');
+    const m = map.getBoundingClientRect();
+    const vis = door.querySelector('.pop, .crow-figure, .me-figure, .mbox, .horn-fig') || door;
+    const r = vis.getBoundingClientRect();
+    const PAD = 10;
+    const x = Math.max(0, r.left - m.left - PAD);
+    const y = Math.max(0, r.top - m.top - PAD);
+    const w = Math.min(m.width - x, r.width + PAD * 2);
+    const h = Math.min(m.height - y, r.height + PAD * 2);
+    const px = (v) => Math.round(v) + 'px';
+
+    const box = {
+      t: { left: 0, top: 0, width: m.width, height: y },
+      b: { left: 0, top: y + h, width: m.width, height: Math.max(0, m.height - y - h) },
+      l: { left: 0, top: y, width: x, height: h },
+      r: { left: x + w, top: y, width: Math.max(0, m.width - x - w), height: h },
+    };
+    dims.forEach((d) => Object.assign(d.style, {
+      left: px(box[d.dataset.side].left), top: px(box[d.dataset.side].top),
+      width: px(box[d.dataset.side].width), height: px(box[d.dataset.side].height),
+    }));
+    Object.assign(ring.style, { left: px(x), top: px(y), width: px(w), height: px(h) });
+    card.dataset.cy = String((y + h / 2) / m.height);
+  }
+
+  /** 투어 카드는 **추천 대상이 없는 쪽**에 붙는다. 폰에서는 아래 시트라 CSS가 맡는다. */
+  function placeCard(m) {
+    if (narrow()) {
+      // 폰에서는 아래 시트다. 자리는 CSS가 잡으므로 인라인으로 넣어 둔 것을 지운다
+      card.style.top = card.style.bottom = card.style.left = card.style.right = '';
+      return;
+    }
+    // 좌우를 지도에 맞춰 두면 `margin-inline: auto`가 그 안에서 가운데 놓는다
+    card.style.left = Math.round(m.left) + 'px';
+    card.style.right = Math.round(innerWidth - m.right) + 'px';
+    const top = parseFloat(card.dataset.cy || '.6') > .5;
+    if (top) { card.style.top = Math.round(m.top + 14) + 'px'; card.style.bottom = ''; }
+    else { card.style.bottom = Math.round(innerHeight - m.bottom + 14) + 'px'; card.style.top = ''; }
+  }
+
+  /** 투어를 걷는다. 셋을 다 봐야만 나갈 수 있게 하지 않는다 — 언제든 여기로 온다. */
+  function endTour(how) {
+    if (phase !== 'tour') return;
+    phase = 'off';
+    track('tour_end', { how, step: at + 1 });
+    const map = document.getElementById('map');
+    if (onMapClick) { map.removeEventListener('click', onMapClick, true); onMapClick = null; }
+    dims.forEach((d) => d.remove()); dims = [];
+    if (ring) { ring.remove(); ring = null; }
+    if (card) { card.remove(); card = null; }
+    document.body.classList.remove('dada-touring');
+  }
+
+  /* ── 붙이기 ────────────────────────────────
+     겹은 `.map-holder`가 아니라 화면 전체를 덮는다(`position: fixed`).
+     `.map` 안에 두면 `overflow: hidden`에 잘려 **밖에서 걸어 들어오는 것 자체가
+     안 보이고**, `.map-holder`에 두면 지도 왼쪽 여백까지밖에 못 나간다. */
+  function build() {
+    scrim = el('div', 'onb-scrim');
+    scrim.addEventListener('click', () => { if (phase === 'intro') advance(); });
+    document.body.appendChild(scrim);
+
+    layer = el('div', 'onb');
+    ch = el('div', 'onb-char');
+    const step2 = el('span', 'onb-step');
+    const img = new Image();
+    img.src = S;
+    img.alt = '';                      // 옆의 말풍선이 이미 누구인지 말한다
+    step2.appendChild(img);
+    ch.appendChild(step2);
+    layer.appendChild(ch);
+    document.body.appendChild(layer);
+
+    let t = null;
+    const relayout = () => { cancelAnimationFrame(t); t = requestAnimationFrame(place); };
+    addEventListener('resize', relayout);
+    addEventListener('scroll', relayout, { passive: true });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (phase === 'tour') endTour('esc');
+      else if (phase !== 'off') finish('skip');
+    });
+    // 안내가 떠 있는 동안에는 탭이 말풍선 안에서만 돈다 — 뒤의 지도로 새면
+    // 무엇에 포커스가 갔는지 보이지 않는다(덮개가 가로막고 있어서 눌리지도 않는다)
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab' || !bubble || phase === 'off') return;
+      const its = bubble.querySelectorAll('button');
+      if (!its.length) return;
+      const first = its[0], last = its[its.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+  }
+
+  function boot(d) {
+    if (phase !== 'off' || !d) return;
+    data = d;
+    if (!wanted()) return;
+    mark();
+    build();
+    enter();
+  }
+
+  document.addEventListener('dada:ready', (e) => boot(e.detail && e.detail.data), { once: true });
+  if (window.dadaTown && window.dadaTown.data) boot(window.dadaTown.data);
+})();
