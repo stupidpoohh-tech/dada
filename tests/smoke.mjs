@@ -1826,12 +1826,15 @@ if (head('첫 방문 안내')) {
 
   await p.waitForSelector('.onb-bubble', { timeout: 4000 });
   const inX = await p.evaluate(() => {
-    const r = document.querySelector('.onb-char').getBoundingClientRect();
+    const c = document.querySelector('.onb-char');
+    const r = c.getBoundingClientRect();
     const m = document.getElementById('map').getBoundingClientRect();
-    return { left: r.left, mapLeft: m.left, mapRight: m.right };
+    return { left: r.left, mapLeft: m.left, mapRight: m.right,
+             dur: getComputedStyle(c).transitionDuration.split(',')[0].trim() };
   });
   ok(inX.left > inX.mapLeft && inX.left < inX.mapRight, '걸어 들어와 마을 안(전경)에 선다',
     `left=${Math.round(inX.left)} map=${Math.round(inX.mapLeft)}~${Math.round(inX.mapRight)}`);
+  ok(inX.dur === '1.5s', '걸어 들어오는 데 1.5초를 쓴다', inX.dur);
 
   // 대사 셋 — 자동으로 넘어가지 않고, 누르는 만큼만 간다
   const lineNow = () => p.evaluate(() => document.querySelector('.onb-line').textContent);
@@ -2037,19 +2040,43 @@ if (head('안내는 올 때마다')) {
   await p.close();
 }
 
+/* 움직임을 줄여 달라고 한 사람에게도 **들어오는 것은 남는다.**
+   한때 여기서 전부 껐다(0.01초 순간이동). 그랬더니 다원이 뿅 나타나고 말풍선도
+   뿅 떠서 **안내가 통째로 사라진 것처럼** 보였다 — 다원님 폰에서 실제로 그랬고
+   (2026-08-25), 그 폰이 왜 이 길로 들어왔는지도 알아둘 값이 있다: iOS는 이 값을
+   「동작 줄이기」뿐 아니라 **저전력 모드에서도** 켠다. 드문 예외가 아니다.
+   줄이는 것은 들썩임(위아래 반동·착지)이고, 가로 이동과 페이드는 남긴다. */
 if (head('안내 — 움직임 줄이기')) {
   const p = await first({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await p.waitForSelector('.onb-char', { timeout: 4000 });
-  await p.waitForTimeout(250);
+
+  ok(await p.evaluate(() => window.__onbFrom) <= 0, '여기서도 화면 밖에서 출발한다');
+  const dur = await p.evaluate(() =>
+    getComputedStyle(document.querySelector('.onb-char')).transitionDuration.split(',')[0].trim());
+  ok(dur === '0.52s', '걷는 대신 짧게 미끄러진다 (0.52초 — 순간이동이 아니다)', dur);
+
+  // 줄이는 것은 들썩임이다 — 걸음의 위아래 반동과 착지 squash만 걷는다
+  const bob = await p.evaluate(() => document.getAnimations()
+    .map((a) => a.animationName || '')
+    .filter((n) => n === 'onb-step' || n === 'onb-land' || n === 'onb-pulse'));
+  ok(bob.length === 0, '위아래 반동·착지·숨쉬기는 없다', bob.join(' / '));
+
+  await p.waitForTimeout(900);
   const put = await p.evaluate(() => {
     const r = document.querySelector('.onb-char').getBoundingClientRect();
     const m = document.getElementById('map').getBoundingClientRect();
     return { left: r.left, mapLeft: m.left, bubble: !!document.querySelector('.onb-bubble') };
   });
-  ok(put.left > put.mapLeft, '걷지 않고 곧장 제자리에 선다', `left=${Math.round(put.left)}`);
+  ok(put.left > put.mapLeft, '미끄러져 들어와 제자리에 선다', `left=${Math.round(put.left)}`);
   ok(put.bubble, '대사는 그대로 나온다');
   ok(await p.textContent('.onb-line') === '안녕하세요! 다원하는 다원이에요.', '첫 대사도 그대로');
+
+  /* 말풍선은 **흐려지며** 든다 — 자리 이동 없는 페이드는 걷지 않는다.
+     `animation: none`으로 두면 뽀용도 페이드도 없어 「뿅」 뜬다 */
+  const fade = await p.evaluate(() =>
+    getComputedStyle(document.querySelector('.onb-bubble')).animationName);
+  ok(fade === 'onb-fade', '말풍선은 흐려지며 든다 (뽀용만 걷는다)', fade);
   await p.close();
 }
 

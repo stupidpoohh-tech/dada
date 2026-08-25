@@ -48,6 +48,12 @@
      다원님 폰이 그중 하나다. 뜻이 달라졌으니 칸도 새로 판다. */
   const OFF = 'dada.introOff';
   const WALK = 1500;                 // 걸어 들어오는 시간(ms). 1.2~2초 사이
+  /* 움직임을 줄여 달라고 한 사람에게는 **걷지 않고 짧게 미끄러져** 들어온다.
+     그 자리에 뿅 나타나게 하지 않는 이유: 이 안내가 하려는 말이 「만든 사람이
+     직접 마중 나왔다」라서, 들어오는 그 순간이 문장 노릇을 한다. 그것까지 걷으면
+     남는 건 갑자기 뜬 말풍선뿐이다. 줄일 것은 **들썩임**(위아래 반동·착지 squash)
+     이지 이동이 아니다 — 그 둘은 아래 CSS가 따로 끈다. */
+  const SLIP = 520;
   const S = 'assets/sprites/cut/me.png';
 
   const el = (tag, cls, text) => {
@@ -136,7 +142,7 @@
     track('intro_start', {});
 
     place();
-    ch.style.setProperty('--onb-dur', reduced() ? '.01s' : WALK + 'ms');
+    ch.style.setProperty('--onb-dur', (reduced() ? SLIP : WALK) + 'ms');
     ch.style.left = outside() + 'px';
     ch.classList.add('walking');
 
@@ -154,8 +160,8 @@
       say(0);
     };
     ch.addEventListener('transitionend', (e) => { if (e.propertyName === 'left') arrive(); }, { once: true });
-    // 전환이 아예 안 걸리는 경우(움직임 줄이기·탭이 뒤에 있었다)를 위한 보험
-    setTimeout(arrive, (reduced() ? 40 : WALK) + 260);
+    // 전환이 아예 안 걸리는 경우(탭이 뒤에 있어 rAF가 안 돌았다)를 위한 보험
+    setTimeout(arrive, (reduced() ? SLIP : WALK) + 260);
   }
 
   /* ── 말풍선 ────────────────────────────────
@@ -247,9 +253,13 @@
       document.body.classList.remove('dada-onboarding');
       if (then) then();
     };
-    if (reduced()) { done(); return; }
-    ch.style.setProperty('--onb-dur', '.5s');
-    ch.style.left = Math.round(parseFloat(ch.style.left) + parseFloat(ch.style.width) * 0.7) + 'px';
+    /* 나갈 때도 **페이드는 남긴다.** 사라지는 것을 못 보면 「없어졌다」가 아니라
+       「끊겼다」로 읽힌다. 줄여 달라고 한 사람에게서 빼는 것은 옆으로 걸어가는
+       것뿐이다 — 자리 이동이 없으면 흐려지는 것만으로도 충분히 읽힌다. */
+    if (!reduced()) {
+      ch.style.setProperty('--onb-dur', '.5s');
+      ch.style.left = Math.round(parseFloat(ch.style.left) + parseFloat(ch.style.width) * 0.7) + 'px';
+    }
     ch.classList.add('gone');
     setTimeout(done, 520);
   }

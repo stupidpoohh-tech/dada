@@ -235,13 +235,24 @@ body.dada-touring .hint { visibility: hidden; }
 }
 
 /* ── 움직임을 줄여 달라고 한 사람 ───────────
-   걸어 들어오는 것이 이 안내의 핵심이지만, 그건 **연출**이지 정보가 아니다.
-   여기서는 그 자리에 그냥 서 있는 것으로 갈음한다 — 대사와 갈림길은 그대로다. */
+   **들어오는 것 자체는 남긴다.** 한때 여기서 전부 껐는데(0.01초 순간이동),
+   그러면 다원이 뿅 나타나고 말풍선도 뿅 떠서 **안내가 통째로 사라진 것처럼**
+   보인다 — 다원님 폰에서 실제로 그렇게 보였다(2026-08-25).
+
+   iOS는 이 값을 「동작 줄이기」뿐 아니라 **저전력 모드에서도** 켠다. 그러니
+   여기는 드문 예외가 아니라 **자주 지나가는 길**이라고 보고 만든다.
+
+   줄일 것은 **들썩임**이지 이동이 아니다. 그래서 여기서 끄는 것은
+     · 걸음의 위아래 반동(onb-step) — 한 걸음마다 몸이 뜨는 그것
+     · 착지 squash(onb-land)
+     · 테두리의 숨쉬기(onb-pulse) — 끝없이 되풀이되는 것이라 특히 그렇다
+   이고, **남기는 것**은 가로 이동(1.5초 → 0.52초, JS의 SLIP)과 페이드다.
+   자리 이동이 없는 페이드는 WCAG가 권하는 갈음이기도 하다 —
+   말풍선·투어 카드는 뜰 때의 translate·scale만 걷고 흐려지며 든다. */
 @media (prefers-reduced-motion: reduce) {
-  .onb-char { transition: opacity .01s linear; }
   .onb-char.walking .onb-step,
   .onb-char.landed .onb-step { animation: none; }
-  .onb-bubble, .onb-tour, .onb-dim { animation: none; }
-  .onb-line { animation: none; }
+  .onb-bubble, .onb-tour { animation: onb-fade .2s ease-out both; }
+  .onb-line { animation: onb-fade .18s ease-out both; }
   .onb-ring { animation: none; transition: none; }
 }
