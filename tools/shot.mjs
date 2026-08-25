@@ -52,6 +52,10 @@ const scale = Number(val('--scale', 2)) || 2;
 const onlyPhone = flag('--phone');
 const el = val('--el');
 const onlyMap = flag('--map') || crop.length === 4;
+/* 안내를 끄고 연다. 안내는 올 때마다 화면 전체에 덮개를 깔아서, --click이
+   전부 덮개에 먹혀 30초 타임아웃으로만 죽는다 — 표지판 찍다가 실제로 밟았다.
+   기본으로 끄지 않는 것은 안내 자체를 찍을 일도 있기 때문. */
+const noIntro = flag('--nointro');
 
 /** %눈금을 얹는다. 건물·스프라이트 좌표를 눈으로 재야 할 때 쓴다. */
 const GRID = (x0, y0, x1, y1) => `
@@ -90,6 +94,7 @@ const shots = grid
 
 for (const [name, opts] of shots) {
   const ctx = await browser.newContext(opts);
+  if (noIntro) await ctx.addInitScript(() => localStorage.setItem('dada.introOff', '1'));
   const page = await ctx.newPage();
   await page.goto(target(val('--url')), { waitUntil: 'networkidle' });
   await page.waitForTimeout(900);
