@@ -2430,19 +2430,32 @@ if (head('목록 — 프로세스 보기')) {
   const labs = await p.$$eval('.proc-lab', (n) => n.map((x) => x.textContent));
   ok(labs.join('/') === want.map((s) => s.label).join('/'),
     '단계가 데이터 순서 그대로다', labs.join(' / '));
-  ok((await p.$$eval('.proc-sub', (n) => n.map((x) => x.textContent)))
-    .join('/') === want.map((s) => s.sub).join('/'), '어깨말도 데이터 그대로다');
 
-  /** 고른 단계가 축의 한가운데에서 얼마나 벗어나 있나 */
-  const off = () => p.evaluate(() => {
+  /* **어깨말은 축에서 내려와 설명 위에 한 줄로 선다.** 칸마다 달고 있으면 폰에서
+     칸이 60px밖에 안 돼 서너 줄로 접히고, 축 높이가 단계마다 들썩였다 */
+  ok(await p.locator('.proc-sub').count() === 1, '어깨말은 지금 단계 것 하나만 선다');
+  ok((await p.textContent('.proc-sub')) === want[0].sub, '어깨말도 데이터 그대로다',
+    await p.textContent('.proc-sub'));
+
+  /* **단계 이름을 설명에서 또 쓰지 않는다.** 축이 이미 초록으로 말하고 있는데
+     큰 표제로 한 번 더 쓰면 같은 말이 한 화면에 세 번 나왔다 */
+  ok((await p.textContent('.proc-line')) === want[0].line,
+    '설명은 문장 하나뿐이다 (단계 이름을 되풀이하지 않는다)',
+    await p.textContent('.proc-line'));
+
+  /** 여섯 칸이 다 보이나 — 틀 안에 들어와 있고, 축은 굴러가지 않는다 */
+  const allSeen = () => p.evaluate(() => {
     const rail = document.getElementById('procRail');
-    const cur = document.querySelector('.proc-step[aria-selected="true"]');
-    const c = cur.getBoundingClientRect(), r = rail.getBoundingClientRect();
-    return Math.abs((c.left + c.width / 2) - (r.left + r.width / 2));
+    const r = rail.getBoundingClientRect();
+    const out = [...document.querySelectorAll('.proc-step')]
+      .filter((b) => { const c = b.getBoundingClientRect(); return c.left < r.left - 1 || c.right > r.right + 1; });
+    return { out: out.length, scrolls: rail.scrollWidth > rail.clientWidth + 1 };
   });
-  ok(await off() < 4, '고른 단계가 축의 한가운데에 선다', `${Math.round(await off())}px`);
+  const seenAll = await allSeen();
+  ok(seenAll.out === 0, '여섯 칸이 한 번에 다 보인다', `밖으로 나간 칸 ${seenAll.out}`);
+  ok(!seenAll.scrolls, '축은 굴러가지 않는다 (끌 것도 스냅할 것도 없다)');
 
-  /* **축은 정해진 틀 안에서만 미끄러진다.** 예전에는 모달 가장자리까지 흘러 나가
+  /* **축은 정해진 틀 안에서만 산다.** 예전에는 모달 가장자리까지 흘러 나가
      칸이 창 밖으로 잘렸다 — 어디까지가 축인지 알 수 없었다 */
   const framed = await p.evaluate(() => {
     const box = document.getElementById('procBody').getBoundingClientRect();
@@ -2464,27 +2477,18 @@ if (head('목록 — 프로세스 보기')) {
   ok(stuck.above, '산출물은 늘 축 아래에 깔린다');
   await p.evaluate(() => { document.getElementById('procBody').scrollTop = 0; });
 
-  /* 단계를 바꾸면 아래 산출물도 그 단계 것으로 바뀌고, 카드는 **원래 문서의
-     그 화면**을 가리킨다 — 여기서 산출물을 다시 그리지 않는다 */
+  /* 단계를 누르면 그 단계의 첫 산출물로 가고, 카드는 **원래 문서의 그 화면**을
+     가리킨다 — 여기서 산출물을 다시 그리지 않는다 */
+  const flat = [];
+  want.forEach((st) => (st.made || []).forEach((m) => flat.push({ st, m })));
   for (let i = 0; i < want.length; i++) {
     await p.evaluate((n) => document.querySelectorAll('.proc-step')[n].click(), i);
-    await p.waitForTimeout(600);
+    await p.waitForTimeout(400);
     const st = want[i];
     ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent) === st.label
-      && (await p.textContent('.proc-line')).includes(st.line),
+      && (await p.textContent('.proc-line')) === st.line
+      && (await p.textContent('.proc-sub')) === st.sub,
       `${st.label} — 축과 설명이 같이 바뀐다`);
-    /* **산출물은 한 장씩 크게 선다.** 화살표로 끝까지 넘기며 하나하나 확인한다 —
-       각 장이 원래 문서의 그 화면을 가리켜야 한다 */
-    const seen = [];
-    for (let k = 0; k < st.made.length; k++) {
-      seen.push(await p.$eval('.proc-cap-go', (a) => a.getAttribute('href')));
-      if (k < st.made.length - 1) {
-        await p.evaluate(() => document.querySelector('.proc-arrow--next').click());
-        await p.waitForTimeout(300);
-      }
-    }
-    ok(seen.join('|') === st.made.map((m) => withProc[0].url + m.go).join('|'),
-      `${st.label}의 산출물이 원래 문서의 그 화면을 가리킨다`, seen.join(' '));
     ok(await p.locator('.proc-frame').count() === 1,
       `${st.label}에서는 한 장만 크게 선다 (여러 장을 늘어놓지 않는다)`);
     /* **샘플은 샘플이라고 말한다.** 진짜 산출물처럼 걸어 두면 보는 사람이
@@ -2494,51 +2498,93 @@ if (head('목록 — 프로세스 보기')) {
       tagged: document.querySelectorAll('.proc-sample-tag').length,
     }));
     ok(tag.sample === (tag.tagged === 1), `${st.label} — 자리만 잡아 둔 그림에는 이름표가 붙는다`);
-    ok(await off() < 4, `${st.label}에서도 축이 가운데로 온다`);
+    ok((await allSeen()).out === 0, `${st.label}에서도 여섯 칸이 다 보인다`);
   }
-  ok((await p.textContent('.proc-of')) === `${want.length} / ${want.length}`,
-    '마지막 단계에서 개수가 맞다');
-  ok(await p.evaluate(() => document.querySelectorAll('.proc-nav-btn')[1].disabled),
+
+  /* **점 한 줄이 곧 전체 진행이다.** 예전에는 「이 단계 안에서 1/2」와
+     「단계 1/6」이 따로 놀아서 지금 어디쯤인지 두 군데를 봐야 알았다 */
+  await p.evaluate(() => document.querySelectorAll('.proc-step')[0].click());
+  await p.waitForTimeout(400);
+  ok(await p.locator('.proc-dot-i').count() === flat.length,
+    '점은 산출물 전체의 개수만큼이다', `${await p.locator('.proc-dot-i').count()} / ${flat.length}`);
+  ok((await p.textContent('.proc-count')) === `1 / ${flat.length}`,
+    '셈도 전체 기준이다', await p.textContent('.proc-count'));
+  ok(await p.locator('.proc-gap').count() === want.length - 1,
+    '단계가 바뀌는 자리만 사이를 띄운다');
+
+  /* 한 장씩 끝까지 넘기며 **각 장이 원래 문서의 그 화면을 가리키는지** 본다.
+     넘기는 곳이 한 군데뿐이라 단계 경계도 이 화살표 하나로 넘어간다 */
+  const seen = [];
+  for (let k = 0; k < flat.length; k++) {
+    seen.push(await p.$eval('.proc-cap-go', (a) => a.getAttribute('href')));
+    if (k < flat.length - 1) {
+      await p.evaluate(() => document.querySelector('.proc-arrow--next').click());
+      await p.waitForTimeout(260);
+    }
+  }
+  ok(seen.join('|') === flat.map((f) => withProc[0].url + f.m.go).join('|'),
+    '산출물이 저마다 원래 문서의 그 화면을 가리킨다', seen.join(' '));
+  ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent)
+    === want[want.length - 1].label,
+    '끝까지 넘기면 마지막 단계에 와 있다 (축이 따라온다)');
+  ok((await p.textContent('.proc-count')) === `${flat.length} / ${flat.length}`,
+    '마지막에서 개수가 맞다');
+  ok(await p.evaluate(() => document.querySelector('.proc-arrow--next').disabled),
     '마지막에서는 다음이 꺼진다');
   await p.close();
 }
 
-if (head('목록 — 축을 끌면 단계가 바뀐다')) {
+if (head('목록 — 넘기는 곳이 한 군데다')) {
   const p = await desktop();
   await town(p);
   await p.click('#openList'); await p.waitForTimeout(700);
 
-  const before = await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent);
-  const box = await p.locator('#procRail').boundingBox();
-  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await p.mouse.down();
-  for (let i = 1; i <= 8; i++) await p.mouse.move(box.x + box.width / 2 - i * 32, box.y + box.height / 2);
-  await p.mouse.up();
-  await p.waitForTimeout(900);
-  const after = await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent);
-  ok(after !== before, '마우스로 끌면 단계가 바뀐다', `${before} → ${after}`);
+  /* **한 단계의 끝에서 더 넘기면 다음 단계로 그냥 이어진다.** 예전에는 단계
+     안에서만 돌고, 단계를 넘기는 버튼이 따로 있었다 — 슬라이더 안의 슬라이더라
+     어느 쪽을 만지는지 헷갈렸다 */
+  const at = () => p.evaluate(() => ({
+    stage: document.querySelector('.proc-step[aria-selected="true"] .proc-lab').textContent,
+    count: document.querySelector('.proc-count').textContent,
+  }));
+  const first = await at();
+  ok(first.stage === '문제' && first.count === '1 / 9', '처음은 첫 단계의 첫 장이다',
+    `${first.stage} ${first.count}`);
 
-  /* **끌 수 있어도 키보드만으로 모든 단계에 닿아야 한다** */
+  /* 문제에는 두 장이 있다 — 두 번 넘기면 역할로 넘어가야 한다 */
+  for (let i = 0; i < 2; i++) {
+    await p.evaluate(() => document.querySelector('.proc-arrow--next').click());
+    await p.waitForTimeout(300);
+  }
+  const crossed = await at();
+  ok(crossed.stage === '역할' && crossed.count === '3 / 9',
+    '단계 끝에서 넘기면 다음 단계로 이어진다', `${crossed.stage} ${crossed.count}`);
+
+  /* **되돌아올 때도 이어진다** — 한 방향으로만 이어지면 갇힌 것과 같다 */
+  await p.evaluate(() => document.querySelector('.proc-arrow--prev').click());
+  await p.waitForTimeout(300);
+  const back = await at();
+  ok(back.stage === '문제' && back.count === '2 / 9', '뒤로도 단계를 넘어 이어진다',
+    `${back.stage} ${back.count}`);
+
+  /* **키보드만으로 모든 단계에 닿아야 한다** */
   await p.evaluate(() => document.querySelectorAll('.proc-step')[0].focus());
-  await p.keyboard.press('End'); await p.waitForTimeout(800);
+  await p.keyboard.press('End'); await p.waitForTimeout(400);
   ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent) === '실제 서비스',
     'End로 마지막 단계에 간다');
-  await p.keyboard.press('Home'); await p.waitForTimeout(800);
+  await p.keyboard.press('Home'); await p.waitForTimeout(400);
   ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent) === '문제',
     'Home으로 처음 단계에 간다');
 
-  /* **선반을 밀면 그 단계 안에서만 움직인다**(축은 가만히 있어야 한다) */
-  await p.evaluate(() => document.querySelectorAll('.proc-step')[2].click());
-  await p.waitForTimeout(700);
-  ok((await p.textContent('.proc-mcount')) === '1 / 3', '과정에는 산출물이 셋이다',
-    await p.textContent('.proc-mcount'));
-  await p.evaluate(() => document.querySelector('.proc-arrow--next').click());
-  await p.waitForTimeout(400);
-  ok((await p.textContent('.proc-mcount')) === '2 / 3', '화살표로 산출물이 넘어간다');
-  ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent) === '과정',
-    '산출물을 넘겨도 축은 과정 그대로다 (두 가로 동작이 안 섞인다)');
+  /* 점을 눌러 곧장 그 장으로 간다 */
+  await p.evaluate(() => document.querySelectorAll('.proc-dot-i')[5].click());
+  await p.waitForTimeout(300);
+  ok((await p.textContent('.proc-count')) === '6 / 9', '점을 누르면 그 장으로 간다',
+    await p.textContent('.proc-count'));
 
-  /* 산출물을 누르면 원래 문서의 그 화면이 실제로 열린다 */
+  /* 산출물을 누르면 원래 문서의 **그 화면**이 실제로 열린다. 어느 장에 서 있든
+     맞아야 하므로, 어느 화면을 가리키고 있었는지 눌러 보기 전에 적어 둔다 */
+  const goes = await p.$eval('.proc-cap-go', (a) => a.getAttribute('href'));
+  const want = goes.slice(goes.indexOf('#') + 1);
   await Promise.all([
     p.waitForURL('**/case/playgrown.html*', { timeout: 6000 }),
     p.evaluate(() => document.querySelector('.proc-cap-go').click()),
@@ -2547,8 +2593,65 @@ if (head('목록 — 축을 끌면 단계가 바뀐다')) {
   ok(await p.locator('body.viewer').count() === 1, '까마귀 문서는 예전 그대로 넘겨보기다');
   ok((await p.textContent('.vw-count')).includes('/ 9'), '화면도 아홉 그대로다',
     await p.textContent('.vw-count'));
-  ok((await p.$eval('.vw-panel:not([inert]) .room-title', (n) => n.textContent)).includes('Playgrown'),
-    '가리킨 그 화면부터 열린다', await p.$eval('.vw-panel:not([inert]) .room-title', (n) => n.textContent));
+  const open = await p.$eval('.vw-panel:not([inert])',
+    (n) => n.getAttribute('aria-labelledby') || n.querySelector('[id^="r-"]')?.id || '');
+  ok(open === want, '가리킨 그 화면부터 열린다', `${open} / ${want}`);
+  await p.close();
+}
+
+/* **폰에서도 축은 통째로 보인다.** 예전에는 고른 칸을 가운데 두고 미끄러져서
+   두세 칸만 보였다 — 정작 축이 하려는 말(「전체 흐름」)이 폰에서만 안 읽혔다. */
+if (head('목록 — 폰에서도 축이 통째로 보인다')) {
+  const p = await phone();
+  await town(p);
+  await p.click('#openList'); await p.waitForTimeout(700);
+
+  const view = await p.evaluate(() => {
+    const rail = document.getElementById('procRail');
+    const r = rail.getBoundingClientRect();
+    const steps = [...document.querySelectorAll('.proc-step')];
+    return {
+      n: steps.length,
+      out: steps.filter((b) => {
+        const c = b.getBoundingClientRect();
+        return c.left < r.left - 1 || c.right > r.right + 1;
+      }).length,
+      scrolls: rail.scrollWidth > rail.clientWidth + 1,
+      docW: document.documentElement.scrollWidth,
+      winW: document.documentElement.clientWidth,
+    };
+  });
+  ok(view.n === 6 && view.out === 0, '폰에서도 여섯 칸이 다 보인다',
+    `${view.n}칸 중 ${view.out}칸이 밖으로`);
+  ok(!view.scrolls, '폰에서도 축은 굴러가지 않는다');
+
+  /* **축의 고유 폭이 밖으로 새면 안 된다.** 가두지 않으면 칸 여섯 개의 폭이
+     그대로 페이지를 넓혀서, 폰 화면이 390이 아니라 678이 되고 모달 오른쪽이 잘린다 */
+  ok(view.docW <= view.winW + 1, '축 때문에 화면이 옆으로 넓어지지 않는다',
+    `${view.docW} / ${view.winW}`);
+
+  /* 폰에서도 눌러서 단계를 옮길 수 있어야 한다 — 굴릴 수 없으니 이것이 유일한 길이다 */
+  await p.evaluate(() => document.querySelectorAll('.proc-step')[4].click());
+  await p.waitForTimeout(400);
+  ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent).then((t) => t.includes('판단')),
+    '폰에서 다섯째 칸을 눌러 그 단계로 간다');
+
+  /* 굴려도 축은 위에 남고, 이름표와 점 줄에 닿을 수 있다 */
+  const foot = await p.evaluate(() => {
+    const box = document.getElementById('procBody');
+    box.scrollTop = box.scrollHeight;
+    const r = box.getBoundingClientRect();
+    const rail = document.querySelector('.proc-rail').getBoundingClientRect();
+    const dots = document.querySelector('.proc-dots').getBoundingClientRect();
+    const cap = document.querySelector('.proc-cap').getBoundingClientRect();
+    return {
+      rail: rail.top >= r.top - 1 && rail.bottom <= r.bottom + 1,
+      dots: dots.bottom <= r.bottom + 1 && dots.top >= r.top,
+      cap: cap.bottom <= r.bottom + 1,
+    };
+  });
+  ok(foot.rail, '폰에서 굴려도 축은 위에 붙어 있다');
+  ok(foot.cap && foot.dots, '굴리면 이름표와 점 줄에 닿는다');
   await p.close();
 }
 
