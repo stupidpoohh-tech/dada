@@ -314,7 +314,11 @@
     if (phase === 'off') return;
     track('intro_choice', { choice: how });
     phase = 'off';
-    if (scrim) { scrim.remove(); scrim = null; }
+    /* **화면에 있는 덮개를 다 걷는다.** 변수가 가리키는 것만 치우면, 어쩌다
+       미아가 된 덮개 하나가 마을을 통째로 못 누르게 만든다(실제로 그랬다).
+       덮개는 안 보이는 것이라 남아도 눈에 안 띈다 — 그래서 세지 않고 쓸어 담는다. */
+    document.querySelectorAll('.onb-scrim').forEach((n) => n.remove());
+    scrim = null;
     if (bubble) { bubble.remove(); bubble = null; }
 
     const done = () => {
@@ -588,10 +592,26 @@
     wire();
   }
 
-  function greeter() {
+  /** 덮개는 **여기서만 만든다.**
+   *
+   *  한때 `greeter()`와 `bye()`가 저마다 만들었다. 표지판을 누르면 `bye()`가 하나
+   *  만들고 이어서 `greeter()`가 **또 하나** 만들면서 앞의 것이 변수에서 떨어져
+   *  나갔고, 끝날 때 뒤엣것만 치워졌다. 남은 덮개는 화면 전체를 덮는 투명한 판이라
+   *  **배웅이 끝난 뒤로 마을이 통째로 안 눌렸다** — 아무것도 안 보이는데 아무것도
+   *  안 되는, 제일 알아채기 어려운 종류의 고장이었다. */
+  function makeScrim() {
+    if (scrim) return scrim;
     scrim = el('div', 'onb-scrim');
-    scrim.addEventListener('click', () => { if (phase === 'intro') advance(); });
+    scrim.addEventListener('click', () => {
+      if (phase === 'intro') advance();
+      else if (phase === 'bye') sayBye(line + 1);
+    });
     document.body.appendChild(scrim);
+    return scrim;
+  }
+
+  function greeter() {
+    makeScrim();
 
     ch = el('div', 'onb-char');
     /* 껍질이 셋인 이유. **한 요소에 애니메이션 둘을 걸 수 없다** — 나중 것이 앞
@@ -682,11 +702,7 @@
   function bye() {
     if (phase !== 'off' || !data) return;
     if (!layer) build(false);
-    if (!scrim) {
-      scrim = el('div', 'onb-scrim');
-      scrim.addEventListener('click', () => { if (phase === 'bye') sayBye(line + 1); });
-      document.body.appendChild(scrim);
-    }
+    makeScrim();
     if (!ch) greeter();
     document.body.classList.add('dada-onboarding');
     phase = 'entering';
@@ -771,7 +787,13 @@
       const to = (data.profile && data.profile.email) || '';
       mail.href = 'mailto:' + to;
       mail.addEventListener('click', () => { track('bye_choice', { choice: 'mail' }); finish('bye-mail'); });
-      act.append(hi, msg, mail);
+      /* **그냥 닫을 길을 둔다.** 고르는 차례에는 아무 데나 눌러도 안 넘어가게
+         해 두었는데(덮개의 `quiet`), 그러면 셋 다 안 고르고 싶은 사람은 갇힌다 —
+         키보드가 없는 폰에서는 Esc도 없다. 인사에 「건너뛰기」를 둔 것과 같은 이유다. */
+      const away = el('button', 'onb-skip', '그냥 둘러볼게요');
+      away.type = 'button';
+      away.addEventListener('click', () => { track('bye_choice', { choice: 'none' }); finish('bye-none'); });
+      act.append(hi, msg, mail, away);
       return hi;
     });
   }

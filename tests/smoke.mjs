@@ -2721,6 +2721,49 @@ if (head('표지판 — 배웅')) {
     '남길 말을 셋 중에 고른다', btns.join(' / '));
   ok(await p.$eval('.onb-act a.onb-btn', (a) => a.getAttribute('href'))
     === 'mailto:' + data.profile.email, '연락하기는 메일로 간다');
+
+  /* **셋 다 안 고르고 나갈 길이 있어야 한다.** 고르는 차례에는 아무 데나 눌러도
+     안 넘어가게 해 두었으므로(덮개의 quiet), 이것이 없으면 폰에서는 갇힌다 */
+  ok(await p.locator('.onb-act .onb-skip').count() === 1, '그냥 닫을 길이 있다');
+  await p.click('.onb-act .onb-skip');
+  await p.waitForTimeout(1800);
+  ok(await p.locator('.onb-bubble').count() === 0, '그냥 둘러볼게요를 누르면 닫힌다');
+  await p.close();
+}
+
+/* **배웅이 끝나면 마을이 도로 눌려야 한다.**
+   한때 `bye()`와 `greeter()`가 덮개를 하나씩 만들어 둘이 됐고, 끝날 때 뒤엣것만
+   치워졌다. 남은 덮개는 화면 전체를 덮는 투명한 판이라 **마을이 통째로 안 눌렸다** —
+   아무것도 안 보이는데 아무것도 안 되는, 제일 알아채기 어려운 고장이었다. */
+if (head('표지판 — 배웅이 끝나면 마을이 도로 눌린다')) {
+  const p = await desktop();
+  await town(p);
+  await p.waitForTimeout(400);
+
+  await p.click('.sign-spot');
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  await p.waitForTimeout(300);
+  ok(await p.locator('.onb-scrim').count() === 1, '덮개는 하나만 선다 (둘이 되면 하나가 미아가 된다)',
+    String(await p.locator('.onb-scrim').count()));
+
+  await p.click('.onb-btn.go'); await p.waitForTimeout(350);      // 둘째 마디
+  await p.click('.onb-act .onb-skip'); await p.waitForTimeout(1900);
+
+  ok(await p.locator('.onb-scrim').count() === 0, '끝나면 덮개가 하나도 안 남는다',
+    String(await p.locator('.onb-scrim').count()));
+  /* 화면 한가운데에 무엇이 있나 — 안내 것이 남아 있으면 그것이 다 받아먹는다 */
+  const top = await p.evaluate(() => {
+    const n = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+    return n ? (n.className || n.tagName) : '';
+  });
+  ok(!String(top).includes('onb'), '화면 한가운데를 마을이 도로 받는다', String(top));
+
+  /* 말이 아니라 실제로 눌러 본다 — 배웅 전과 똑같이 열려야 한다 */
+  await p.click('#openList'); await p.waitForTimeout(500);
+  ok(await p.locator('#modal:not([hidden])').count() === 1, '목록이 도로 열린다');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  await p.click('.sign-spot'); await p.waitForTimeout(600);
+  ok(await p.locator('.onb-char').count() === 1, '표지판도 다시 눌린다 (한 번 쓰고 죽지 않는다)');
   await p.close();
 }
 

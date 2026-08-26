@@ -428,8 +428,7 @@
       "date": "2026-07",
       "icon": "🤖",
       "status": "beta",
-      "needsReview": false,
-      "featured": 3
+      "needsReview": false
     },
     {
       "id": "grammar",
@@ -485,6 +484,7 @@
     },
     {
       "id": "sindorang-demo",
+      "featured": 1,
       "no": 9,
       "name": "사업팀 운영보드",
       "district": "company",
@@ -520,8 +520,7 @@
       "date": "2026-08",
       "icon": "📅",
       "status": "live",
-      "needsReview": false,
-      "featured": 4
+      "needsReview": false
     },
     {
       "id": "olrw",
@@ -548,7 +547,7 @@
       "icon": "🗺",
       "status": "live",
       "needsReview": false,
-      "featured": 1
+      "featured": 3
     },
     {
       "id": "calendar",
@@ -576,8 +575,7 @@
       "date": "2026-08",
       "icon": "🗒",
       "status": "live",
-      "needsReview": false,
-      "featured": 2
+      "needsReview": false
     },
     {
       "id": "tracker",
