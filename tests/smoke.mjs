@@ -2418,12 +2418,13 @@ if (head('목록 — 프로세스 보기')) {
   await p.click('#openList'); await p.waitForTimeout(700);
 
   const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
-  const withProc = data.items.filter((i) => Array.isArray(i.process) && i.process.length);
+  const withProc = data.items.filter((i) => Array.isArray(i.process) && i.process.length)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   ok(withProc.length > 0, '과정을 적어 둔 프로젝트가 있다');
   ok(await p.locator('.proc-pick-btn').count() === withProc.length,
     '고를 수 있는 프로젝트가 데이터와 같다');
   ok(await p.$eval('.proc-pick-btn.on', (n) => n.textContent) === withProc[0].name,
-    '하나뿐일 때도 무엇의 과정인지 이름이 보인다');
+    '처음 서는 것은 가장 먼저 만든 프로젝트다', withProc[0].name);
 
   /* **여섯 단계가 데이터에서 나온다.** 화면에 박아 두면 프로젝트마다 못 바꾼다 */
   const want = withProc[0].process;
@@ -2741,7 +2742,8 @@ if (head('목록 — 한 장으로 정리')) {
   await town(p);
   await p.click('#openList'); await p.waitForTimeout(700);
   const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
-  const pg = data.items.filter((i) => Array.isArray(i.process) && i.process.length)[0];
+  const pg = data.items.filter((i) => Array.isArray(i.process) && i.process.length)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0];
   const flatN = pg.process.reduce((n, st) => n + Math.max((st.made || []).length, 1), 0);
 
   /* 발치의 종이 점을 눌러 정리 장으로 */
@@ -2842,6 +2844,71 @@ if (head('목록 — 축을 끌면 단계가 따라온다')) {
   await p.evaluate(() => document.querySelector('.proc-arrow--prev').click());
   ok(await p.$eval('.proc-card', (n) => n.classList.contains('from-prev')),
     '이전으로 넘기면 왼쪽에서 밀려 들어온다');
+  await p.close();
+}
+
+/* ── 프로젝트를 바꿔도 축은 그대로다 ────────────────────────
+   「모든 프로젝트가 같은 사고 틀을 지난다」는 말은 틀이 변하지 않는 것을 보여줘야
+   전달된다 — 축이 한 픽셀도 안 움직인 채 길이 되감기고 내용만 갈린다. 통째로 다시
+   그리면 축이 껌뻑이며 새로 생겨서 정반대의 말이 된다. */
+if (head('목록 — 프로젝트를 바꿔도 축은 그대로다')) {
+  const p = await desktop();
+  await town(p);
+  await p.click('#openList'); await p.waitForTimeout(700);
+  const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
+  const list = data.items.filter((i) => Array.isArray(i.process) && i.process.length)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  ok(list.length >= 2, '과정을 적어 둔 프로젝트가 둘 이상이다', `${list.length}개`);
+
+  /* 축 DOM에 표를 남겨 두고 바꾼다 — 다시 그렸다면 표가 사라진다 */
+  await p.evaluate(() => {
+    document.getElementById('procRail').dataset.keep = '1';
+    document.querySelector('.proc-railwrap').dataset.keep = '1';
+  });
+  await p.evaluate(() => document.querySelectorAll('.proc-pick-btn')[1].click());
+  await p.waitForTimeout(800);                      // 되감기 300ms + 다시 칠하기
+
+  const after = await p.evaluate(() => ({
+    railKept: document.getElementById('procRail').dataset.keep === '1',
+    wrapKept: document.querySelector('.proc-railwrap').dataset.keep === '1',
+    on: document.querySelector('.proc-pick-btn.on').textContent,
+    stage: document.querySelector('.proc-step[aria-selected="true"] .proc-lab').textContent,
+    line: document.querySelector('.proc-line').textContent,
+    count: document.querySelector('.proc-count').textContent,
+    road: document.querySelector('.proc-road-done').getBoundingClientRect().width,
+  }));
+  ok(after.railKept && after.wrapKept, '축을 다시 그리지 않았다 (같은 DOM이 그대로 산다)');
+  ok(after.on === list[1].name, '고른 프로젝트가 바뀌었다', after.on);
+  ok(after.stage === list[1].process[0].label && after.line === list[1].process[0].line,
+    '내용은 새 프로젝트의 첫 단계다', after.line);
+  const n2 = list[1].process.reduce((n, st) => n + Math.max((st.made || []).length, 1), 0) + 1;
+  ok(after.count === `1 / ${n2}`, '셈도 새 프로젝트 기준이다', after.count);
+  ok(after.road > 10, '길이 첫 칸까지 다시 칠해져 있다', `${Math.round(after.road)}px`);
+
+  /* 두 프로젝트의 단계 뼈대가 같다 — 같은 틀임을 데이터가 지킨다 */
+  ok(list.every((it) => it.process.map((st) => `${st.icon}${st.label}`).join('|')
+    === list[0].process.map((st) => `${st.icon}${st.label}`).join('|')),
+    '모든 프로젝트가 같은 여섯 단계를 지난다');
+
+  /* 새 프로젝트에도 정리 장이 있다 */
+  await p.evaluate(() => document.querySelector('.proc-dot-i.recap').click());
+  await p.waitForTimeout(400);
+  const rows = await p.$$eval('.proc-sheet-row .proc-sheet-line', (ns) => ns.map((n) => n.textContent));
+  ok(rows.join('|') === list[1].process.map((st) => st.line).join('|'),
+    '새 프로젝트의 정리 장도 그 사고 한 줄 그대로다');
+
+  /* 앱 프로젝트의 이름표는 「실제 화면에서 보기」다 — 원본이 문서가 아니라서 */
+  await p.evaluate(() => document.querySelectorAll('.proc-sheet-row')[0].click());
+  await p.waitForTimeout(400);
+  ok((await p.textContent('.proc-cap-go')).includes('실제 화면'),
+    '앱 프로젝트는 실제 화면으로 안내한다', await p.textContent('.proc-cap-go'));
+
+  /* 되돌아와도 그대로 — 양쪽으로 오간다 */
+  await p.evaluate(() => document.querySelectorAll('.proc-pick-btn')[0].click());
+  await p.waitForTimeout(800);
+  ok(await p.$eval('.proc-pick-btn.on', (n) => n.textContent) === list[0].name
+    && await p.$eval('.proc-railwrap', (n) => n.dataset.keep) === '1',
+    '되돌아와도 축은 같은 DOM이다');
   await p.close();
 }
 

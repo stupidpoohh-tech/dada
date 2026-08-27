@@ -1389,7 +1389,12 @@
      (`setTimeout(0)`) — 계속 세워 두면 다음에 칸을 눌러도 아무 일이 없다. */
   let procScrubbed = false;
 
-  const withProcess = () => data.items.filter((i) => Array.isArray(i.process) && i.process.length);
+  /** 과정을 적어 둔 프로젝트들. **만든 순서(오래된 것부터)**로 세운다 — 사고의
+   *  여정을 처음 것부터 읽는 화면이라서다. items 배열 순서는 구역별 묶음이라
+   *  무엇을 먼저 보여줄지와 상관이 없다(추천 픽의 featured와 같은 이유). */
+  const withProcess = () => data.items
+    .filter((i) => Array.isArray(i.process) && i.process.length)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   const nowAt = () => procFlat[procIdx] || { si: 0 };
   const stageNow = () => procItem.process[nowAt().si];
   const madeNow = () => nowAt().m;
@@ -1528,8 +1533,7 @@
    *  다시 걷는 연출이다. 통째로 다시 그리면(renderProcess) 축이 껌뻑이며 새로
    *  생겨서, 「프로젝트마다 축이 새로 생긴다」로 읽힌다 — 정반대의 말이 된다.
    *
-   *  지금은 process가 있는 프로젝트가 하나라 이 문이 닫혀 있지만, 둘째의
-   *  process를 적는 날 연출이 공짜로 열린다. */
+   */
   function switchProject(it, btn) {
     if (it === procItem) return;
     procItem = it;
@@ -1703,7 +1707,9 @@
     cap.appendChild(el('span', 'proc-cap-stage', `${st.label}의 산출물`));
     cap.appendChild(el('strong', 'proc-cap-title', m.title));
     if (m.note) cap.appendChild(el('span', 'proc-cap-note', m.note));
-    const a = el('a', 'proc-cap-go', '원래 문서에서 보기 →');
+    /* 케이스 스터디는 「원래 문서」가 맞지만, 앱 프로젝트의 원본은 문서가 아니라
+       돌아가는 화면이다 — 이름이 틀리면 눌렀을 때 놀란다 */
+    const a = el('a', 'proc-cap-go', procItem.type === 'app' ? '실제 화면에서 보기 →' : '원래 문서에서 보기 →');
     a.href = (procItem.url || '') + (m.go || '');
     a.addEventListener('click', () => track('process_open', {
       item: procItem.id, stage: st.id, made: m.title,
