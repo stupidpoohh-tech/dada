@@ -2505,12 +2505,15 @@ if (head('목록 — 프로세스 보기')) {
      「단계 1/6」이 따로 놀아서 지금 어디쯤인지 두 군데를 봐야 알았다 */
   await p.evaluate(() => document.querySelectorAll('.proc-step')[0].click());
   await p.waitForTimeout(400);
-  ok(await p.locator('.proc-dot-i').count() === flat.length,
-    '점은 산출물 전체의 개수만큼이다', `${await p.locator('.proc-dot-i').count()} / ${flat.length}`);
-  ok((await p.textContent('.proc-count')) === `1 / ${flat.length}`,
+  /* 산출물 아홉에 **정리 장 하나** — 맨 뒤에 「한 장으로 정리」가 붙는다 */
+  ok(await p.locator('.proc-dot-i').count() === flat.length + 1,
+    '점은 산출물 전체 + 정리 장이다', `${await p.locator('.proc-dot-i').count()} / ${flat.length + 1}`);
+  ok(await p.locator('.proc-dot-i.recap').count() === 1,
+    '정리 장의 점은 종이 모양 하나뿐이다');
+  ok((await p.textContent('.proc-count')) === `1 / ${flat.length + 1}`,
     '셈도 전체 기준이다', await p.textContent('.proc-count'));
-  ok(await p.locator('.proc-gap').count() === want.length - 1,
-    '단계가 바뀌는 자리만 사이를 띄운다');
+  ok(await p.locator('.proc-gap').count() === want.length,
+    '단계가 바뀌는 자리와 정리 장 앞만 사이를 띄운다');
 
   /* 한 장씩 끝까지 넘기며 **각 장이 원래 문서의 그 화면을 가리키는지** 본다.
      넘기는 곳이 한 군데뿐이라 단계 경계도 이 화살표 하나로 넘어간다 */
@@ -2527,10 +2530,14 @@ if (head('목록 — 프로세스 보기')) {
   ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent)
     === want[want.length - 1].label,
     '끝까지 넘기면 마지막 단계에 와 있다 (축이 따라온다)');
-  ok((await p.textContent('.proc-count')) === `${flat.length} / ${flat.length}`,
-    '마지막에서 개수가 맞다');
+  ok((await p.textContent('.proc-count')) === `${flat.length} / ${flat.length + 1}`,
+    '마지막 산출물 다음에 정리 장이 한 장 더 있다');
+  ok(!await p.evaluate(() => document.querySelector('.proc-arrow--next').disabled),
+    '마지막 산출물에서도 다음이 켜져 있다 — 정리 장이 남았다');
+  await p.evaluate(() => document.querySelector('.proc-arrow--next').click());
+  await p.waitForTimeout(300);
   ok(await p.evaluate(() => document.querySelector('.proc-arrow--next').disabled),
-    '마지막에서는 다음이 꺼진다');
+    '정리 장에서는 다음이 꺼진다');
   await p.close();
 }
 
@@ -2547,7 +2554,7 @@ if (head('목록 — 넘기는 곳이 한 군데다')) {
     count: document.querySelector('.proc-count').textContent,
   }));
   const first = await at();
-  ok(first.stage === '문제' && first.count === '1 / 9', '처음은 첫 단계의 첫 장이다',
+  ok(first.stage === '문제' && first.count === '1 / 10', '처음은 첫 단계의 첫 장이다',
     `${first.stage} ${first.count}`);
 
   /* 문제에는 두 장이 있다 — 두 번 넘기면 역할로 넘어가야 한다 */
@@ -2556,14 +2563,14 @@ if (head('목록 — 넘기는 곳이 한 군데다')) {
     await p.waitForTimeout(300);
   }
   const crossed = await at();
-  ok(crossed.stage === '역할' && crossed.count === '3 / 9',
+  ok(crossed.stage === '역할' && crossed.count === '3 / 10',
     '단계 끝에서 넘기면 다음 단계로 이어진다', `${crossed.stage} ${crossed.count}`);
 
   /* **되돌아올 때도 이어진다** — 한 방향으로만 이어지면 갇힌 것과 같다 */
   await p.evaluate(() => document.querySelector('.proc-arrow--prev').click());
   await p.waitForTimeout(300);
   const back = await at();
-  ok(back.stage === '문제' && back.count === '2 / 9', '뒤로도 단계를 넘어 이어진다',
+  ok(back.stage === '문제' && back.count === '2 / 10', '뒤로도 단계를 넘어 이어진다',
     `${back.stage} ${back.count}`);
 
   /* **키보드만으로 모든 단계에 닿아야 한다** */
@@ -2578,7 +2585,7 @@ if (head('목록 — 넘기는 곳이 한 군데다')) {
   /* 점을 눌러 곧장 그 장으로 간다 */
   await p.evaluate(() => document.querySelectorAll('.proc-dot-i')[5].click());
   await p.waitForTimeout(300);
-  ok((await p.textContent('.proc-count')) === '6 / 9', '점을 누르면 그 장으로 간다',
+  ok((await p.textContent('.proc-count')) === '6 / 10', '점을 누르면 그 장으로 간다',
     await p.textContent('.proc-count'));
 
   /* 산출물을 누르면 원래 문서의 **그 화면**이 실제로 열린다. 어느 장에 서 있든
@@ -2722,6 +2729,62 @@ if (head('목록 — 그림이 없으면 말로 선다')) {
   ok(!await p.evaluate(() => [...document.querySelectorAll('img,iframe,link')]
     .some((n) => (n.src || n.href || '').includes('youtu'))),
     '누르기 전에는 유튜브에 아무것도 안 받아온다');
+  await p.close();
+}
+
+/* ── 한 장으로 정리 ────────────────────────────────────────
+   맨 마지막 장은 산출물이 아니라 **여섯 단계의 사고 한 줄을 세로로 쌓은 정리**다 —
+   프레젠테이션이 요약 슬라이드로 끝나듯. 문장은 전부 각 단계의 `line` 그대로라
+   새로 지은 글이 없고, 누르면 그 단계로 돌아간다(목차이기도 하다). */
+if (head('목록 — 한 장으로 정리')) {
+  const p = await desktop();
+  await town(p);
+  await p.click('#openList'); await p.waitForTimeout(700);
+  const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
+  const pg = data.items.filter((i) => Array.isArray(i.process) && i.process.length)[0];
+  const flatN = pg.process.reduce((n, st) => n + Math.max((st.made || []).length, 1), 0);
+
+  /* 발치의 종이 점을 눌러 정리 장으로 */
+  await p.evaluate(() => document.querySelector('.proc-dot-i.recap').click());
+  await p.waitForTimeout(400);
+  ok((await p.textContent('.proc-count')) === `${flatN + 1} / ${flatN + 1}`,
+    '정리 장이 맨 마지막 장이다', await p.textContent('.proc-count'));
+
+  const rows = await p.$$eval('.proc-sheet-row .proc-sheet-line', (ns) => ns.map((n) => n.textContent));
+  ok(rows.length === pg.process.length, '단계마다 문장 하나씩 선다', `${rows.length}줄`);
+  ok(rows.join('|') === pg.process.map((st) => st.line).join('|'),
+    '문장이 각 단계의 사고 한 줄 그대로다 (새로 지은 글이 없다)');
+
+  /* 축은 「전부 지나왔다」로 눕는다 — 이 장은 어느 한 칸의 것이 아니다 */
+  const axis = await p.evaluate(() => ({
+    sel: document.querySelectorAll('.proc-step[aria-selected="true"]').length,
+    done: document.querySelectorAll('.proc-step.done').length,
+    road: document.querySelector('.proc-road-done').getBoundingClientRect().width,
+    rail: document.querySelector('.proc-rail').getBoundingClientRect().width,
+    nub: getComputedStyle(document.querySelector('.proc-nub')).display,
+  }));
+  ok(axis.sel === 0 && axis.done === pg.process.length,
+    '고른 칸이 없고 여섯 칸 모두 지나온 것으로 눕는다', `sel ${axis.sel} done ${axis.done}`);
+  ok(axis.road > axis.rail - 8, '길이 끝까지 칠해져 있다',
+    `${Math.round(axis.road)} / ${Math.round(axis.rail)}`);
+  ok(axis.nub === 'none', '꼬리표는 쉰다 — 이 장은 전부의 것이라서');
+
+  /* 문장을 누르면 그 단계의 첫 산출물로 돌아간다 — 마지막 단계 문장도 가야 한다
+     (정리 장의 si가 마지막 단계와 같아서 예전 문법으로는 안 갔다) */
+  const before = pg.process.slice(0, 2).reduce((n, st) => n + Math.max((st.made || []).length, 1), 0);
+  await p.evaluate(() => document.querySelectorAll('.proc-sheet-row')[2].click());
+  await p.waitForTimeout(400);
+  ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent)
+    === pg.process[2].label, '문장을 누르면 그 단계로 돌아간다');
+  ok((await p.textContent('.proc-count')) === `${before + 1} / ${flatN + 1}`,
+    '그 단계의 첫 산출물부터 선다', await p.textContent('.proc-count'));
+
+  await p.evaluate(() => document.querySelector('.proc-dot-i.recap').click());
+  await p.waitForTimeout(400);
+  await p.evaluate(() => document.querySelectorAll('.proc-sheet-row')[5].click());
+  await p.waitForTimeout(400);
+  ok(await p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent)
+    === pg.process[5].label, '마지막 단계 문장도 간다 (si가 같아도)');
   await p.close();
 }
 

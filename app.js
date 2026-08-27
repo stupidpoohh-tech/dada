@@ -1376,7 +1376,7 @@
 
   let procItem = null;                // 지금 고른 프로젝트
   let procIdx = 0;                    // 지금 몇 번째 산출물 (단계를 가로지르는 한 줄)
-  let procRail = null, procSteps = [], procFlat = [];
+  let procRail = null, procSteps = [], procFlat = [], procPicks = [];
   let procSub = null, procLine = null, procStage = null, procDots = null, procRoad = null;
   /* 넘어간 방향(1 = 다음). 선반이 그 쪽에서 밀려 들어온다 — 「넘겼다」는 감각은
      새 그림이 나타나는 것이 아니라 **어느 쪽에서 오는가**로 생긴다 */
@@ -1405,6 +1405,12 @@
       if (!made.length) { out.push({ si, mi: 0, m: null }); return; }
       made.forEach((m, mi) => out.push({ si, mi, m }));
     });
+    /* 맨 뒤는 **한 장으로 정리**다. 프레젠테이션이 요약 슬라이드로 끝나듯, 여섯
+       단계의 사고 한 줄(line)을 세로로 쌓은 장 — 축을 90도 세운 모양이라 같은
+       점·같은 초록 길이 왼쪽에 흐르고, 문장을 누르면 그 단계로 돌아간다(목차이기도
+       하다). `mi: 0`은 발치 점 줄에서 이 장 앞을 띄우려는 것이고(단계 눈금과 같은
+       규칙), si는 마지막 단계를 적어 두지만 화면은 `recap`으로 갈린다. */
+    out.push({ si: item.process.length - 1, mi: 0, recap: true });
     return out;
   }
 
@@ -1434,14 +1440,15 @@
        고르라는 말이 아니라 자리만 먹는 딱지다 — 주인공(축)을 한 줄 위로 올린다.
        이름은 그래도 남긴다: 여섯 단계가 누구 것인지가 화면에 없으면 안 된다 */
     if (list.length > 1) pick.appendChild(el('span', 'proc-pick-label', '프로젝트'));
-    list.forEach((it) => {
+    procPicks = list.map((it) => {
       const b = el('button', 'proc-pick-btn' + (it === procItem ? ' on' : ''), it.name);
       b.type = 'button';
       b.setAttribute('aria-pressed', String(it === procItem));
-      b.addEventListener('click', () => {
-        procItem = it; procIdx = 0; renderProcess();
-      });
+      /* 통째로 다시 그리지 않는다(renderProcess ❌) — 축이 그대로 서 있어야
+         「틀은 변하지 않고 내용만 지나간다」가 보인다. 아래 switchProject 참고 */
+      b.addEventListener('click', () => switchProject(it, b));
       pick.appendChild(b);
+      return b;
     });
     top.appendChild(pick);
 
@@ -1454,23 +1461,12 @@
     procRail = el('div', 'proc-rail');
     procRail.id = 'procRail';
     procRail.setAttribute('role', 'tablist');
-    procRail.setAttribute('aria-label', `${procItem.name}의 과정`);
     /* 길 — 지나온 쪽만 초록으로 칠한다. 어디까지 왔는지가 축만 봐도 읽히고,
        칸 사이의 빈자리가 「없는 것」이 아니라 「길」이 된다 */
     procRoad = el('span', 'proc-road-done');
     procRail.appendChild(el('span', 'proc-road'));
     procRail.appendChild(procRoad);
-    procSteps = procItem.process.map((st, i) => {
-      const b = el('button', 'proc-step');
-      b.type = 'button';
-      b.setAttribute('role', 'tab');
-      b.setAttribute('aria-label', `${i + 1}. ${st.label} — ${st.sub}`);
-      b.append(el('span', 'proc-dot', st.icon), el('span', 'proc-lab', st.label));
-      /* 끌고 난 자리에서 오는 click은 버린다 — 안 그러면 손을 뗀 칸으로 한 번 더 간다 */
-      b.addEventListener('click', () => { if (!procScrubbed) goStage(i); });
-      procRail.appendChild(b);
-      return b;
-    });
+    buildSteps();
     wrap.appendChild(procRail);
     /* 고른 칸 아래를 가리키는 작은 꼬리. 선반 위의 홈(`.proc-stage::before`)과
        **같은 `--proc-x`**를 써서, 둘이 한 줄에 서면 사이에 글이 끼어 있어도
@@ -1505,19 +1501,81 @@
     requestAnimationFrame(paintAxis);
   }
 
+  /** 축의 칸을 (다시) 세운다. **길(road)은 여기서 안 만든다** — renderProcess가
+   *  한 번 만들어 두고 프로젝트를 바꿔도 그대로 산다. 길이 죽지 않아야
+   *  되감기→다시 칠하기 전환이 이어지고, 그것이 곧 「틀은 그대로」다. */
+  function buildSteps() {
+    procRail.setAttribute('aria-label', `${procItem.name}의 과정`);
+    procRail.querySelectorAll('.proc-step').forEach((n) => n.remove());
+    procSteps = procItem.process.map((st, i) => {
+      const b = el('button', 'proc-step');
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-label', `${i + 1}. ${st.label} — ${st.sub}`);
+      b.append(el('span', 'proc-dot', st.icon), el('span', 'proc-lab', st.label));
+      /* 끌고 난 자리에서 오는 click은 버린다 — 안 그러면 손을 뗀 칸으로 한 번 더 간다 */
+      b.addEventListener('click', () => { if (!procScrubbed) goStage(i); });
+      procRail.appendChild(b);
+      return b;
+    });
+  }
+
+  /** 프로젝트를 바꾼다 — **축은 미동도 하지 않는다.**
+   *
+   *  「모든 프로젝트가 같은 사고 틀을 지난다」는 말은 여기서 눈으로 증명된다:
+   *  틀(여섯 칸)이 한 픽셀도 안 움직인 채 ① 초록 길이 0으로 되감기고
+   *  ② 내용이 갈리고 ③ 길이 첫 칸까지 다시 칠해진다 — 같은 길을 다른 여행자가
+   *  다시 걷는 연출이다. 통째로 다시 그리면(renderProcess) 축이 껌뻑이며 새로
+   *  생겨서, 「프로젝트마다 축이 새로 생긴다」로 읽힌다 — 정반대의 말이 된다.
+   *
+   *  지금은 process가 있는 프로젝트가 하나라 이 문이 닫혀 있지만, 둘째의
+   *  process를 적는 날 연출이 공짜로 열린다. */
+  function switchProject(it, btn) {
+    if (it === procItem) return;
+    procItem = it;
+    procIdx = 0;
+    procFlat = flatten(it);
+    procPicks.forEach((x) => {
+      x.classList.toggle('on', x === btn);
+      x.setAttribute('aria-pressed', String(x === btn));
+    });
+    const swap = () => {
+      buildSteps();                    // 칸 내용을 갈아 끼운다 — 틀이 같으면 그대로로 보인다
+      procDir = 1;
+      procAnim = true;
+      paintAll();
+    };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { swap(); return; }
+    procRoad.style.width = '0px';      // ① 되감기 (.28s transition)
+    setTimeout(swap, 300);             // ② ③ — paintAll이 길을 다시 칠한다
+  }
+
   /** 지금 자리에 맞춰 축·설명·선반·점을 한꺼번에 맞춘다 */
   function paintAll() {
     const cur = nowAt();
-    const st = stageNow();
+    $('procBody').classList.toggle('is-recap', !!cur.recap);
 
-    procSteps.forEach((b, i) => {
-      b.setAttribute('aria-selected', String(i === cur.si));
-      b.classList.toggle('done', i < cur.si);
-    });
+    if (cur.recap) {
+      /* 정리 장은 어느 한 칸의 것이 아니라 **전부의 것**이다 — 고른 칸이 없고,
+         여섯 칸 모두 지나온 것으로 눕고, 길은 끝까지 칠해진다 */
+      procSteps.forEach((b) => {
+        b.setAttribute('aria-selected', 'false');
+        b.classList.add('done');
+      });
+    } else {
+      const st = stageNow();
+      procSteps.forEach((b, i) => {
+        b.setAttribute('aria-selected', String(i === cur.si));
+        b.classList.toggle('done', i < cur.si);
+      });
+      procSub.textContent = st.sub || '';
+      procLine.textContent = st.line || '';
+    }
     paintAxis();
-
-    procSub.textContent = st.sub || '';
-    procLine.textContent = st.line || '';
+    if (cur.recap) {
+      procSub.textContent = '한 장으로 정리';
+      procLine.textContent = procItem.name;
+    }
 
     paintMade();
     paintDots();
@@ -1529,6 +1587,10 @@
    *  고른 칸이 1.1배로 커진 것이 안 잡혀서 길과 꼬리가 조금씩 어긋난다. */
   function paintAxis() {
     if (!procRail || !procRail.isConnected) return;
+    if (nowAt().recap) {               // 길을 다 지나왔다 (px로 — %는 transition이 안 탄다)
+      procRoad.style.width = `${procRail.getBoundingClientRect().width}px`;
+      return;
+    }
     const b = procSteps[nowAt().si];
     if (!b) return;
     const c = b.getBoundingClientRect();
@@ -1559,6 +1621,26 @@
     const card = el('div', 'proc-card');
     if (procAnim) card.classList.add(procDir < 0 ? 'from-prev' : 'from-next');
     procStage.appendChild(card);
+
+    if (nowAt().recap) {
+      /* 여섯 단계의 사고 한 줄을 세로로 쌓는다 — **여섯 문장이면 한 프로젝트다.**
+         전부 각 단계의 `line` 그대로라 새로 지은 글이 없고, 그 단계의 큰 글자로
+         이미 한 번씩 본 문장들이라 요약으로 읽힌다. 누르면 그 단계로 돌아간다. */
+      const sheet = el('div', 'proc-sheet');
+      procItem.process.forEach((stg, si) => {
+        const row = el('button', 'proc-sheet-row');
+        row.type = 'button';
+        const text = el('span', 'proc-sheet-text');
+        text.append(el('span', 'proc-sheet-lab', stg.label),
+                    el('span', 'proc-sheet-line', stg.line || ''));
+        row.append(el('span', 'proc-sheet-dot', stg.icon), text);
+        row.addEventListener('click', () => goStage(si));
+        sheet.appendChild(row);
+      });
+      card.appendChild(sheet);
+      wireProcArrows();
+      return;
+    }
 
     if (!m) {
       card.appendChild(el('p', 'no-result', '이 단계는 아직 남긴 것이 없어요.'));
@@ -1656,10 +1738,11 @@
     if (procFlat.length < 2) return;
     procFlat.forEach((f, i) => {
       if (f.mi === 0 && i) procDots.appendChild(el('span', 'proc-gap'));
-      const d = el('button', 'proc-dot-i' + (i === procIdx ? ' on' : i < procIdx ? ' done' : ''));
+      const d = el('button', 'proc-dot-i' + (i === procIdx ? ' on' : i < procIdx ? ' done' : '')
+        + (f.recap ? ' recap' : ''));
       d.type = 'button';
-      d.setAttribute('aria-label',
-        `${procItem.process[f.si].label} — ${f.m ? f.m.title : '남긴 것 없음'}`);
+      d.setAttribute('aria-label', f.recap ? '한 장으로 정리'
+        : `${procItem.process[f.si].label} — ${f.m ? f.m.title : '남긴 것 없음'}`);
       d.setAttribute('aria-current', String(i === procIdx));
       d.addEventListener('click', () => goMade(i));
       procDots.appendChild(d);
@@ -1675,7 +1758,9 @@
   function goStage(i, quiet) {
     const n = procItem.process.length;
     const to = Math.min(Math.max(i, 0), n - 1);
-    if (to === nowAt().si) return;
+    /* 정리 장의 si는 마지막 단계를 적어 두고 있어서, 이 문만 보면 「실제 서비스」
+       문장을 눌러도 안 가는 것처럼 계산된다 — 정리 장에서는 어디로든 간다 */
+    if (!nowAt().recap && to === nowAt().si) return;
     const idx = firstOf(to);
     if (idx < 0) return;
     procDir = idx < procIdx ? -1 : 1;
@@ -1689,14 +1774,17 @@
   function goMade(i) {
     const to = Math.min(Math.max(i, 0), procFlat.length - 1);
     if (to === procIdx) return;
-    const was = nowAt().si;
+    const was = nowAt();
     procDir = to < procIdx ? -1 : 1;
     procAnim = true;
     procIdx = to;
-    /* 단계가 바뀌었으면 축과 설명까지, 아니면 선반과 점만 */
-    if (nowAt().si !== was) {
+    const cur = nowAt();
+    /* 단계가 바뀌었으면 축과 설명까지, 아니면 선반과 점만.
+       정리 장을 드나드는 것도 축이 바뀌는 일이다 — si만 보면 마지막 단계와
+       정리 장이 같은 값이라, 그것만 봐서는 축이 안 갈린다 */
+    if (cur.si !== was.si || cur.recap !== was.recap) {
       paintAll();
-      track('process_stage', { item: procItem.id, stage: stageNow().id });
+      track('process_stage', { item: procItem.id, stage: cur.recap ? 'recap' : stageNow().id });
     } else {
       paintMade();
       paintDots();

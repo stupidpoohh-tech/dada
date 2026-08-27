@@ -1265,6 +1265,39 @@ a.proc-plate { text-decoration: none; color: inherit; }
 }
 .proc-word-val { color: var(--sub); font-weight: 600; }
 
+/* ── 한 장으로 정리 (마지막 장) ──
+   여섯 단계의 사고 한 줄을 세로로 쌓는다 — **축을 90도 세운 모양**이다. 왼쪽에
+   같은 점과 같은 초록 길이 흐르니, 「이건 그 축을 접은 것」이 설명 없이 읽힌다.
+   문장을 누르면 그 단계로 돌아간다 — 정리이자 목차다. */
+.proc-sheet {
+  position: relative; display: flex; flex-direction: column; gap: 2px;
+  max-width: 34em; margin-inline: auto; padding: 4px 0; text-align: left;
+}
+.proc-sheet::before {
+  content: ''; position: absolute; left: 16.5px; top: 24px; bottom: 24px;
+  width: 3px; border-radius: 2px; background: var(--accent); opacity: .3;
+}
+.proc-sheet-row {
+  position: relative; display: grid; grid-template-columns: 36px 1fr;
+  gap: 0 12px; align-items: center;
+  background: none; border: 0; padding: 7px 10px 7px 0;
+  border-radius: 12px; cursor: pointer; text-align: left; color: inherit;
+}
+.proc-sheet-row:hover { background: var(--surface); }
+.proc-sheet-row:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.proc-sheet-dot {
+  width: 32px; height: 32px; border-radius: 50%; justify-self: center;
+  display: grid; place-items: center; font-size: 15px; line-height: 1;
+  background: var(--accent-tint); border: 2px solid var(--accent);
+}
+.proc-sheet-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.proc-sheet-lab { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; color: var(--accent); }
+.proc-sheet-line { font-size: 15px; font-weight: 700; line-height: 1.45; color: var(--ink); }
+
+/* 정리 장에서는 꼬리표가 쉰다 — 이 장은 어느 한 칸의 것이 아니라 전부의 것이다 */
+.proc.is-recap .proc-nub { display: none; }
+.proc.is-recap .proc-stage::before { display: none; }
+
 .proc-cap { flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .proc-cap-stage {
   font-size: 10.5px; font-weight: 800; color: var(--accent);
@@ -1301,6 +1334,14 @@ a.proc-plate { text-decoration: none; color: inherit; }
 }
 .proc-dot-i.done { background: var(--accent); opacity: .38; }
 .proc-dot-i.on { background: var(--accent); width: 18px; border-radius: 999px; }
+/* 마지막 점은 동그라미가 아니라 **종이 한 장**이다 — 한 장으로 정리가 있다는
+   것을 발치에서도 말한다 */
+.proc-dot-i.recap {
+  width: 12px; height: 10px; border-radius: 2.5px;
+  background: transparent; border: 2px solid var(--line);
+}
+.proc-dot-i.recap.done { background: transparent; }
+.proc-dot-i.recap.on { width: 14px; background: var(--accent-tint); border-color: var(--accent); }
 .proc-gap { width: 9px; }
 .proc-count {
   font-size: 11.5px; font-weight: 800; color: var(--faint);
@@ -1334,6 +1375,11 @@ a.proc-plate { text-decoration: none; color: inherit; }
   .proc-words--grid .proc-word { font-size: 11.5px; }
   .proc-words--chips .proc-word { padding: 7px 13px; font-size: 13.5px; }
   .proc-words--list .proc-word { font-size: 15px; padding-left: 30px; }
+  .proc-sheet-row { grid-template-columns: 30px 1fr; gap: 0 9px; padding-right: 4px; }
+  .proc-sheet-dot { width: 27px; height: 27px; font-size: 12.5px; }
+  .proc-sheet::before { left: 13.5px; top: 20px; bottom: 20px; }
+  .proc-sheet-line { font-size: 13.5px; }
+  .proc-sheet-lab { font-size: 9.5px; }
   .proc-plate.film { padding: 22px 26px; }
   /* 이름표는 좁은 폭에서 두세 줄이 된다 — 글자와 사이를 조금 줄여 한 줄을 아낀다 */
   .proc-cap { gap: 6px; }
