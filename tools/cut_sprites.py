@@ -22,7 +22,10 @@ SHEETS = {
                "bluebird-side", "bluebird-front", "bluebird-fly"], ("h", 64)),
     "clouds": ("assets/sprites/clouds.png", 4,
                ["cloud-1", "cloud-2", "cloud-3", "cloud-4"], ("w", 280)),
-    "me": ("assets/sprites/me.png", 1, ["me"], ("h", 130)),
+    # 다원 앞모습은 여기서 자르지 않는다 — `tools/cut_me.py`로 나갔다(2026-08-27).
+    # 여기 남겨 두면 이 스크립트를 한 번 돌릴 때마다 130px짜리로 되돌아가서,
+    # 안내에서 200px로 커진 다원이 다시 뭉갠다. 뒷모습(cut_me_back.py)도 앞모습의
+    # 캔버스를 따라가므로 같이 어긋난다.
     "people": ("assets/sprites/people.png", 8,
                [f"person-{i}" for i in range(1, 9)], ("h", 88)),
     # 세모집 마당의 확성기. 한 장짜리라 프레임 맞춤이 필요 없어 여기서 자른다

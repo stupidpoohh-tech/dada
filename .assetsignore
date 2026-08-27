@@ -63,6 +63,12 @@ town-background.png
 # 적어 둔 것과 같은 함정이다. 여기서 실제로 한 번 밟았다).
 /me-back.png
 
+# 다원의 앞모습 편집용 원본 — 뒷모습과 똑같은 규칙, 똑같은 함정이다(2026-08-27).
+# 사이트가 쓰는 것은 `tools/cut_me.py`가 떠낸 assets/sprites/cut/me.png(20KB)뿐이고,
+# 이 원본은 936KB다. **슬래시를 반드시 붙인다** — 안 붙이면 이름이 같은
+# `assets/sprites/cut/me.png`까지 같이 빠져서 다원이 배포에서만 사라진다.
+/me-front.png
+
 # 표지판 편집용 원본 — 같은 규칙, 같은 함정이다. 사이트가 쓰는 것은
 # `tools/cut_sign.py`가 떠낸 assets/sprites/cut/sign.png뿐이다.
 #

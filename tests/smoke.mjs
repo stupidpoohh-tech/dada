@@ -2337,7 +2337,7 @@ if (head('안내 — 폰')) {
     `${Math.round(m.b.l)}~${Math.round(m.b.r)} / ${m.vw}`);
   ok(m.cw < 100, '다원이 폰에서는 작아진다', `${Math.round(m.cw)}px`);
   ok(m.btnH >= 44, '버튼이 터치 크기를 넘긴다', `${Math.round(m.btnH)}px`);
-  ok((m.b.h + m.cw * 130 / 98) < m.vh * 0.62, '다원+말풍선이 화면 대부분을 덮지 않는다');
+  ok((m.b.h + m.cw * 558 / 423) < m.vh * 0.62, '다원+말풍선이 화면 대부분을 덮지 않는다');
 
   // 투어 카드는 폰에서 아래 시트로 올라온다 (추천 픽 패널과 같은 방식)
   for (let i = 0; i < 3; i++) { await p.click('.onb-btn.go'); await p.waitForTimeout(180); }

@@ -31,6 +31,7 @@ tools/cut_buildings.py 건물·우편함 시트에서 건물마다 한 장씩 �
 tools/build_list.py   services.json → list.html · sitemap.xml · robots.txt
 tools/cut_crow.py     까마귀 시트를 프레임 세 장으로 자른다 (같은 캔버스·같은 기준점)
 tools/cut_note.py     쪽지 시트를 프레임 세 장으로 자른다 (종이를 기준점으로 맞춘다)
+tools/cut_me.py       다원 앞모습을 원본에서 떠낸다 (423x558 — 안내에서 200px까지 커진다)
 tools/cut_me_back.py  다원 뒷모습을 앞모습(me.png)과 같은 캔버스·같은 밑변으로 떠낸다
 tools/cut_sign.py     마을 나가는 길의 표지판을 밑변 기준으로 떠낸다
 tools/shot.mjs        마을을 찍어 보는 도구 — 크롭·%눈금 (아래 「찍어 보기」)
@@ -138,6 +139,21 @@ URL만 알면 누구나 받아갈 수 있기 때문이다. 아래 둘은 `.gitig
 ```
 git show 86bfa0a:assets/map/town.jpg > assets/map/town.jpg
 ```
+
+**저장소 루트에 남아 있는 원본이 넷 있다** — 다원님이 GitHub 웹으로 올리는 자리가
+거기라서다. 이것들은 지우지 않고 `.assetsignore`로 **배포에서만 뺀다**. 지우면 다시 뜰
+때 원본부터 다시 받아야 해서다.
+
+| 파일 | 무엇을 뜨나 | 뜨는 도구 |
+|---|---|---|
+| `me-front.png` | 다원 앞모습 `me.png` | `tools/cut_me.py` |
+| `me-back.png` | 다원 뒷모습 `me-back.png` | `tools/cut_me_back.py` |
+| `sign.png` | 마을 나가는 길 표지판 | `tools/cut_sign.py` |
+| `town-background.png` | 건물 시트를 뜰 때 쓰는 바탕 | `tools/cut_buildings.py` |
+
+`.assetsignore`에 적을 때 **앞에 슬래시를 반드시 붙인다**(`/me-front.png`). 안 붙이면
+gitignore 규칙상 어느 깊이에서나 걸려서, 이름이 같은 `assets/sprites/cut/me-front.png`
+쪽까지 함께 빠진다 — **배포에서만 그림이 사라져** 알아채기 어렵다. 실제로 밟은 적이 있다.
 
 ## 항목 추가하기
 
@@ -957,10 +973,12 @@ document.dispatchEvent(new CustomEvent('dada:ready', { detail: { data } }));
 다원은 **돌아서서** 걸어간다. 앞모습(`me.png`)과 뒷모습(`me-back.png`)을 겹쳐 두고
 0.16초 크로스페이드로 갈고, 도착해서 지도 위 "나"(앞모습)로 다시 겹쳐 바뀐다.
 
-두 장은 **같은 캔버스(98×130)·같은 밑변**이어야 한다. 아니면 돌아설 때 키가 튀거나
+두 장은 **같은 캔버스(423×558)·같은 밑변**이어야 한다. 아니면 돌아설 때 키가 튀거나
 발이 어긋난다. `tools/cut_me_back.py`가 그렇게 맞춰 떠낸다 — 알파 상자로 바짝 자르고,
-높이를 130px에 맞추고(가로세로 비가 앞 0.754 · 뒤 0.738로 거의 같아 억지로 늘일 일이
-없다), 98×130 캔버스에 가로 가운데·아래 맞춤으로 얹는다. 맞았는지는 두 장을 반씩
+높이를 앞모습에 맞추고(가로세로 비가 앞 0.758 · 뒤 0.738로 거의 같아 억지로 늘일 일이
+없다), 앞모습과 같은 캔버스에 가로 가운데·아래 맞춤으로 얹는다. 캔버스 크기를 박아
+두지 않고 **앞모습에서 읽어 오므로**, 앞모습을 다시 뜬 뒤에는 이것도 다시 돌린다:
+`python3 tools/cut_me.py && python3 tools/cut_me_back.py`. 맞았는지는 두 장을 반씩
 겹쳐 보면 안다 — 머리·옷깃·치맛단·발이 같은 줄에 오면 된다.
 
 포개는 것은 `.onb-beat`가 맡는다(`position: relative` + `.onb-back`이
