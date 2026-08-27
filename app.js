@@ -1410,6 +1410,11 @@
       if (!made.length) { out.push({ si, mi: 0, m: null }); return; }
       made.forEach((m, mi) => out.push({ si, mi, m }));
     });
+    /* **산출물이 하나도 없는 프로젝트는 정리 장이 곧 전부다.** 문장 여섯 줄만
+       적은 가벼운 프로젝트를 위해서다 — 위에서 쌓인 빈 자리들을 그대로 두면
+       「이 단계는 아직 남긴 것이 없어요」를 아홉 번 넘겨야 정리에 닿는다.
+       빈 장 아홉 개는 기록이 아니라 벽이다. */
+    if (!out.some((f) => f.m)) out.length = 0;
     /* 맨 뒤는 **한 장으로 정리**다. 프레젠테이션이 요약 슬라이드로 끝나듯, 여섯
        단계의 사고 한 줄(line)을 세로로 쌓은 장 — 축을 90도 세운 모양이라 같은
        점·같은 초록 길이 왼쪽에 흐르고, 문장을 누르면 그 단계로 돌아간다(목차이기도
@@ -1630,18 +1635,37 @@
       /* 여섯 단계의 사고 한 줄을 세로로 쌓는다 — **여섯 문장이면 한 프로젝트다.**
          전부 각 단계의 `line` 그대로라 새로 지은 글이 없고, 그 단계의 큰 글자로
          이미 한 번씩 본 문장들이라 요약으로 읽힌다. 누르면 그 단계로 돌아간다. */
+      /* 이 장뿐인 프로젝트(문장 여섯 줄짜리)에서는 문장이 단추가 아니다 —
+         돌아갈 단계 장이 없는데 눌리는 모양이면 눌러 본 사람만 실망한다 */
+      const can = procFlat.length > 1;
       const sheet = el('div', 'proc-sheet');
       procItem.process.forEach((stg, si) => {
-        const row = el('button', 'proc-sheet-row');
-        row.type = 'button';
+        const row = el(can ? 'button' : 'div', 'proc-sheet-row' + (can ? '' : ' static'));
+        if (can) {
+          row.type = 'button';
+          row.addEventListener('click', () => goStage(si));
+        }
         const text = el('span', 'proc-sheet-text');
         text.append(el('span', 'proc-sheet-lab', stg.label),
                     el('span', 'proc-sheet-line', stg.line || ''));
         row.append(el('span', 'proc-sheet-dot', stg.icon), text);
-        row.addEventListener('click', () => goStage(si));
         sheet.appendChild(row);
       });
       card.appendChild(sheet);
+      /* 정리 밑에 실물로 가는 문 하나. 이 장뿐인 프로젝트에서는 프로세스 탭에서
+         실물로 나가는 유일한 길이고, 산출물이 있는 프로젝트에서도 요약을 다 읽은
+         사람이 다음으로 가고 싶은 곳이 거기다 */
+      if (procItem.url) {
+        const cap = el('div', 'proc-cap');
+        const a = el('a', 'proc-cap-go',
+          procItem.type === 'app' ? '실제 화면에서 보기 →' : '원래 문서에서 보기 →');
+        a.href = procItem.url;
+        a.addEventListener('click', () => track('process_open', {
+          item: procItem.id, stage: 'recap', made: '한 장으로 정리',
+        }));
+        cap.appendChild(a);
+        card.appendChild(cap);
+      }
       wireProcArrows();
       return;
     }

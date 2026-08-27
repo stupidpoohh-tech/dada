@@ -1284,6 +1284,9 @@ a.proc-plate { text-decoration: none; color: inherit; }
   border-radius: 12px; cursor: pointer; text-align: left; color: inherit;
 }
 .proc-sheet-row:hover { background: var(--surface); }
+/* 이 장뿐인 프로젝트의 문장 — 갈 데가 없으므로 눌리는 모양을 하지 않는다 */
+.proc-sheet-row.static { cursor: default; }
+.proc-sheet-row.static:hover { background: none; }
 .proc-sheet-row:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .proc-sheet-dot {
   width: 32px; height: 32px; border-radius: 50%; justify-self: center;

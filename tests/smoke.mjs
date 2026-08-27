@@ -2865,7 +2865,10 @@ if (head('목록 — 프로젝트를 바꿔도 축은 그대로다')) {
     document.getElementById('procRail').dataset.keep = '1';
     document.querySelector('.proc-railwrap').dataset.keep = '1';
   });
-  await p.evaluate(() => document.querySelectorAll('.proc-pick-btn')[1].click());
+  /* 두 번째가 아니라 **산출물이 있는 다음 프로젝트**로 간다 — 문장 여섯 줄짜리
+     (한 장뿐인 프로젝트)는 장 셈이 달라서 아래 확인들이 그쪽 규칙이 된다 */
+  const full = list.findIndex((it, i) => i > 0 && it.process.some((st) => (st.made || []).length));
+  await p.evaluate((n) => document.querySelectorAll('.proc-pick-btn')[n].click(), full);
   await p.waitForTimeout(800);                      // 되감기 300ms + 다시 칠하기
 
   const after = await p.evaluate(() => ({
@@ -2878,10 +2881,10 @@ if (head('목록 — 프로젝트를 바꿔도 축은 그대로다')) {
     road: document.querySelector('.proc-road-done').getBoundingClientRect().width,
   }));
   ok(after.railKept && after.wrapKept, '축을 다시 그리지 않았다 (같은 DOM이 그대로 산다)');
-  ok(after.on === list[1].name, '고른 프로젝트가 바뀌었다', after.on);
-  ok(after.stage === list[1].process[0].label && after.line === list[1].process[0].line,
+  ok(after.on === list[full].name, '고른 프로젝트가 바뀌었다', after.on);
+  ok(after.stage === list[full].process[0].label && after.line === list[full].process[0].line,
     '내용은 새 프로젝트의 첫 단계다', after.line);
-  const n2 = list[1].process.reduce((n, st) => n + Math.max((st.made || []).length, 1), 0) + 1;
+  const n2 = list[full].process.reduce((n, st) => n + Math.max((st.made || []).length, 1), 0) + 1;
   ok(after.count === `1 / ${n2}`, '셈도 새 프로젝트 기준이다', after.count);
   ok(after.road > 10, '길이 첫 칸까지 다시 칠해져 있다', `${Math.round(after.road)}px`);
 
@@ -2894,7 +2897,7 @@ if (head('목록 — 프로젝트를 바꿔도 축은 그대로다')) {
   await p.evaluate(() => document.querySelector('.proc-dot-i.recap').click());
   await p.waitForTimeout(400);
   const rows = await p.$$eval('.proc-sheet-row .proc-sheet-line', (ns) => ns.map((n) => n.textContent));
-  ok(rows.join('|') === list[1].process.map((st) => st.line).join('|'),
+  ok(rows.join('|') === list[full].process.map((st) => st.line).join('|'),
     '새 프로젝트의 정리 장도 그 사고 한 줄 그대로다');
 
   /* 앱 프로젝트의 이름표는 「실제 화면에서 보기」다 — 원본이 문서가 아니라서 */
@@ -2909,6 +2912,48 @@ if (head('목록 — 프로젝트를 바꿔도 축은 그대로다')) {
   ok(await p.$eval('.proc-pick-btn.on', (n) => n.textContent) === list[0].name
     && await p.$eval('.proc-railwrap', (n) => n.dataset.keep) === '1',
     '되돌아와도 축은 같은 DOM이다');
+  await p.close();
+}
+
+/* ── 문장 여섯 줄짜리 프로젝트 — 한 장이 곧 전부다 ─────────────
+   산출물 없이 각 단계의 사고 한 줄만 적은 가벼운 프로젝트. 빈 장 아홉 개를
+   넘기게 하지 않고 **곧바로 정리 장으로** 연다 — 빈 장은 기록이 아니라 벽이다. */
+if (head('목록 — 한 장뿐인 프로젝트')) {
+  const p = await desktop();
+  await town(p);
+  await p.click('#openList'); await p.waitForTimeout(700);
+  const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
+  const list = data.items.filter((i) => Array.isArray(i.process) && i.process.length)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const lite = list.findIndex((it) => !it.process.some((st) => (st.made || []).length));
+  ok(lite >= 0, '문장 여섯 줄짜리 프로젝트가 있다', list.map((i) => i.id).join(', '));
+
+  await p.evaluate((n) => document.querySelectorAll('.proc-pick-btn')[n].click(), lite);
+  await p.waitForTimeout(800);
+
+  const view = await p.evaluate(() => ({
+    recap: document.getElementById('procBody').classList.contains('is-recap'),
+    rows: [...document.querySelectorAll('.proc-sheet-row')]
+      .map((r) => ({ tag: r.tagName, line: r.querySelector('.proc-sheet-line').textContent })),
+    empty: !!document.querySelector('#procBody .no-result'),
+    dots: document.querySelectorAll('.proc-dot-i').length,
+    count: !!document.querySelector('.proc-count'),
+    arrows: document.querySelectorAll('.proc-arrow').length,
+    go: document.querySelector('.proc-card .proc-cap-go')?.textContent,
+    href: document.querySelector('.proc-card .proc-cap-go')?.getAttribute('href'),
+  }));
+  ok(view.recap && !view.empty, '열자마자 정리 장이다 (빈 장을 넘기게 하지 않는다)');
+  ok(view.rows.length === list[lite].process.length
+    && view.rows.map((r) => r.line).join('|') === list[lite].process.map((st) => st.line).join('|'),
+    '문장 여섯 줄이 그대로 선다');
+  /* 갈 단계 장이 없으므로 문장은 단추가 아니다 — 눌리는 모양이면 눌러 본 사람만 실망한다 */
+  ok(view.rows.every((r) => r.tag !== 'BUTTON'), '문장이 단추가 아니다 (갈 데가 없다)');
+  ok(view.dots === 0 && !view.count && view.arrows === 0,
+    '넘길 것이 없으니 점도 셈도 화살표도 없다',
+    `점 ${view.dots} 셈 ${view.count} 화살표 ${view.arrows}`);
+  /* 이 장뿐이라 실물로 가는 문이 여기 있어야 한다 */
+  ok(view.go && view.go.includes('실제 화면') && view.href === list[lite].url,
+    '정리 밑에 실물로 가는 문이 있다', `${view.go} ${view.href}`);
   await p.close();
 }
 
