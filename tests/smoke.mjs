@@ -2599,6 +2599,189 @@ if (head('목록 — 넘기는 곳이 한 군데다')) {
   await p.close();
 }
 
+/* ── 축이 주인공이다 ─────────────────────────────────────
+   이 화면이 하려는 말은 「이렇게 생각하며 만들었다」이고, 산출물은 그 아래 깔린
+   증거다. 말과 증거의 크기가 뒤집히면 「산출물 뷰어에 단계바가 붙은 것」이 된다 —
+   실제로 한 번 그렇게 보였다(2026-08-27, 쓰는 사람). 그래서 **크기로 검사한다.** */
+if (head('목록 — 사고가 산출물보다 크다')) {
+  const p = await desktop();
+  await town(p);
+  await p.click('#openList'); await p.waitForTimeout(700);
+
+  const size = await p.evaluate(() => {
+    const px = (el) => parseFloat(getComputedStyle(el).fontSize);
+    return {
+      line: px(document.querySelector('.proc-line')),
+      cap: px(document.querySelector('.proc-cap-title')),
+      shot: document.querySelector('.proc-frame').getBoundingClientRect().height,
+      rail: document.querySelector('.proc-railwrap').getBoundingClientRect().height,
+      body: document.getElementById('procBody').getBoundingClientRect().height,
+    };
+  });
+  ok(size.line >= 19, '사고 한 줄이 이 화면에서 제일 큰 글자다', `${size.line}px`);
+  ok(size.line > size.cap * 1.3, '산출물 이름표보다 뚜렷이 크다',
+    `${size.line} / ${size.cap}`);
+  /* 증거가 화면의 절반을 넘게 먹으면 눈이 거기부터 간다 */
+  ok(size.shot < size.body * 0.5, '산출물은 화면의 절반을 넘지 않는다',
+    `${Math.round(size.shot)} / ${Math.round(size.body)}`);
+
+  /* **선반이 축에 매달려 있다고 그림으로 말한다.** 축의 꼬리와 선반의 홈이 같은
+     세로줄에 서고, 그 줄은 고른 칸의 한가운데다 */
+  const tether = await p.evaluate(() => {
+    const wrap = document.querySelector('.proc-railwrap').getBoundingClientRect();
+    const b = document.querySelector('.proc-step[aria-selected="true"]').getBoundingClientRect();
+    const nub = document.querySelector('.proc-nub').getBoundingClientRect();
+    const x = document.getElementById('procBody').style.getPropertyValue('--proc-x');
+    return {
+      nub: nub.left + nub.width / 2,
+      mid: b.left + b.width / 2,
+      set: parseFloat(x) > 0 && parseFloat(x) < wrap.width,
+    };
+  });
+  ok(tether.set, '꼬리표 자리가 축 안에서 정해진다');
+  ok(Math.abs(tether.nub - tether.mid) < 3, '꼬리는 고른 칸 한가운데 아래에 선다',
+    `${Math.round(tether.nub)} / ${Math.round(tether.mid)}`);
+
+  /* **창이 보이기 전에 그려진 것을 다시 잰다.** 축은 탭을 만들 때 한 번 그려지는데
+     그때 창은 `hidden`이라 재는 값이 전부 0이다 — 지나온 길이 폭 0으로 굳어서
+     단계를 한 번 옮기기 전에는 초록이 아예 안 보였다 */
+  const road = await p.evaluate(() => ({
+    w: document.querySelector('.proc-road-done').getBoundingClientRect().width,
+    mid: (() => { const b = document.querySelector('.proc-step[aria-selected="true"]').getBoundingClientRect();
+      const r = document.querySelector('.proc-rail').getBoundingClientRect();
+      return b.left + b.width / 2 - r.left; })(),
+  }));
+  ok(road.w > 10 && Math.abs(road.w - road.mid) < 3,
+    '열자마자 지나온 길이 첫 칸까지 칠해져 있다', `${Math.round(road.w)} / ${Math.round(road.mid)}`);
+  await p.close();
+}
+
+/* ── 말로 선 산출물 ────────────────────────────────────────
+   한때 다섯 자리에 회색 자리표시자(`sample/shot.png`)가 「샘플 이미지」 딱지를 달고
+   걸려 있었다. 그런데 그 자리에 들어갈 말은 케이스 스터디에 **이미 다 적혀 있었다** —
+   맡은 일 다섯 가지도, 열여덟 날의 일력도, 세 줄로 남긴 판단도. 그래서 옮겨 담았다.
+   **검사는 그 말이 케이스 스터디의 말과 같은지를 본다** — 두 곳에 같은 말이 있고
+   자동으로 맞춰지지 않으므로, 한쪽만 고치면 여기서 걸린다. */
+if (head('목록 — 그림이 없으면 말로 선다')) {
+  const p = await desktop();
+  await town(p);
+  await p.click('#openList'); await p.waitForTimeout(700);
+  const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
+  const pg = data.items.find((i) => i.id === 'playgrown');
+  const made = pg.process.flatMap((st) => st.made || []);
+
+  ok(!made.some((m) => m.sample), '자리만 잡아 둔 그림이 하나도 안 남았다',
+    made.filter((m) => m.sample).map((m) => m.title).join(', '));
+  ok(!made.some((m) => (m.img || '').includes('sample/')),
+    '샘플 그림을 가리키는 것도 없다');
+
+  /* 케이스 스터디의 원문과 대조한다 */
+  const doc = await p.evaluate(() => fetch('/case/playgrown.html').then((r) => r.text()));
+  const strip = (h) => h.replace(/<[^>]+>/g, '').trim();
+
+  const role = made.find((m) => m.go === '#r-cover');
+  const said = strip(/<p class="case-role"><span>맡은 일<\/span>([\s\S]*?)<\/p>/.exec(doc)[1]);
+  ok(role.layout === 'chips' && role.words.every((w) => said.includes(w)),
+    '맡은 일 다섯 가지가 케이스 스터디에 적힌 그대로다', role.words.join(' · '));
+
+  const note = made.find((m) => m.go === '#r-note');
+  const lis = [.../<ol class="note-list">([\s\S]*?)<\/ol>/.exec(doc)[1].matchAll(/<li>([\s\S]*?)<\/li>/g)]
+    .map((m) => strip(m[1]));
+  ok(note.layout === 'list' && JSON.stringify(note.words) === JSON.stringify(lis),
+    '배운 것 세 줄이 케이스 스터디와 한 글자도 다르지 않다', note.words.join(' / '));
+
+  const days = made.find((m) => m.go === '#r-days');
+  const doc7 = [...doc.matchAll(/datetime="2025-07-(\d\d)"[\s\S]*?<p class="day-do">([\s\S]*?)<\/p>/g)]
+    .map((m) => [`7/${parseInt(m[1], 10)}`, strip(m[2])]);
+  ok(days.layout === 'grid' && JSON.stringify(days.words) === JSON.stringify(doc7),
+    `열여덟 날의 일력이 케이스 스터디와 같다 (${doc7.length}칸)`);
+
+  /* 화면에도 그대로 서나 */
+  await p.evaluate(() => document.querySelectorAll('.proc-step')[2].click());
+  await p.waitForTimeout(400);
+  const grid = await p.evaluate(() => ({
+    n: document.querySelectorAll('.proc-words--grid .proc-word').length,
+    cols: getComputedStyle(document.querySelector('.proc-words--grid')).columnCount,
+    tall: document.querySelector('.proc-frame').getBoundingClientRect().height,
+    body: document.getElementById('procBody').getBoundingClientRect().height,
+  }));
+  ok(grid.n === 18, '일력 열여덟 칸이 화면에도 다 선다', `${grid.n}칸`);
+  ok(grid.cols === '3', '세로로 늘어놓지 않고 3단으로 접는다', grid.cols);
+  ok(grid.tall < grid.body * 0.55, '글판도 화면의 절반을 넘지 않는다',
+    `${Math.round(grid.tall)} / ${Math.round(grid.body)}`);
+
+  /* **재생 단추를 그려 놓고 아무 데도 안 가면 안 된다** — 진짜 카드가 있는 자리로 간다 */
+  await p.evaluate(() => document.querySelectorAll('.proc-step')[3].click());
+  await p.waitForTimeout(400);
+  const film = await p.evaluate(() => {
+    const a = document.querySelector('.proc-plate.film');
+    return a && { tag: a.tagName, href: a.getAttribute('href'), label: a.getAttribute('aria-label') };
+  });
+  ok(film && film.tag === 'A', '영상 카드는 눌리는 것이다');
+  ok(film.href === `${pg.url}#r-pilot`, '눌리면 그 영상이 걸린 화면으로 간다', film.href);
+  ok(!await p.evaluate(() => [...document.querySelectorAll('img,iframe,link')]
+    .some((n) => (n.src || n.href || '').includes('youtu'))),
+    '누르기 전에는 유튜브에 아무것도 안 받아온다');
+  await p.close();
+}
+
+/* ── 축을 끌어 단계를 고른다 ───────────────────────────────
+   **칸이 미끄러지는 것이 아니다.** 여섯 칸은 제자리에 있고 손끝이 지나는 칸이
+   고른 칸이 된다 — 그래서 전체 흐름이 한 번도 화면에서 사라지지 않는다. */
+if (head('목록 — 축을 끌면 단계가 따라온다')) {
+  const p = await desktop();
+  await town(p);
+  await p.click('#openList'); await p.waitForTimeout(700);
+  await p.evaluate(() => {
+    window.__ev = [];
+    const t = window.dadaTrack;
+    window.dadaTrack = (n, q) => { window.__ev.push(n); if (t) t(n, q); };
+  });
+
+  const mid = (i) => p.evaluate((n) => {
+    const c = document.querySelectorAll('.proc-step')[n].getBoundingClientRect();
+    return { x: c.left + c.width / 2, y: c.top + c.height / 2 };
+  }, i);
+  const now = () => p.$eval('.proc-step[aria-selected="true"] .proc-lab', (n) => n.textContent);
+
+  const a = await mid(0);
+  const z = await mid(5);
+  await p.mouse.move(a.x, a.y);
+  await p.mouse.down();
+  const mids = [];
+  for (let i = 1; i <= 12; i++) {
+    await p.mouse.move(a.x + (z.x - a.x) * i / 12, a.y);
+    if (i === 6) mids.push(await now());
+  }
+  /* 끄는 동안 이미 따라와 있어야 한다 — 손을 떼야 바뀌면 「끄는 것」이 아니다 */
+  ok(mids[0] !== '문제', '끄는 동안 이미 단계가 따라온다', mids[0]);
+  ok(await p.evaluate(() => document.querySelector('.proc-rail').classList.contains('scrubbing')),
+    '끄는 동안이라고 표시한다 (길이 손끝을 그대로 따라오게)');
+  await p.mouse.up();
+  await p.waitForTimeout(400);
+
+  ok(await now() === '실제 서비스', '끝까지 끌면 마지막 단계다', await now());
+  ok(!await p.evaluate(() => document.querySelector('.proc-rail').classList.contains('scrubbing')),
+    '손을 떼면 끄는 중이 풀린다');
+  /* **한 번 끈 것은 한 번으로 센다.** 지나친 칸마다 세면 여섯 번이 된다 */
+  const ev = await p.evaluate(() => window.__ev.filter((n) => n === 'process_stage'));
+  ok(ev.length === 1, '한 번 끈 것은 한 번만 센다', `${ev.length}번`);
+
+  /* 손을 뗀 자리의 click 한 번만 삼킨다 — 계속 삼키면 그다음부터 축이 안 눌린다 */
+  await p.evaluate(() => document.querySelectorAll('.proc-step')[1].click());
+  await p.waitForTimeout(300);
+  ok(await now() === '역할', '끌고 난 다음에도 칸을 눌러 옮길 수 있다', await now());
+
+  /* 넘긴 방향이 화면에 남는다 — 새 장이 그쪽에서 밀려 들어온다 */
+  await p.evaluate(() => document.querySelector('.proc-arrow--next').click());
+  ok(await p.$eval('.proc-card', (n) => n.classList.contains('from-next')),
+    '다음으로 넘기면 오른쪽에서 밀려 들어온다');
+  await p.evaluate(() => document.querySelector('.proc-arrow--prev').click());
+  ok(await p.$eval('.proc-card', (n) => n.classList.contains('from-prev')),
+    '이전으로 넘기면 왼쪽에서 밀려 들어온다');
+  await p.close();
+}
+
 /* **폰에서도 축은 통째로 보인다.** 예전에는 고른 칸을 가운데 두고 미끄러져서
    두세 칸만 보였다 — 정작 축이 하려는 말(「전체 흐름」)이 폰에서만 안 읽혔다. */
 if (head('목록 — 폰에서도 축이 통째로 보인다')) {

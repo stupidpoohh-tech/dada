@@ -1012,7 +1012,15 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
    auto인 순간 아무것도 안 막는다 — 브랜드 보드가 선반을 뚫고 나와 축까지 덮었다
    (CLAUDE.md의 「그림이 제 높이를 자기 기준으로 재는 꼴」과 같은 함정이다).
    화면 높이에 딸린 값이라 창을 세로로 줄여도 모달이 넘치지 않는다. */
-.proc { display: flex; flex-direction: column; overflow-y: auto; --proc-shot-h: min(30dvh, 300px); }
+/* **증거는 작게 둔다.** 선반이 화면의 절반을 먹으면 눈이 먼저 그림에 가서
+   「산출물 뷰어에 단계바가 붙은 것」으로 읽힌다 — 이 화면이 하려는 말의 반대다.
+   `--proc-x`는 꼬리표(축의 꼬리 · 선반의 홈)가 설 가로 자리다. JS가 고른 칸에
+   맞춰 다시 적어 주는데, 그 전에도 가운데에 서 있도록 기본값을 둔다. */
+.proc {
+  display: flex; flex-direction: column; overflow-y: auto;
+  --proc-shot-h: min(25dvh, 240px);
+  --proc-x: 50%;
+}
 
 /* 축은 굴러도 위에 남는다 — 「사고축 아래에 산출물이 깔려 있다」는 위계가
    화면을 굴린다고 뒤집히면 안 된다. 바탕을 깔아야 밑에 것이 비쳐 지나가지 않는다 */
@@ -1022,6 +1030,13 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 }
 
 .proc-pick { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; flex: none; }
+/* 고를 것이 없을 때. 딱지가 아니라 「무엇의 과정인가」를 적은 머리말이라
+   초록 알약을 벗기고 글자만 남긴다 — 주인공이 한 줄 위로 올라온다 */
+.proc-pick.lone .proc-pick-btn,
+.proc-pick.lone .proc-pick-btn.on {
+  background: none; border: 0; padding: 0; cursor: default;
+  color: var(--sub); font-size: 12.5px; font-weight: 800; letter-spacing: -.01em;
+}
 .proc-pick-label { font-size: 11.5px; font-weight: 700; color: var(--faint); letter-spacing: .06em; }
 .proc-pick-btn {
   background: var(--surface); color: var(--sub);
@@ -1047,7 +1062,17 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 
 /* **양옆 여백은 고른 칸이 커질 자리다.** 고른 칸은 1.1배로 커지는데, 첫 칸과
    마지막 칸에는 커질 곳이 없어 틀 밖으로 삐져나갔다(검사가 잡았다) */
-.proc-rail { position: relative; display: flex; align-items: flex-start; padding: 10px 8px 8px; }
+/* **가로만 가로챈다**(`pan-y`). 축을 끌면 단계가 옮겨 가지만, 세로로 쓸면
+   모달이 그대로 굴러야 한다 — 축이 굴림을 막으면 폰에서 아래를 못 본다.
+   `user-select: none`이 없으면 끄는 동안 칸 이름이 파랗게 잡힌다 */
+.proc-rail {
+  position: relative; display: flex; align-items: flex-start; padding: 10px 8px 8px;
+  touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab;
+}
+.proc-rail.scrubbing { cursor: grabbing; }
+/* 끄는 동안에는 길이 손끝을 그대로 따라와야 한다 — 0.28초 뒤따라오면 고무줄이 된다 */
+.proc-rail.scrubbing .proc-road-done { transition: none; }
+.proc-rail.scrubbing .proc-step { transition: none; }
 
 /* 길 — 지나온 쪽만 초록으로 칠한다. 칸 사이의 빈자리가 「없는 것」이 아니라
    「길」로 읽히고, 어디까지 왔는지가 축만 봐도 보인다.
@@ -1084,6 +1109,16 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 .proc-step[aria-selected="true"] .proc-lab { color: var(--accent); }
 .proc-step:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
 
+/* 축 아래의 꼬리. 선반 위의 홈과 **같은 `--proc-x`**에 서서, 사이에 글이 끼어
+   있어도 둘이 한 줄에 있으면 「이 선반은 저 칸에 매달린 것」으로 읽힌다 */
+.proc-nub {
+  position: absolute; bottom: 0; left: var(--proc-x); z-index: 1;
+  width: 0; height: 0; margin-left: -6px;
+  border: 6px solid transparent; border-top-color: var(--accent);
+  opacity: .55; transition: left .28s ease;
+}
+.proc-rail.scrubbing ~ .proc-nub { transition: none; }
+
 /* 어깨말은 축에서 내려와 여기 선다 — 칸 안에 두면 폰에서 서너 줄로 접힌다 */
 .proc-sub {
   flex: none; margin: 0; text-align: center;
@@ -1091,9 +1126,14 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 }
 /* **단계 이름을 여기서 또 쓰지 않는다.** 축이 이미 초록으로 말하고 있어서,
    큰 표제로 한 번 더 쓰면 같은 말이 한 화면에 세 번 나온다 */
+/* **이 한 줄이 화면에서 제일 큰 글자다.** 축이 「어느 단계인가」를 말한다면
+   여기는 「그때 무슨 생각을 했나」를 말한다 — 이 화면의 주인공은 산출물이
+   아니라 그 생각이라서, 크기로 그렇게 말한다. 15px일 때는 그림이 먼저 읽혀서
+   위계가 뒤집혀 있었다. */
 .proc-line {
-  flex: none; margin: 4px 0 10px; text-align: center;
-  font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.5;
+  flex: none; margin: 6px auto 0; max-width: 34em; text-align: center;
+  font-size: 21px; font-weight: 700; letter-spacing: -.015em;
+  color: var(--ink); line-height: 1.45; text-wrap: balance;
 }
 
 /* ── 선반 (증거) ──
@@ -1102,14 +1142,39 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
 /* **선반은 제 내용만큼만 차지한다**(`flex: 0 0 auto`). 늘였다 줄였다 하게 두면
    남은 자리에 맞춰 상자만 줄고 그림은 안 줄어서, 그림이 위아래로 삐져나와
    축과 발치를 덮는다 — 실제로 그렇게 보였다. 모자라면 이 화면이 굴러간다. */
+/* 위와의 틈은 **여기서 낸다.** 설명 줄의 아래 여백으로 내면 그 틈까지 붙박이
+   머리(`.proc-top`)의 바탕이 덮어서, 그 아래에 서는 홈이 통째로 가려진다 */
 .proc-stage {
-  position: relative; flex: 0 0 auto;
+  position: relative; flex: 0 0 auto; margin-top: 14px;
   display: flex; flex-direction: column; gap: 10px;
   background: var(--surface-2);
   border: 1px solid var(--line); border-radius: 16px;
   box-shadow: inset 0 2px 10px rgba(31, 36, 28, .07);
   padding: 16px 52px 14px;
 }
+/* 선반 위의 홈. 축의 꼬리와 같은 자리에 서서 위를 가리킨다 — 말풍선의 꼬리와
+   같은 장치다. 테두리는 위·왼쪽만 그려야 45도로 돌렸을 때 선반의 윗변에 얹힌다 */
+.proc-stage::before {
+  content: ''; position: absolute; top: -7px; left: var(--proc-x);
+  width: 12px; height: 12px; margin-left: -6px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--line); border-left: 1px solid var(--line);
+  transform: rotate(45deg); border-radius: 2px 0 0 0;
+  transition: left .28s ease;
+}
+
+/* 한 장(그림 + 이름표)이 통째로 밀려 들어온다. **어느 쪽에서 오는가**가
+   「넘겼다」는 감각을 만든다 — 그냥 갈아 끼우면 바뀐 줄도 모른다 */
+.proc-card { display: flex; flex-direction: column; gap: 10px; }
+@keyframes proc-in-next { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+@keyframes proc-in-prev { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+.proc-card.from-next { animation: proc-in-next .17s cubic-bezier(.22, .8, .3, 1) both; }
+.proc-card.from-prev { animation: proc-in-prev .17s cubic-bezier(.22, .8, .3, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .proc-card { animation: none !important; }
+  .proc-nub, .proc-stage::before, .proc-road-done { transition: none; }
+}
+
 .proc-frame {
   flex: 0 0 auto; height: var(--proc-shot-h);
   display: flex; align-items: center; justify-content: center;
@@ -1118,7 +1183,7 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
   max-width: 100%; max-height: 100%;
   width: auto; height: auto; object-fit: contain;
   border-radius: 10px; background: #fff;
-  box-shadow: 0 6px 20px rgba(31, 36, 28, .14);
+  box-shadow: 0 3px 12px rgba(31, 36, 28, .10);
 }
 /* 자리만 잡아 둔 그림에는 이름표를 단다 — 진짜 산출물처럼 보이면 안 된다 */
 .proc-frame.is-sample { position: relative; }
@@ -1138,8 +1203,67 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
   max-width: 100%;
 }
 .proc-plate-mark { font-size: 30px; line-height: 1; }
-.proc-plate.film .proc-plate-mark { color: var(--accent); }
 .proc-plate-title { font-size: 19px; font-weight: 800; text-align: center; }
+/* **영상은 자리표시자가 아니다.** 점선 상자로 두면 「아직 안 온 것」으로 읽히는데,
+   이건 케이스 스터디에 실제로 걸려 있는 영상 카드다 — 그 카드처럼 세워 둔다 */
+a.proc-plate { text-decoration: none; color: inherit; }
+.proc-plate.film {
+  background: #1f241c; border: 0; color: #fff;
+  padding: 30px 42px; box-shadow: 0 6px 20px rgba(31, 36, 28, .22);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.proc-plate.film:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(31, 36, 28, .28); }
+.proc-plate.film:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.proc-plate.film:hover .proc-plate-mark { background: var(--accent); color: #fff; }
+.proc-plate.film .proc-plate-mark {
+  color: #1f241c; background: #fff; width: 54px; height: 54px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 20px; padding-left: 4px;
+}
+.proc-plate.film .proc-plate-title { color: #fff; }
+
+/* ── 말로 선 산출물 ──
+   남긴 것이 글이면 그 글을 그대로 세운다. 세 줄짜리 판단이나 열여덟 날의 일력은
+   사진으로 찍어 걸어 두는 것보다 읽는 편이 낫다. **자리표시자보다 낫다는 것이
+   요점이다** — 「샘플 이미지」 딱지가 붙은 회색 상자는 아무것도 말하지 않는다. */
+/* **글판은 제 키로 선다.** 그림 자리(240px)에 세 줄을 넣으면 위아래가 텅 빈다.
+   그렇다고 0으로 두면 단계를 옮길 때마다 선반이 들썩여 축을 끄는 손이 불안하다 —
+   바닥만 잡아 둔다 */
+.proc-frame.is-words { height: auto; min-height: 150px; padding: 6px 0; }
+.proc-words { max-width: 100%; }
+
+/* 맡은 일처럼 **짧은 낱말 여럿**. 한 줄로 늘어놓아야 「이만큼을 다 했다」로 읽힌다 */
+.proc-words--chips { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; }
+.proc-words--chips .proc-word {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 9px 17px; font-size: 15.5px; font-weight: 800; color: var(--ink);
+  box-shadow: 0 2px 8px rgba(31, 36, 28, .06);
+}
+
+/* 판단처럼 **문장 몇 줄**. 번호를 매겨 세면 「셋으로 정리했다」가 그대로 보인다 */
+.proc-words--list { counter-reset: pw; display: flex; flex-direction: column; gap: 12px; max-width: 30em; }
+.proc-words--list .proc-word {
+  counter-increment: pw; position: relative; padding-left: 34px;
+  font-size: 17px; font-weight: 700; line-height: 1.5; color: var(--ink); text-align: left;
+}
+.proc-words--list .proc-word::before {
+  content: counter(pw); position: absolute; left: 0; top: 1px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent-tint); color: var(--accent);
+  font-size: 12px; font-weight: 800; display: grid; place-items: center;
+}
+
+/* 일력처럼 **많고 짧은 것**. 세로로 다 세우면 열여덟 줄이라 화면을 통째로 먹는다 */
+.proc-words--grid { columns: 3; column-gap: 26px; width: 100%; }
+.proc-words--grid .proc-word {
+  display: flex; gap: 8px; align-items: baseline;
+  break-inside: avoid; padding: 3px 0;
+  font-size: 12.5px; line-height: 1.45; text-align: left;
+}
+.proc-word-key {
+  flex: none; min-width: 2.6em; color: var(--accent); font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.proc-word-val { color: var(--sub); font-weight: 600; }
 
 .proc-cap { flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .proc-cap-stage {
@@ -1195,11 +1319,22 @@ body { display: flex; flex-direction: column; min-height: 100dvh; }
   .proc-step { padding: 2px 1px; gap: 3px; }
   .proc-rail { padding: 8px 4px 6px; }
   .proc-sub { font-size: 11px; }
-  .proc-line { font-size: 14px; margin: 3px 0 8px; }
+  /* 폰에서도 여기가 제일 큰 글자다 — 다만 두 줄을 넘기면 축이 밀려 올라가므로
+     데스크톱만큼 키우지는 않는다 */
+  .proc-line { font-size: 16.5px; margin: 4px auto 0; }
+  .proc-stage { margin-top: 11px; }
+  .proc-nub { border-width: 5px; margin-left: -5px; }
   /* **위(축)가 붙박이라 아래에 남는 자리가 얼마 없다.** 폰 화면 높이에서 축·설명이
      이미 180px을 쓰므로, 그림까지 크게 잡으면 이름표와 점 줄이 화면 밖으로 밀린다 */
-  .proc { --proc-shot-h: min(26dvh, 180px); }
+  .proc { --proc-shot-h: min(22dvh, 158px); }
   .proc-stage { padding: 12px 12px 10px; gap: 8px; }
+  /* 좁은 화면에서는 세 칸이 한 낱말도 못 담는다 */
+  .proc-frame.is-words { min-height: 104px; }
+  .proc-words--grid { columns: 2; column-gap: 14px; }
+  .proc-words--grid .proc-word { font-size: 11.5px; }
+  .proc-words--chips .proc-word { padding: 7px 13px; font-size: 13.5px; }
+  .proc-words--list .proc-word { font-size: 15px; padding-left: 30px; }
+  .proc-plate.film { padding: 22px 26px; }
   /* 이름표는 좁은 폭에서 두세 줄이 된다 — 글자와 사이를 조금 줄여 한 줄을 아낀다 */
   .proc-cap { gap: 6px; }
   .proc-cap-title { font-size: 13.5px; }
