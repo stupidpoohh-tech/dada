@@ -20,12 +20,11 @@
 
 이름과 설명은 **만든 사람이 직접 쓴 문장**이다 (`needsReview` 전부 해제).
 
-### 🏫 학교 (4)
+### 🏫 학교 (3)
 
 | 항목 | 타입 | URL |
 |---|---|---|
-| 고등영어문법 | 🖥 | engrammar.pages.dev |
-| 받아쓰기 리스닝 | 🖥 | dada-listen.stupidpoohh.workers.dev |
+| 고등영어 학습웹 | 🖥 | dada-learn.pages.dev |
 | 상하이여행중국어 | 🖥 | chinese-travel.pages.dev |
 | 매일 AI 한장 | 🖥 | everyday-ai-beta.vercel.app (beta) |
 

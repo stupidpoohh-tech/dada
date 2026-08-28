@@ -164,14 +164,14 @@ gitignore 규칙상 어느 깊이에서나 걸려서, 이름이 같은 `assets/s
 
 ```json
 {
-  "id": "grammar",
-  "name": "고등영어문법",
+  "id": "english-learn",
+  "name": "고등영어 학습웹",
   "district": "school",
   "type": "app",
-  "url": "https://engrammar.pages.dev/",
-  "description": "고등 영문법을 개념정리와 퀴즈로",
-  "date": "2026-05",
-  "icon": "📘",
+  "url": "https://dada-learn.pages.dev/",
+  "description": "문법, 리스닝, 패턴까지 3가지 학습도구",
+  "date": "2026-06",
+  "icon": "📚",
   "status": "live"
 }
 ```

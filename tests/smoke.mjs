@@ -553,7 +553,7 @@ if (head('크롤러 시점')) {
   await p.goto(BASE + '/list.html', { waitUntil: 'load' });
   const text = (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
   ok(text.length > 800, `JS 없이도 본문이 충분하다 (${text.length}자)`);
-  ok(/고등영어문법/.test(text) && /잔고캘린더/.test(text), 'JS 없이 항목 이름이 보인다');
+  ok(/고등영어 학습웹/.test(text) && /잔고캘린더/.test(text), 'JS 없이 항목 이름이 보인다');
 
   const r = await p.goto(BASE + '/robots.txt', { waitUntil: 'load' });
   ok(r && r.ok() && (await r.text()).includes('Sitemap:'), 'robots.txt가 sitemap을 가리킨다');
@@ -1419,8 +1419,10 @@ if (head('방문 통계')) {
      && names.includes('mailbox_open'),
     '구역·목록·우편함이 각자 신호를 보낸다', names.join(','));
   const dis = sent.find(([n]) => n === 'district_open');
-  ok(dis && dis[1].district === 'school' && dis[1].items === 4,
-    '무엇을 열었는지가 함께 간다', JSON.stringify(dis));
+  const nSchool = await p.evaluate(() => fetch('services.json').then((r) => r.json())
+    .then((d) => d.items.filter((i) => i.district === 'school').length));
+  ok(dis && dis[1].district === 'school' && dis[1].items === nSchool,
+    '무엇을 열었는지가 함께 간다', `${JSON.stringify(dis)} / 학교 ${nSchool}개`);
   await p.close();
 }
 if (want('방문 통계')) {
