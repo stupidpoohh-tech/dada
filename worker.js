@@ -243,9 +243,34 @@ async function wave(request, env) {
   return json({ ok: true, count: n });
 }
 
+/* ── 설정이 들어갔나 (`GET /api/health`) ────────────────────
+ * **값은 절대 내주지 않고, 들어갔는지만 말한다.** 시크릿은 코드가 아니라 대시보드
+ * 설정이라 배포로 따라오지 않는데, 그게 붙었는지 확인할 길이 없어서 「넣었는데
+ * 왜 안 되지」로 한참 헤맸다(2026-08-27). 열쇠 없이 열리는 것은 여기 나오는 것이
+ * 전부 예/아니오뿐이라서다 — 무엇이 들어 있는지는 한 글자도 나가지 않는다.
+ *
+ * **이 주소가 곧 판본 표시이기도 하다.** 예전 코드에는 없던 주소라, 열리면
+ * 새 코드가 떠 있다는 뜻이다. */
+function health(env) {
+  return json({
+    ok: true,
+    kv: !!env.WORDS,                                        // 남긴 말을 담을 곳
+    adminKey: !!env.ADMIN_KEY,                              // /inbox.html을 여는 열쇠
+    notify: {
+      mail: !!(env.RESEND_KEY && env.NOTIFY_EMAIL),         // 둘 다 있어야 메일이 나간다
+      hook: !!env.NOTIFY_URL,
+    },
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if (url.pathname === '/api/health') {
+      if (request.method === 'GET') return health(env);
+      return json({ ok: false, error: 'method' }, 405);
+    }
 
     if (url.pathname === '/api/wave') {
       if (request.method === 'POST') return wave(request, env);

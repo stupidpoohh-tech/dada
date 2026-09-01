@@ -298,5 +298,39 @@ head('알림');
   }
 }
 
+/* ── 설정이 들어갔나 ───────────────────────────────────
+   시크릿은 코드가 아니라 대시보드 설정이라 배포로 따라오지 않는다. 붙었는지
+   확인할 길이 없으면 「넣었는데 왜 안 되지」로 한참 헤맨다. **값은 한 글자도
+   내주지 않고 들어갔는지만** 말하므로 열쇠 없이 열어도 된다. */
+head('설정 확인');
+{
+  const bare = await (await call(new Request('https://x/api/health'), {})).json();
+  ok(bare.ok === true && bare.kv === false && bare.adminKey === false,
+    '아무것도 없으면 전부 아니오다', JSON.stringify(bare));
+  ok(bare.notify.mail === false && bare.notify.hook === false, '알림도 아니오다');
+
+  const full = await (await call(new Request('https://x/api/health'), {
+    WORDS: fakeKV(), ADMIN_KEY: 'secret',
+    RESEND_KEY: 're_KEYVALUE', NOTIFY_EMAIL: 'me@dada.town', NOTIFY_URL: 'https://ex/URLVALUE',
+  })).json();
+  ok(full.kv && full.adminKey && full.notify.mail && full.notify.hook,
+    '넣어 둔 것은 예로 나온다', JSON.stringify(full));
+
+  /* **값은 절대 나가지 않는다.** 여기서 새면 열쇠 없이 여는 주소가 곧 열쇠가 된다 */
+  const raw = JSON.stringify(full);
+  /* 넣어 둔 값들을 **칸 이름과 겹치지 않는 글자**로 두고 그것이 새는지만 본다 —
+     `hook` 같은 말로 찾으면 칸 이름에 걸려서 늘 실패한다 */
+  ok(!raw.includes('secret') && !raw.includes('KEYVALUE')
+     && !raw.includes('me@dada.town') && !raw.includes('URLVALUE'),
+    '무엇이 들어 있는지는 한 글자도 내주지 않는다', raw);
+
+  /* 메일은 열쇠와 받을 주소가 **둘 다** 있어야 나간다 — 반쪽이면 아니오다 */
+  const half = await (await call(new Request('https://x/api/health'), { RESEND_KEY: 're_x' })).json();
+  ok(half.notify.mail === false, '메일은 반쪽 설정이면 아니오다');
+
+  const bad = await call(new Request('https://x/api/health', { method: 'POST' }), {});
+  ok(bad.status === 405, '읽기만 되는 주소다', String(bad.status));
+}
+
 console.log(`\n${fail ? '❌' : '✅'}  통과 ${pass} · 실패 ${fail}`);
 process.exit(fail ? 1 : 0);
