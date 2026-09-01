@@ -28,14 +28,23 @@
  * ── 알리는 곳 ───────────────────────────────
  * **받아 두기만 하면 아무도 모른다.** 누가 말을 남겨도 KV 안에서 조용히 쌓일 뿐이라,
  * 보러 갈 생각을 해야만 보인다 — 그러면 답할 수 있었던 말을 몇 주 뒤에 읽는다.
- * 그래서 글이 들어오는 **그 순간** 알림을 하나 쏜다.
+ * 그래서 글이 들어오는 **그 순간** 알림을 쏜다. 길이 둘이고, 넣어 둔 것만 나간다.
  *
- *   npx wrangler secret put NOTIFY_URL
+ * ① 메일 (권장) — Resend로 보낸다
+ *     npx wrangler secret put RESEND_KEY      re_… 로 시작하는 API 키
+ *     npx wrangler secret put NOTIFY_EMAIL    받을 주소
+ *     npx wrangler secret put NOTIFY_FROM     (선택) 보내는 사람. 안 넣으면 기본값
  *
- * 어디로 쏠지는 그 주소가 정한다. 몸통을 `{content, text}` 둘 다로 보내므로
- * **Discord 웹훅(content)과 Slack 웹훅(text)이 고치지 않고 그대로 받는다.**
- * 안 넣어 두면 아무 일도 일어나지 않는다 — 알림은 있으면 좋은 것이지 없으면
- * 말이 안 들어오는 것이 아니다.
+ *   **남긴 사람이 답장받을 메일을 적었으면 그것을 `reply_to`로 넣는다** — 메일함에서
+ *   그냥 「답장」을 누르면 그 사람에게 간다. 주소를 옮겨 적는 단계가 통째로 사라진다.
+ *
+ * ② 웹훅 — Discord·Slack
+ *     npx wrangler secret put NOTIFY_URL
+ *   몸통을 `{content, text}` 둘 다로 보내므로 **Discord(content)와 Slack(text)이
+ *   고치지 않고 그대로 받는다.**
+ *
+ * 둘 다 안 넣어 두면 아무 일도 일어나지 않는다 — 알림은 있으면 좋은 것이지
+ * 없으면 말이 안 들어오는 것이 아니다.
  *
  * **알림이 실패해도 방문자에게는 성공이다.** 남긴 말은 이미 KV에 들어갔고,
  * 내 알림함이 막힌 것은 그 사람 잘못이 아니다 — `waitUntil`로 뒤에서 보내고
@@ -90,18 +99,57 @@ ${body}${tail ? `
 ${tail}` : ''}`;
 }
 
-/** 알림을 쏜다. **부르는 쪽을 기다리게 하지 않는다** — 실패해도 조용히 넘긴다.
- *  `ctx`가 없으면(검사에서 그냥 부를 때) 그 자리에서 기다린다. */
-function notify(env, ctx, line) {
-  if (!env.NOTIFY_URL) return;
-  const send = fetch(env.NOTIFY_URL, {
+/** 메일 제목. **본문 첫 줄이 곧 제목**이라 열지 않고도 무슨 말인지 안다 —
+ *  「새 메시지가 도착했습니다」는 열어 봐야만 알 수 있어서 아무 일도 안 한다. */
+function mailSubject(w) {
+  const who = w.name || '이름 없이';
+  const head = w.text.replace(/\s+/g, ' ').slice(0, 40);
+  return `📮 ${who} — ${head}${w.text.length > 40 ? '…' : ''}`;
+}
+
+const MAILABLE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** 메일로 보낸다(Resend). **답장받을 메일을 적었으면 `reply_to`에 넣는다** —
+ *  메일함에서 그냥 「답장」을 누르면 그 사람에게 간다. 주소를 손으로 옮겨 적는
+ *  단계가 사라지고, 그 한 단계가 답장을 하느냐 마느냐를 가른다. */
+function notifyMail(env, w, line) {
+  if (!env.RESEND_KEY || !env.NOTIFY_EMAIL) return null;
+  const body = {
+    from: env.NOTIFY_FROM || 'DADA TOWN <onboarding@resend.dev>',
+    to: [env.NOTIFY_EMAIL],
+    subject: mailSubject(w),
+    text: `${line}\n\n— 전부 보기: https://dada-town.com/inbox.html`,
+  };
+  if (w.reply && MAILABLE.test(w.reply)) body.reply_to = w.reply;
+  return fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.RESEND_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** 웹훅으로 보낸다 — Discord는 content를, Slack은 text를 읽는다.
+ *  서로 모르는 칸은 그냥 무시하므로 한 몸통으로 둘 다 맞는다. */
+function notifyHook(env, line) {
+  if (!env.NOTIFY_URL) return null;
+  return fetch(env.NOTIFY_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    // Discord는 content를, Slack은 text를 읽는다. 서로 모르는 칸은 그냥 무시한다
     body: JSON.stringify({ content: line, text: line }),
-  }).catch(() => { /* 알림함이 막힌 것은 남긴 사람 잘못이 아니다 */ });
-  if (ctx && ctx.waitUntil) ctx.waitUntil(send);
-  return send;
+  });
+}
+
+/** 알림을 쏜다. **부르는 쪽을 기다리게 하지 않는다** — 실패해도 조용히 넘긴다.
+ *  넣어 둔 길로만 나가고, 둘 다 넣어 뒀으면 둘 다 나간다.
+ *  `ctx`가 없으면(검사에서 그냥 부를 때) 그 자리에서 기다린다. */
+function notify(env, ctx, w) {
+  const line = notifyLine(w);
+  const sending = [notifyMail(env, w, line), notifyHook(env, line)].filter(Boolean);
+  if (!sending.length) return;
+  // 알림함이 막힌 것은 남긴 사람 잘못이 아니다 — 한쪽이 죽어도 나머지는 간다
+  const all = Promise.allSettled(sending);
+  if (ctx && ctx.waitUntil) ctx.waitUntil(all);
+  return all;
 }
 
 async function leaveWord(request, env, ctx) {
@@ -138,7 +186,7 @@ async function leaveWord(request, env, ctx) {
   };
   // **저장이 먼저다.** 알림보다 남긴 말이 남는 것이 중요하다
   await env.WORDS.put(deskKey(now), JSON.stringify(word));
-  notify(env, ctx, notifyLine(word));
+  notify(env, ctx, word);
 
   return json({ ok: true });
 }

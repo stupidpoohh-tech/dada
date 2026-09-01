@@ -226,17 +226,66 @@ head('알림');
     /* 알림을 뒤로 미룬다 — 남긴 사람을 웹훅이 느린 만큼 기다리게 하지 않는다 */
     ok(held.length === 1, '알림은 waitUntil로 뒤에서 보낸다', String(held.length));
 
-    /* 주소를 안 넣어 뒀으면 아무 일도 없다. 알림은 있으면 좋은 것이지,
+    /* ── 메일 (Resend) ──
+       제목이 「새 메시지가 도착했습니다」면 열어 봐야만 알 수 있어서 아무 일도
+       안 한다. 본문 첫 줄을 제목으로 올려 열지 않고도 무슨 말인지 알게 한다 */
+    sent.length = 0;
+    const mailEnv = { WORDS: fakeKV(), RESEND_KEY: 're_x', NOTIFY_EMAIL: 'me@dada.town' };
+    const held3 = [];
+    await worker.fetch(post({ text: '협업 문의드려요', name: '나라', reply: 'nara@ex.com' }),
+      mailEnv, { waitUntil: (p) => held3.push(p) });
+    await Promise.all(held3);
+    ok(sent.length === 1 && sent[0].url === 'https://api.resend.com/emails',
+      '메일 열쇠가 있으면 Resend로 보낸다', JSON.stringify(sent.map((s) => s.url)));
+
+    const mail = JSON.parse(sent[0].init.body);
+    ok(sent[0].init.headers.authorization === 'Bearer re_x', '열쇠를 헤더로 보낸다');
+    ok(mail.to[0] === 'me@dada.town' && mail.subject.includes('나라')
+      && mail.subject.includes('협업 문의드려요'),
+      '제목만 봐도 누가 무슨 말을 했는지 안다', mail.subject);
+    /* **답장받을 메일을 적었으면 그대로 「답장」이 되게 한다** — 주소를 손으로
+       옮겨 적는 그 한 단계가 답장을 하느냐 마느냐를 가른다 */
+    ok(mail.reply_to === 'nara@ex.com', '적어 준 메일이 답장받을 곳이 된다', mail.reply_to);
+    ok(mail.text.includes('inbox.html'), '전부 보러 가는 길도 넣는다');
+
+    /* 메일이 아닌 것(전화번호 등)을 적었으면 reply_to에 넣지 않는다 —
+       엉뚱한 값이 들어가면 메일이 통째로 거절된다 */
+    sent.length = 0;
+    const held4 = [];
+    await worker.fetch(post({ text: '전화 주세요', reply: '010-1234-5678' }), mailEnv,
+      { waitUntil: (p) => held4.push(p) });
+    await Promise.all(held4);
+    ok(!('reply_to' in JSON.parse(sent[0].init.body)),
+      '메일이 아닌 답장처는 reply_to에 넣지 않는다 (메일이 통째로 거절된다)');
+
+    /* 둘 다 넣어 뒀으면 둘 다 나간다 */
+    sent.length = 0;
+    const both = { WORDS: fakeKV(), RESEND_KEY: 're_x', NOTIFY_EMAIL: 'me@dada.town',
+                   NOTIFY_URL: 'https://hook.example/abc' };
+    const held5 = [];
+    await worker.fetch(post({ text: '둘 다' }), both, { waitUntil: (p) => held5.push(p) });
+    await Promise.all(held5);
+    ok(sent.length === 2, '메일과 웹훅을 둘 다 넣어 뒀으면 둘 다 간다',
+      String(sent.length));
+
+    /* 아무것도 안 넣어 뒀으면 아무 일도 없다. 알림은 있으면 좋은 것이지,
        없다고 말이 안 들어오는 것이 아니다 */
     sent.length = 0;
     const bare = { WORDS: fakeKV() };
     const res = await worker.fetch(post({ text: '조용히' }), bare, { waitUntil: () => {} });
     ok(res.status === 200 && sent.length === 0,
-      'NOTIFY_URL이 없으면 아무 데도 안 쏜다 (말은 그대로 받는다)');
+      '알림을 안 넣어 뒀으면 아무 데도 안 쏜다 (말은 그대로 받는다)');
 
-    /* 웹훅이 죽어 있어도 남긴 사람에게는 성공이다 */
+    /* 열쇠만 있고 받을 주소가 없으면 보내지 않는다 — 반쪽 설정으로 500을 내지 않게 */
+    sent.length = 0;
+    await worker.fetch(post({ text: '반쪽' }), { WORDS: fakeKV(), RESEND_KEY: 're_x' },
+      { waitUntil: () => {} });
+    ok(sent.length === 0, '받을 주소가 없으면 메일을 안 보낸다');
+
+    /* 알림 길이 죽어 있어도 남긴 사람에게는 성공이다 */
     globalThis.fetch = async () => { throw new Error('down'); };
-    const env2 = { WORDS: fakeKV(), NOTIFY_URL: 'https://hook.example/dead' };
+    const env2 = { WORDS: fakeKV(), NOTIFY_URL: 'https://hook.example/dead',
+                   RESEND_KEY: 're_x', NOTIFY_EMAIL: 'me@dada.town' };
     const held2 = [];
     const r2 = await worker.fetch(post({ text: '그래도 남는다' }), env2,
       { waitUntil: (p) => held2.push(p) });
