@@ -23,6 +23,23 @@
  * 시크릿을 안 넣었으면 읽기는 아예 막힌다(설정 안 된 자물쇠는 열린 자물쇠다).
  * 터미널에서 바로 보려면 시크릿 없이도 되는 길이 있다:
  *   npx wrangler kv key list --binding WORDS --remote
+ * 사람이 읽는 화면은 `/inbox.html`이다 — 열쇠를 한 번 넣으면 기억한다.
+ *
+ * ── 알리는 곳 ───────────────────────────────
+ * **받아 두기만 하면 아무도 모른다.** 누가 말을 남겨도 KV 안에서 조용히 쌓일 뿐이라,
+ * 보러 갈 생각을 해야만 보인다 — 그러면 답할 수 있었던 말을 몇 주 뒤에 읽는다.
+ * 그래서 글이 들어오는 **그 순간** 알림을 하나 쏜다.
+ *
+ *   npx wrangler secret put NOTIFY_URL
+ *
+ * 어디로 쏠지는 그 주소가 정한다. 몸통을 `{content, text}` 둘 다로 보내므로
+ * **Discord 웹훅(content)과 Slack 웹훅(text)이 고치지 않고 그대로 받는다.**
+ * 안 넣어 두면 아무 일도 일어나지 않는다 — 알림은 있으면 좋은 것이지 없으면
+ * 말이 안 들어오는 것이 아니다.
+ *
+ * **알림이 실패해도 방문자에게는 성공이다.** 남긴 말은 이미 KV에 들어갔고,
+ * 내 알림함이 막힌 것은 그 사람 잘못이 아니다 — `waitUntil`로 뒤에서 보내고
+ * 실패는 삼킨다.
  *
  * ── 막아 두는 것 ────────────────────────────
  * 1. 길이 — 이름 40자, 말 1000자. 넘으면 자른다(거절하지 않는다. 길게 쓴 사람의
@@ -60,7 +77,34 @@ async function overRate(env, ip) {
   return false;
 }
 
-async function leaveWord(request, env) {
+/** 알림 한 줄. 남긴 말을 그대로 옮기되 **너무 길면 자른다** —
+ *  알림은 「왔다」를 알리는 것이고, 전문은 `/inbox.html`에서 읽는다. */
+function notifyLine(w) {
+  const who = w.name || '이름 없이';
+  const body = w.text.length > 300 ? w.text.slice(0, 300) + '…' : w.text;
+  const tail = [w.reply && `↩ ${w.reply}`, w.from].filter(Boolean).join(' · ');
+  return `📮 DADA TOWN — ${who}
+
+${body}${tail ? `
+
+${tail}` : ''}`;
+}
+
+/** 알림을 쏜다. **부르는 쪽을 기다리게 하지 않는다** — 실패해도 조용히 넘긴다.
+ *  `ctx`가 없으면(검사에서 그냥 부를 때) 그 자리에서 기다린다. */
+function notify(env, ctx, line) {
+  if (!env.NOTIFY_URL) return;
+  const send = fetch(env.NOTIFY_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    // Discord는 content를, Slack은 text를 읽는다. 서로 모르는 칸은 그냥 무시한다
+    body: JSON.stringify({ content: line, text: line }),
+  }).catch(() => { /* 알림함이 막힌 것은 남긴 사람 잘못이 아니다 */ });
+  if (ctx && ctx.waitUntil) ctx.waitUntil(send);
+  return send;
+}
+
+async function leaveWord(request, env, ctx) {
   if (!env.WORDS) {
     return json({ ok: false, error: 'not_configured',
                   message: '아직 받을 준비가 안 됐어요. 잠시 뒤에 다시 시도해 주세요.' }, 503);
@@ -83,7 +127,7 @@ async function leaveWord(request, env) {
 
   const now = Date.now();
   const cf = request.cf || {};
-  await env.WORDS.put(deskKey(now), JSON.stringify({
+  const word = {
     at: new Date(now).toISOString(),
     name: String(body.name || '').trim().slice(0, MAX_NAME),
     text,
@@ -91,7 +135,10 @@ async function leaveWord(request, env) {
     reply: String(body.reply || '').trim().slice(0, 120),
     from: [cf.city, cf.country].filter(Boolean).join(', '),
     ua: (request.headers.get('user-agent') || '').slice(0, 160),
-  }));
+  };
+  // **저장이 먼저다.** 알림보다 남긴 말이 남는 것이 중요하다
+  await env.WORDS.put(deskKey(now), JSON.stringify(word));
+  notify(env, ctx, notifyLine(word));
 
   return json({ ok: true });
 }
@@ -149,7 +196,7 @@ async function wave(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/wave') {
@@ -158,7 +205,7 @@ export default {
     }
 
     if (url.pathname === '/api/word') {
-      if (request.method === 'POST') return leaveWord(request, env);
+      if (request.method === 'POST') return leaveWord(request, env, ctx);
       if (request.method === 'GET') return readWords(url, env);
       return json({ ok: false, error: 'method' }, 405);
     }

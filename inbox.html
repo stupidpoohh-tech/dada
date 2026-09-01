@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>남긴 말 — DADA TOWN</title>
+<!-- **검색엔진에 올리지 않는다.** 내가 읽는 화면이라 목록에 뜰 이유가 없고,
+     열쇠 없이는 아무것도 안 보이지만 주소가 돌아다닐 이유도 없다 -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📮</text></svg>">
+<link rel="stylesheet" href="styles.css">
+<style>
+/* 이 화면에서만 쓰는 것들. styles.css의 토큰(--ink · --accent …)을 그대로 쓴다 */
+.ib { max-width: 720px; margin: 0 auto; padding: 26px 16px 60px; }
+.ib-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.ib-head h1 { font-size: 22px; margin: 0; letter-spacing: -.02em; }
+.ib-sub { margin: 0 0 20px; color: var(--sub); font-size: 13.5px; }
+
+/* 안 읽은 것이 몇 개인지 — 이 화면에 온 이유가 그것이라 제일 크게 */
+.ib-new {
+  background: var(--accent); color: var(--accent-ink);
+  border-radius: 999px; padding: 3px 11px; font-size: 12.5px; font-weight: 800;
+}
+.ib-wave { color: var(--faint); font-size: 12.5px; font-weight: 700; }
+
+.ib-key { display: flex; gap: 8px; margin-bottom: 18px; }
+.ib-key input {
+  flex: 1; min-width: 0; padding: 11px 13px; font-size: 16px;   /* 16px 아래로 내리지 않는다 — iOS가 화면을 확대한다 */
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2);
+}
+.ib-btn {
+  border: 0; border-radius: 10px; padding: 11px 16px; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); font-weight: 700; white-space: nowrap;
+}
+.ib-btn.ghost { background: var(--surface-2); color: var(--sub); }
+
+.ib-msg { color: var(--sub); font-size: 14px; padding: 30px 0; text-align: center; }
+.ib-msg.bad { color: #A3402F; }
+
+.ib-list { display: flex; flex-direction: column; gap: 12px; }
+.ib-card {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 15px 16px; background: var(--surface);
+}
+/* 안 읽은 것은 왼쪽에 초록 띠 하나. 목록을 훑을 때 눈이 거기서 멈춘다 */
+.ib-card.new { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.ib-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 7px; }
+.ib-name { font-weight: 800; font-size: 15px; }
+.ib-when, .ib-from { color: var(--faint); font-size: 12px; }
+.ib-text { margin: 0; white-space: pre-wrap; font-size: 15px; line-height: 1.65; }
+/* 답장받을 곳은 **누를 수 있어야 한다** — 메일이면 메일 앱이, 전화면 전화가 열린다 */
+.ib-reply { margin: 10px 0 0; font-size: 13.5px; }
+.ib-reply a { color: var(--accent); font-weight: 700; }
+.ib-foot { margin-top: 26px; text-align: center; font-size: 13px; }
+.ib-foot a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<main class="ib">
+  <div class="ib-head">
+    <h1>📮 남긴 말</h1>
+    <span class="ib-new" id="ibNew" hidden></span>
+    <span class="ib-wave" id="ibWave"></span>
+  </div>
+  <p class="ib-sub">마을에 다녀간 사람들이 남긴 것. 이 화면은 나만 본다.</p>
+
+  <form class="ib-key" id="ibKeyForm">
+    <input type="password" id="ibKey" placeholder="열쇠(ADMIN_KEY)" autocomplete="current-password"
+           aria-label="열쇠">
+    <button class="ib-btn" type="submit">열기</button>
+    <button class="ib-btn ghost" type="button" id="ibForget" hidden>잊기</button>
+  </form>
+
+  <p class="ib-msg" id="ibMsg" hidden></p>
+  <div class="ib-list" id="ibList"></div>
+
+  <p class="ib-foot"><a href="/">← 마을로 돌아가기</a></p>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  /* 열쇠는 **이 기기에만** 둔다. 주소에 붙이면 방문 기록에 남고, 링크를 남에게
+     보내는 순간 같이 간다 — 그 사고를 아예 못 내게 주소에는 안 쓴다. */
+  const KEY = 'dada.inboxKey';
+  /* 어디까지 읽었는지도 기기마다 따로다. 서버에 두면 「읽음」이 기기 사이를
+     따라다녀야 하는데, 혼자 쓰는 화면에 그만한 장치는 과하다. */
+  const SEEN = 'dada.inboxSeen';
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 사파리 비공개 */ } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* 같다 */ } },
+  };
+
+  const when = (iso) => {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const min = Math.floor((Date.now() - d) / 60000);
+    if (min < 1) return '방금';
+    if (min < 60) return `${min}분 전`;
+    if (min < 60 * 24) return `${Math.floor(min / 60)}시간 전`;
+    if (min < 60 * 24 * 7) return `${Math.floor(min / 1440)}일 전`;
+    return d.toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' });
+  };
+
+  /* 답장받을 곳이 메일인지 번호인지 보고 누를 수 있는 것으로 만든다.
+     @가 있으면 메일, 숫자와 기호뿐이면 전화, 나머지는 그냥 글자다 */
+  const replyLink = (s) => {
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return 'mailto:' + s;
+    if (/^[+\d][\d\s.-]{6,}$/.test(s)) return 'tel:' + s.replace(/[\s.-]/g, '');
+    return null;
+  };
+
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;   // 남이 쓴 글이다 — 절대 innerHTML로 넣지 않는다
+    return n;
+  };
+
+  function show(text, bad) {
+    const m = $('ibMsg');
+    m.textContent = text;
+    m.classList.toggle('bad', !!bad);
+    m.hidden = !text;
+  }
+
+  function render(data) {
+    const list = $('ibList');
+    list.textContent = '';
+    const words = data.words || [];
+
+    /* 어디까지 읽었나 — 마지막으로 본 글의 시각이다. 개수로 세면 오래된 것이
+       지워졌을 때 셈이 어긋난다 */
+    const seen = store.get(SEEN) || '';
+    const fresh = words.filter((w) => (w.at || '') > seen);
+    $('ibNew').textContent = `새 글 ${fresh.length}`;
+    $('ibNew').hidden = fresh.length === 0;
+    $('ibWave').textContent = data.hello ? `손 인사 ${data.hello}` : '';
+
+    if (!words.length) { show('아직 남긴 말이 없어요.'); return; }
+    show('');
+
+    words.forEach((w) => {
+      const card = el('div', 'ib-card' + ((w.at || '') > seen ? ' new' : ''));
+      const top = el('div', 'ib-top');
+      top.append(el('span', 'ib-name', w.name || '이름 없이'),
+                 el('span', 'ib-when', when(w.at)));
+      if (w.from) top.appendChild(el('span', 'ib-from', w.from));
+      card.appendChild(top);
+      card.appendChild(el('p', 'ib-text', w.text || ''));
+      if (w.reply) {
+        const p = el('p', 'ib-reply');
+        const href = replyLink(w.reply);
+        if (href) {
+          const a = el('a', null, w.reply);
+          a.href = href;
+          p.append('답장받을 곳 ', a);
+        } else {
+          p.textContent = '답장받을 곳 ' + w.reply;
+        }
+        card.appendChild(p);
+      }
+      list.appendChild(card);
+    });
+
+    /* **본 것은 본 것으로 친다.** 그려 놓고 표시를 안 옮기면 다음에 와도
+       같은 것이 새 글로 남아, 「새 글」이라는 말이 곧 아무 뜻도 없어진다.
+       띠는 이번 화면에 그대로 남는다 — 방금 무엇이 새로 왔는지는 보여야 하니까 */
+    if (words[0] && words[0].at) store.set(SEEN, words[0].at);
+  }
+
+  async function load(key) {
+    show('여는 중…');
+    let res;
+    try {
+      res = await fetch('/api/word?key=' + encodeURIComponent(key), { cache: 'no-store' });
+    } catch (e) {
+      show('서버에 닿지 못했어요.', true); return;
+    }
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* 아래에서 상태로 갈린다 */ }
+
+    if (res.status === 403) { show('열쇠가 맞지 않아요.', true); store.del(KEY); return; }
+    if (data.error === 'no_admin_key') {
+      show('서버에 ADMIN_KEY가 아직 없어요 — 시크릿을 먼저 넣어 주세요.', true); return;
+    }
+    if (data.error === 'not_configured') { show('KV가 아직 안 붙어 있어요.', true); return; }
+    if (!data.ok) { show('읽지 못했어요.', true); return; }
+
+    store.set(KEY, key);
+    $('ibForget').hidden = false;
+    $('ibKey').value = '';
+    $('ibKey').placeholder = '열쇠 기억함';
+    render(data);
+  }
+
+  $('ibKeyForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const key = $('ibKey').value.trim() || store.get(KEY);
+    if (!key) { show('열쇠를 넣어 주세요.', true); return; }
+    load(key);
+  });
+
+  $('ibForget').addEventListener('click', () => {
+    store.del(KEY);
+    $('ibForget').hidden = true;
+    $('ibKey').placeholder = '열쇠(ADMIN_KEY)';
+    $('ibList').textContent = '';
+    $('ibNew').hidden = true;
+    $('ibWave').textContent = '';
+    show('열쇠를 잊었어요.');
+  });
+
+  // 기억해 둔 열쇠가 있으면 바로 연다 — 올 때마다 넣게 하면 안 오게 된다
+  const saved = store.get(KEY);
+  if (saved) { $('ibForget').hidden = false; $('ibKey').placeholder = '열쇠 기억함'; load(saved); }
+})();
+</script>
+
+</body>
+</html>

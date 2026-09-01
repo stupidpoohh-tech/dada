@@ -197,5 +197,57 @@ head('손 인사');
 }
 
 
+/* ── 알림 ─────────────────────────────────────────────
+   받아 두기만 하면 아무도 모른다. 글이 들어오는 그 순간 알림을 하나 쏜다.
+   **알림이 실패해도 방문자에게는 성공**이어야 한다 — 남긴 말은 이미 들어갔고,
+   내 알림함이 막힌 것은 그 사람 잘못이 아니다. */
+head('알림');
+{
+  const sent = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { sent.push({ url, init }); return new Response('ok'); };
+  try {
+    const env = { WORDS: fakeKV(), NOTIFY_URL: 'https://hook.example/abc' };
+    const held = [];
+    const ctx = { waitUntil: (p) => held.push(p) };
+
+    await worker.fetch(post({ text: '잘 봤어요', name: '지나가던 사람', reply: 'a@b.co' }), env, ctx);
+    await Promise.all(held);
+    ok(sent.length === 1 && sent[0].url === 'https://hook.example/abc',
+      '글이 들어오면 알림을 쏜다', JSON.stringify(sent.map((s) => s.url)));
+
+    const body = JSON.parse(sent[0].init.body);
+    /* Discord는 content를, Slack은 text를 읽는다 — 둘 다 담아 어느 쪽이든 그대로 받게 한다 */
+    ok(body.content === body.text && body.content.includes('잘 봤어요'),
+      'Discord(content)와 Slack(text)이 고치지 않고 받는다', JSON.stringify(body));
+    ok(body.content.includes('지나가던 사람') && body.content.includes('a@b.co'),
+      '누가 · 무엇을 · 어디로 답할지가 알림에 담긴다');
+
+    /* 알림을 뒤로 미룬다 — 남긴 사람을 웹훅이 느린 만큼 기다리게 하지 않는다 */
+    ok(held.length === 1, '알림은 waitUntil로 뒤에서 보낸다', String(held.length));
+
+    /* 주소를 안 넣어 뒀으면 아무 일도 없다. 알림은 있으면 좋은 것이지,
+       없다고 말이 안 들어오는 것이 아니다 */
+    sent.length = 0;
+    const bare = { WORDS: fakeKV() };
+    const res = await worker.fetch(post({ text: '조용히' }), bare, { waitUntil: () => {} });
+    ok(res.status === 200 && sent.length === 0,
+      'NOTIFY_URL이 없으면 아무 데도 안 쏜다 (말은 그대로 받는다)');
+
+    /* 웹훅이 죽어 있어도 남긴 사람에게는 성공이다 */
+    globalThis.fetch = async () => { throw new Error('down'); };
+    const env2 = { WORDS: fakeKV(), NOTIFY_URL: 'https://hook.example/dead' };
+    const held2 = [];
+    const r2 = await worker.fetch(post({ text: '그래도 남는다' }), env2,
+      { waitUntil: (p) => held2.push(p) });
+    await Promise.all(held2);
+    const stored = [...env2.WORDS._m.keys()].filter((k) => k.startsWith('w:'));
+    ok(r2.status === 200 && stored.length === 1,
+      '알림함이 막혀 있어도 남긴 말은 들어가고 방문자는 성공을 본다');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 console.log(`\n${fail ? '❌' : '✅'}  통과 ${pass} · 실패 ${fail}`);
 process.exit(fail ? 1 : 0);

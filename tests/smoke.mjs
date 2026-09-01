@@ -2383,6 +2383,99 @@ if (head('안내 — 키보드')) {
   await p.close();
 }
 
+/* ── 남긴 말을 읽는 화면 (/inbox.html) ─────────────────────
+   **받아 두기만 하면 아무도 모른다.** 예전에는 남긴 말을 보려면 Cloudflare 대시보드를
+   열거나 `/api/word?key=…`의 날 JSON을 읽어야 했다 — 보러 갈 생각을 해야만 보이니
+   답할 수 있었던 말을 몇 주 뒤에 읽는다. 이 화면은 열쇠를 한 번만 받아 기억하고,
+   안 읽은 것을 세어 준다. */
+if (head('남긴 말 — 읽는 화면')) {
+  const p = await desktop();
+  const seen = [];
+  /* **시각은 여기서 한 번만 정한다.** 부를 때마다 새로 만들면 다시 열 때 글이
+     늘 방금 온 것이 되어, 「본 것은 본 것으로 친다」를 확인할 수가 없다 */
+  const body = JSON.stringify({
+    ok: true,
+    hello: 12,
+    words: [
+      { at: new Date(Date.now() - 3e5).toISOString(), name: '지나가던 사람',
+        text: '마을 예뻐요\n또 올게요', reply: 'a@b.co', from: 'Seoul, KR' },
+      { at: '2026-08-01T00:00:00.000Z', name: '', text: '<b>태그</b>가 글자로 남나' },
+    ],
+  });
+  /* 서버를 부르지 않고 화면만 본다 — KV도 열쇠도 없는 검사 환경이라 */
+  await p.route('**/api/word?*', (route) => {
+    seen.push(new URL(route.request().url()).searchParams.get('key'));
+    route.fulfill({ status: 200, contentType: 'application/json', body });
+  });
+  await p.goto(BASE + '/inbox.html', { waitUntil: 'load' });
+  await p.waitForTimeout(300);
+
+  /* 검색엔진에 올릴 화면이 아니다 */
+  ok(await p.$eval('meta[name="robots"]', (n) => n.content).then((c) => c.includes('noindex')),
+    '검색엔진에 올리지 않는다');
+  ok(await p.locator('.ib-card').count() === 0, '열쇠 없이는 아무것도 안 보인다');
+
+  await p.fill('#ibKey', 'secret');
+  await p.click('#ibKeyForm button[type=submit]');
+  await p.waitForTimeout(400);
+
+  ok(seen[0] === 'secret', '넣은 열쇠로 물어본다', String(seen[0]));
+  ok(!p.url().includes('secret'), '열쇠가 주소에 남지 않는다', p.url());
+  ok(await p.locator('.ib-card').count() === 2, '남긴 말이 카드로 선다');
+  ok((await p.textContent('.ib-card .ib-name')) === '지나가던 사람', '이름이 보인다');
+  ok((await p.textContent('.ib-card .ib-when')) === '5분 전', '언제 남겼는지 사람 말로 보인다',
+    await p.textContent('.ib-card .ib-when'));
+  /* 답장받을 곳은 누를 수 있어야 한다 — 옮겨 적게 하면 그만큼 안 하게 된다 */
+  ok(await p.$eval('.ib-reply a', (a) => a.getAttribute('href')) === 'mailto:a@b.co',
+    '메일 주소를 남겼으면 눌러서 메일 앱이 열린다');
+
+  /* **남이 쓴 글이다.** innerHTML로 넣으면 그 사람이 이 화면에 코드를 심을 수 있다 */
+  const raw = await p.evaluate(() =>
+    [...document.querySelectorAll('.ib-text')].map((n) => ({ t: n.textContent, h: n.innerHTML })));
+  ok(raw[1].t.includes('<b>태그</b>') && !raw[1].h.includes('<b>'),
+    '남이 쓴 글은 글자로만 들어간다 (태그로 살아나지 않는다)', raw[1].h);
+
+  /* 안 읽은 것이 몇 개인지 — 이 화면에 오는 이유가 그것이다 */
+  ok(!await p.evaluate(() => document.getElementById('ibNew').hidden)
+    && (await p.textContent('#ibNew')) === '새 글 2', '안 읽은 개수가 뜬다',
+    await p.textContent('#ibNew'));
+  ok(await p.locator('.ib-card.new').count() === 2, '안 읽은 것은 띠로 표시된다');
+  ok((await p.textContent('#ibWave')).includes('12'), '손 인사 수도 같이 보인다');
+
+  /* 열쇠를 기억한다 — 올 때마다 넣게 하면 안 오게 된다.
+     그리고 본 것은 본 것으로 친다 — 아니면 「새 글」이라는 말이 뜻을 잃는다 */
+  await p.reload({ waitUntil: 'load' });
+  await p.waitForTimeout(400);
+  ok(seen.length === 2 && seen[1] === 'secret', '다시 열면 기억해 둔 열쇠로 알아서 연다');
+  ok(await p.evaluate(() => document.getElementById('ibNew').hidden),
+    '한 번 본 것은 새 글로 세지 않는다');
+
+  await p.click('#ibForget');
+  await p.waitForTimeout(200);
+  ok(await p.locator('.ib-card').count() === 0, '「잊기」를 누르면 화면이 비워진다');
+  await p.reload({ waitUntil: 'load' });
+  await p.waitForTimeout(400);
+  ok(seen.length === 2, '잊은 뒤에는 다시 열지 않는다', String(seen.length));
+
+  /* 열쇠가 틀리면 틀렸다고 말한다 — 빈 화면만 두면 서버가 죽은 줄 안다 */
+  await p.unroute('**/api/word?*');
+  await p.route('**/api/word?*', (route) => route.fulfill({
+    status: 403, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'forbidden' }),
+  }));
+  await p.fill('#ibKey', 'wrong');
+  await p.click('#ibKeyForm button[type=submit]');
+  await p.waitForTimeout(300);
+  ok((await p.textContent('#ibMsg')).includes('맞지 않'), '열쇠가 틀리면 그렇다고 말한다',
+    await p.textContent('#ibMsg'));
+
+  /* 방금 **일부러** 403을 흉내 냈으므로 브라우저가 "Failed to load resource"를
+     한 줄 남긴다. 마지막의 「콘솔 오류 없음」은 엄격하게 두고 내가 만든 것만 걷는다 */
+  for (let i = errors.length - 1; i >= 0; i--) {
+    if (/api\/word/.test(errors[i]) || /status of 403/.test(errors[i])) errors.splice(i, 1);
+  }
+  await p.close();
+}
+
 /* ── 마을 나가는 길의 표지판 ───────────────────────────────
    다리 왼쪽, 마을 밖으로 난 길목에 선다. 누르면 다원이 제자리에서 총총 뛰어나와
    배웅하고, 남기고 싶은 말이 있는지 묻는다. 셋 중 하나를 고를 수 있다 —
