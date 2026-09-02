@@ -523,6 +523,30 @@
       "needsReview": false
     },
     {
+      "id": "jjeopjjeop",
+      "no": 32,
+      "name": "쩝쩝대학",
+      "district": "park",
+      "type": "app",
+      "date": "2026-09",
+      "icon": "🍽",
+      "status": "soon",
+      "needsReview": false
+    },
+    {
+      "id": "korea4season",
+      "no": 33,
+      "name": "지금日지도",
+      "district": "park",
+      "type": "app",
+      "url": "https://korea4season.stupidpoohh.workers.dev/map?date=2026-09-02",
+      "description": "계절별, 그리고 지금 한국의 자연을 보여주는 살아있는 지도",
+      "date": "2026-09",
+      "icon": "🐟",
+      "status": "live",
+      "needsReview": false
+    },
+    {
       "id": "anih",
       "no": 21,
       "name": "아니그래서",
@@ -641,6 +665,25 @@
       "featured": 2
     }
   ],
+  "fish": {
+    "name": "강물의 물고기",
+    "at": [
+      6.0,
+      77.0
+    ],
+    "w": 8.0,
+    "ratio": [
+      140,
+      143
+    ],
+    "jump": 45,
+    "frames": {
+      "swim": "fish-tilt.png",
+      "up": "fish-up.png",
+      "flat": "fish-side.png"
+    },
+    "item": "korea4season"
+  },
   "sign": {
     "sprite": "sign.png",
     "at": [

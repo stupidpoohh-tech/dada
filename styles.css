@@ -654,50 +654,101 @@ button.crow-spot { background: none; border: 0; padding: 0; cursor: pointer; }
   50%      { transform: translateX(-50%) scale(1.07, .92) rotate(0deg); }
   75%      { transform: translateX(-50%) translateY(-18%) scale(.96, 1.07) rotate(5deg); }
 }
-/* 강에서 뛰어오르는 물고기 — 다리 아래 웅덩이에 한 마리.
+/* ── 강물의 물고기 ──────────────────────────
+   다리 위쪽 물길에서 헤엄치다 이따금 솟구친다. 누르면 「지금日지도」로 가는
+   문이라(app.js의 makeFish) 까마귀와 같은 규칙을 따른다 — 링크 상자는 가만히
+   있고 움직이는 것은 안쪽 그림뿐이다. 누를 자리가 흔들리면 조준이 안 된다.
 
-   **바깥 상자(.fish-pool)가 물낯이다.** 밑변이 곧 물 표면이고 overflow: hidden이라
-   그 아래로 내려간 물고기는 잘려서 안 보인다 — 「없다가 솟았다 다시 없어진다」가
-   이 한 겹으로 된다. 상자 높이(h)는 곧 **물 위로 솟을 수 있는 높이**다.
+   **늘 보인다.** 한때는 물속에 숨었다가 한 순간만 솟게 만들었는데(물낯을
+   overflow: hidden으로 잘랐다), 문이 된 뒤로는 그럴 수 없다 — 누를 것이 한
+   바퀴의 12%에만 있으면 누를 수가 없다.
 
-   **높낮이는 transform이 아니라 bottom으로 준다.** translateY의 %는 「제 높이」
-   기준인데 스프라이트 상자는 그림이 도착하기 전까지 높이가 0이고, iOS 사파리는
-   그림이 온 뒤에도 다시 계산하지 않는다 — 마을이 통째로 흘러내렸던 그 함정과
-   같은 것이다(app.js의 `upTo`). bottom의 %는 **담는 상자(물낯)의 높이** 기준이라
-   물고기가 제 크기를 몰라도 된다. 물속 자리를 -100%로 잡은 것도 같은 이유다:
-   「제 키만큼 아래」가 아니라 「물낯 높이만큼 아래」여서, 그림이 늦게 와도 맞는다.
-
-   같은 이유로 transform-origin은 50% 0(윗변)이다. 기본값 50% 50%의 세로 50%는
-   제 높이 기준이라 그림이 오기 전과 온 뒤가 다르다. 윗변으로 잡으면 머리가
-   제자리에 있고 꼬리가 흔들리는 모양이 되는데, 뛰어오르는 것에는 그편이 맞다. */
-.fish-pool { position: absolute; overflow: hidden; transform: translateX(-50%); }
-.fish {
-  position: absolute; left: 0; width: 100%;
-  bottom: -100%;                 /* 물속 — 잘려서 안 보인다 */
-  transform-origin: 50% 0;
-  animation: fish-jump 9.5s linear infinite;
+   높낮이(뜀)는 `bottom`으로 준다. translateY의 %는 「제 높이」 기준인데 그림이
+   도착하기 전에는 0이고 **iOS 사파리는 그 뒤로도 다시 계산하지 않는다** —
+   마을이 통째로 흘러내렸던 그 함정이다(app.js의 upTo). 여기서는 상자에
+   `aspect-ratio`를 박아 두므로(캔버스 비율, app.js가 넣는다) 그림이 없어도
+   높이가 정해져 있고, 그 % 기준의 bottom은 안전하다. */
+.fish-spot {
+  position: absolute;
+  pointer-events: auto;
+  display: block;
+  transform: translateX(-50%);   /* 좌표는 물에 닿는 자리다 (까마귀·사람들과 같은 규칙) */
+  z-index: 4;
+  line-height: 0;
 }
-.fish img { display: block; width: 100%; height: auto; }
+/* 폰에서 상자는 29px 남짓. 판정은 그림보다 넉넉하게 (터치 기준 44px) */
+.fish-spot::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, 56px); height: max(100%, 56px);
+}
+/* 갈 곳이 없으면 풍경이다 — 누를 수 없는 것이 손가락을 부르면 안 된다 */
+.fish-spot.scenery { pointer-events: none; cursor: default; }
+.fish-spot.scenery::after { content: none; }
 
-/* **한 바퀴는 꼭대기에서 시작한다.** 물 밖에 나와 있는 시간이 한 바퀴의 12%뿐인데,
-   tools/shot.mjs는 모든 움직임을 0에 세워 놓고 찍기 때문에 물속에서 시작하게 짜면
-   **찍을 때마다 물고기가 아예 안 나온다** — 있는지 없는지 확인할 길이 사라진다.
-   0은 이 요소가 가장 잘 보이는 자리여야 한다.
+/* 뛰어오르는 것은 이 겹이 맡는다. 밑변(=물낯)에 붙어 있다가 bottom으로 솟는다 */
+.fish-figure {
+  position: absolute; left: 0; bottom: 0; width: 100%;
+  transform-origin: 50% 100%;
+  animation: fish-jump 9s linear infinite;
+}
+/* 헤엄은 이 겹이 맡는다 — 마을과 같은 2.4초 한 박자다. 뜀(9초)과 겹은 나눠 둔다:
+   한 겹에 두 애니메이션을 걸면 transform이 서로를 덮어쓴다. 여기서는 크기와
+   무관한 것(회전 · 제 폭 기준의 가로 이동)만 써서 그림이 늦게 와도 어긋나지 않는다 */
+.fish-body {
+  display: block;
+  transform-origin: 50% 100%;
+  animation: fish-sway 2.4s ease-in-out infinite;
+}
+.fish-body img {
+  display: block; width: 100%; height: auto;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .26));
+}
+/* 세 장을 정확히 포개 놓고 필요한 순간에만 한 장씩 드러낸다.
+   같은 배율·같은 밑변의 한 캔버스라(tools/cut_fish.py) 갈아 끼워도 물고기가 안 튄다. */
+.fish-body .fish-up, .fish-body .fish-flat { position: absolute; left: 0; top: 0; }
+/* 기본값은 「첫 장만 보인다」 — 아래 애니메이션이 어떤 이유로든 안 붙어도
+   (역할 이름이 CSS와 어긋나는 데이터가 오는 경우 등) 세 장이 겹쳐 보이지 않는다 */
+.fish-body img + img { opacity: 0; }
+.fish-swim, .fish-up, .fish-flat { animation: 9s steps(1, end) infinite; }
+.fish-swim { animation-name: fish-frame-swim; }
+.fish-up   { animation-name: fish-frame-up; }
+.fish-flat { animation-name: fish-frame-flat; }
 
-   빠르기는 던진 것처럼 — 올라갈 때는 점점 느려지고(94%→100%) 떨어질 때는 점점
-   빨라진다(0%→6%). CSS는 타이밍 함수를 구간마다 적용하므로 구간별로 따로 준다.
-   물속에 있는 6%~94% 동안 몸을 되돌리는데, 어차피 잘려서 안 보인다.
+/* 한 바퀴(9초)에 한 번 솟는다. **0은 헤엄이다** — tools/shot.mjs가 모든 움직임을
+   0에 세워 놓고 찍으므로, 찍으면 마을의 평소 모습(물낯에 떠 있는 문)이 나온다.
+   뜀을 눈으로 보려면 그 애니메이션의 currentTime을 82%쯤에 세운다.
 
-   **기울기는 작게 준다(-8°~12°).** transform-origin이 윗변이라 기울인 각도만큼
-   꼬리가 옆으로 쓸리는데, 물고기가 커진 만큼 그 폭도 같이 커진다 — 20°면 꼬리가
-   제 폭의 절반을 넘게 나가 물길 밖으로 쓸린다. */
+   빠르기는 던진 것처럼 — 올라갈 때는 점점 느려지고 떨어질 때는 점점 빨라진다.
+   CSS는 타이밍 함수를 구간마다 적용하므로 구간별로 따로 준다. */
 @keyframes fish-jump {
-  0%   { bottom: 9%;    transform: rotate(2deg);
-         animation-timing-function: cubic-bezier(.6, 0, .9, .4); }   /* 꼭대기 → 떨어진다 */
-  6%   { bottom: -100%; transform: rotate(12deg); }                  /* 물속으로 */
-  94%  { bottom: -100%; transform: rotate(-8deg);
-         animation-timing-function: cubic-bezier(.1, .6, .4, 1); }   /* 솟는다 */
-  100% { bottom: 9%;    transform: rotate(2deg); }
+  0%, 78%   { bottom: 0; transform: rotate(0deg);
+              animation-timing-function: cubic-bezier(.1, .6, .4, 1); }
+  86%       { bottom: var(--fish-jump, 45%); transform: rotate(7deg);
+              animation-timing-function: cubic-bezier(.6, 0, .9, .4); }
+  93%, 100% { bottom: 0; transform: rotate(0deg); }
+}
+/* 자세는 셋이다. 물에서는 물길과 같은 방향으로 비스듬히(swim), 솟구칠 때는
+   곧추서고(up), 꼭대기에서 납작하게 넘어간다(flat). 다시 물에 들며 비스듬으로
+   돌아온다 — 갈아 끼우는 시점이 뜀의 구간과 맞아야 몸짓이 하나로 읽힌다.
+   물에 닿는 93%까지 뛰는 자세를 붙들고 있는다: 먼저 헤엄으로 돌리면 **아직 공중에
+   떠 있는데 헤엄치는** 한 장면이 낀다(`npm test`가 그 한 조각을 잡는다). */
+@keyframes fish-frame-swim {
+  0%, 77%   { opacity: 1; }
+  78%, 92%  { opacity: 0; }
+  93%, 100% { opacity: 1; }
+}
+@keyframes fish-frame-up   { 0%, 77% { opacity: 0; } 78%, 84% { opacity: 1; } 85%, 100% { opacity: 0; } }
+@keyframes fish-frame-flat { 0%, 84% { opacity: 0; } 85%, 92% { opacity: 1; } 93%, 100% { opacity: 0; } }
+
+/* 물살에 몸을 맡긴 채 좌우로 흔들린다. 가로 %는 제 폭 기준이라(폭은 인라인으로
+   박혀 있다) 그림이 늦게 와도 어긋나지 않는다 */
+@keyframes fish-sway {
+  0%, 100% { transform: rotate(0deg)    translateX(0); }
+  25%      { transform: rotate(-3.5deg) translateX(-6%); }
+  50%      { transform: rotate(0deg)    translateX(0); }
+  75%      { transform: rotate(3.5deg)  translateX(6%); }
 }
 
 .folk.person img { transform-origin: 50% 100%; transition: transform .18s ease, filter .18s ease; }

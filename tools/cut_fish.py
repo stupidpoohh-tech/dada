@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""물고기 시트를 잘라 강에 넣을 스프라이트를 만든다.
+"""물고기 시트를 잘라 강에 넣을 **프레임 세 장**을 만든다.
 
 `cut_sprites.py`의 SHEETS에 한 줄 더하지 않고 따로 둔 이유가 둘 있다.
 
@@ -16,6 +16,10 @@
    `merge_overlapping`을 태우면 한 마리로 합쳐지고(넷이 셋이 된다), 상자대로
    잘라내면 옆 물고기의 꼬리가 같이 딸려 온다. 그래서 상자가 아니라
    **연결 요소(몸통 하나)별 마스크로** 떠낸다.
+4. 시트의 네 자세는 한 마리의 **자세 넷**이지 물고기 넷이 아니다. 마을에서는
+   헤엄칠 때 옆모습, 솟구칠 때 곧추선 모습, 꼭대기에서 기운 모습으로 갈아
+   끼우므로 — 까마귀와 같은 규칙이다 — **같은 크기 캔버스에 같은 기준점으로**
+   얹어야 갈아 끼울 때 물고기가 튀지 않는다.
 
     python3 tools/cut_fish.py
 
@@ -34,15 +38,18 @@ from cut_sprites import background_mask, reading_order
 SRC = 'assets/sprites/fish.png'
 OUT = 'assets/sprites/cut'
 # 읽는 순서(윗줄 왼쪽부터)대로. 넷 다 왼쪽을 보고 있어서, 오른쪽으로 헤엄칠 때는
-# app.js가 좌우를 뒤집는다 — 뒤집힌 그림을 따로 저장하지 않는다.
-NAMES = ['fish-1', 'fish-2', 'fish-3', 'fish-4']
+# CSS가 좌우를 뒤집는다 — 뒤집힌 그림을 따로 저장하지 않는다.
+NAMES = ['fish-side', 'fish-tilt', 'fish-slant', 'fish-up']
+# 마을이 실제로 갈아 끼우는 세 장만 저장한다 (`cut/`은 「지금 쓰는 것」만 두는 자리다).
+# 남는 fish-slant는 기운 정도가 fish-tilt와 겹쳐서 쓰지 않는다 — 쓸 일이 생기면
+# 여기 이름을 더하면 그 장도 같은 캔버스로 나온다.
+FRAMES = ['fish-side', 'fish-tilt', 'fish-up']
 # 몸 길이(주둥이 끝 ~ 꼬리 끝)를 이 픽셀에 맞춘다.
 #
 # **이 시트에서는 줄이지 않는다.** 다른 스프라이트는 「보이는 크기의 2배」로 줄여
-# 두는데, 물고기는 마을에서 제일 큰 놈이 시트에서 173px밖에 안 된다 — 뛰어오르는
-# 물고기가 데스크톱에서 29x43px이니 고밀도 화면에서는 이미 2배를 겨우 채운다.
-# 여기서 더 줄이면 낚시 표식으로 쓸 만큼 키웠을 때 뭉갠다. 늘리지도 않는다
-# (없는 정보를 만들어 내는 것이라 흐려지기만 한다) — 시트 그대로가 상한이다.
+# 두는데, 물고기는 제일 큰 자세가 시트에서 173px밖에 안 된다 — 마을에 서는 크기가
+# 데스크톱에서 51x52px(까마귀와 같다)이니 고밀도 화면에서는 이미 2배를 겨우 채운다.
+# 여기서 더 줄이면 뭉개고, 늘려 봐야 없는 정보를 만드는 것이라 흐려지기만 한다.
 BODY_LEN = 173
 
 
@@ -127,29 +134,52 @@ def main():
     # 알파까지 몸으로 세면 그림자 자락을 타고 옆 물고기와 이어져 버린다
     found = pieces(alpha > 64)
     if len(found) != len(NAMES):
-        raise SystemExit(f'물고기를 {len(found)}마리 찾았다 — {len(NAMES)}마리여야 한다')
+        raise SystemExit(f'자세를 {len(found)}개 찾았다 — {len(NAMES)}개여야 한다')
     order = {b: m for b, m in found}
     boxes = reading_order([b for b, _ in found])
 
-    # 넷을 같은 배율로 줄인다. 제일 긴 놈이 BODY_LEN이 되게 잡아, 나머지는
-    # 그림에 그려진 크기 차이(같은 무리 안의 큰 놈 · 작은 놈)를 그대로 지킨다.
+    # 넷을 같은 배율로 줄인다. 제일 긴 자세가 BODY_LEN이 되게 잡아, 나머지는
+    # 그림에 그려진 크기 차이를 그대로 지킨다
     scale = BODY_LEN / max(body_len(b) for b in boxes)
 
+    cut = {}
     for name, box in zip(NAMES, boxes):
         x0, y0, x1, y1, _ = box
-        # 이 몸통만 남긴다 — 상자 안에 들어온 옆 물고기 꼬리는 투명으로 지운다
         # 이 몸통에서 옆으로 번진 자락은 그대로 두되(가장자리가 부드러워야 한다),
-        # 상자 안에 들어온 **다른 물고기**는 지운다. 제 몸에서 3px까지만 남긴다
-        near = grow(order[box], 3)
-        mine = np.where(near, alpha, 0).astype(np.uint8)
-        sprite = Image.fromarray(np.dstack([rgb, mine]), 'RGBA').crop((x0, y0, x1, y1))
-        w, h = sprite.size
-        sprite = sprite.resize((max(1, round(w * scale)), max(1, round(h * scale))),
-                               Image.LANCZOS)
-        out = f'{OUT}/{name}.png'
-        sprite.save(out, optimize=True)
-        print(f'{name}.png {sprite.size[0]}x{sprite.size[1]} '
-              f'{os.path.getsize(out) // 1024}KB')
+        # 상자 안에 들어온 **다른 자세**는 지운다. 제 몸에서 3px까지만 남긴다
+        mine = np.where(grow(order[box], 3), alpha, 0).astype(np.uint8)
+        sp = Image.fromarray(np.dstack([rgb, mine]), 'RGBA').crop((x0, y0, x1, y1))
+        w, h = sp.size
+        cut[name] = sp.resize((max(1, round(w * scale)), max(1, round(h * scale))),
+                              Image.LANCZOS)
+
+    """기준점은 **밑변 가운데**다.
+
+    까마귀는 눈에 맞췄는데(어느 장에서나 같은 것이라서), 물고기는 자세가 바뀌는
+    이유 자체가 다르다 — 헤엄치던 놈이 몸을 세우는 것이라 **꼬리는 물에 있고
+    머리가 올라간다.** 그러니 포개야 할 것은 눈이 아니라 물에 닿는 자리다.
+    밑변을 맞추면 갈아 끼우는 순간 물낯이 안 흔들리고, 가로 가운데를 맞추면
+    몸이 옆으로 미끄러지지 않는다."""
+    anchors = {n: (centroid_x(cut[n]), cut[n].height) for n in FRAMES}
+    left = max(a[0] for a in anchors.values())
+    W = left + max(cut[n].width - anchors[n][0] for n in FRAMES)
+    H = max(cut[n].height for n in FRAMES)
+
+    for n in FRAMES:
+        canvas = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+        canvas.paste(cut[n], (left - anchors[n][0], H - cut[n].height))
+        out = f'{OUT}/{n}.png'
+        canvas.save(out, optimize=True)
+        print(f'  {n}.png {W}x{H} {os.path.getsize(out) // 1024}KB')
+    print(f'물고기 자세 {len(FRAMES)}장 — 모두 {W}x{H} 한 캔버스, 같은 배율·같은 밑변')
+
+
+def centroid_x(sprite):
+    """몸통의 가로 한가운데. 꼬리 끝 한 점으로 잡으면 자세마다 꼬리가 몸에서
+    나온 정도가 달라 갈아 끼울 때 몸이 옆으로 미끄러진다."""
+    a = np.array(sprite)
+    xs = np.where(a[:, :, 3] > 40)[1]
+    return int(round(xs.mean()))
 
 
 if __name__ == '__main__':

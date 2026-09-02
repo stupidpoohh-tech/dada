@@ -62,8 +62,10 @@ def item_html(item):
     if item.get('date'):
         badges.append(f'<time class="doc-date" datetime="{e(item["date"])}">'
                       f'{e(short_date(item["date"]))}</time>')
-    # 설명에 줄바꿈을 넣으면 그대로 줄이 나뉜다 (지금 쓰는 항목은 없다)
-    desc = '<br>'.join(e(line) for line in item['description'].split('\n'))
+    # 설명에 줄바꿈을 넣으면 그대로 줄이 나뉜다 (지금 쓰는 항목은 없다).
+    # **없을 수도 있다** — 이름만 있고 아직 한 줄을 못 받은 「준비 중」이 그렇다.
+    # 예전에는 키가 있다고 믿고 읽다가 그런 항목이 들어온 날 이 도구가 죽었다.
+    desc = '<br>'.join(e(line) for line in item.get('description', '').split('\n'))
     title = (f'<a href="{e(href(item))}"{attrs}>{e(item["icon"])} {e(item["name"])}</a>'
              if live else f'{e(item["icon"])} {e(item["name"])}')
     # 설명이 빈 항목은 빈 문단을 남기지 않는다 — 아직 한 줄을 못 받은 것뿐이다

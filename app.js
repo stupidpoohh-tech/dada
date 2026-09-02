@@ -34,30 +34,6 @@
     { src: 'sparrow-side.png',   x: 52,   y: 30, w: 1.7 },
     { src: 'bluebird-front.png', x: 11,   y: 50, w: 1.4 },
   ];
-  /* 강에서 뛰어오르는 물고기 한 마리. **다리 아래 웅덩이에서 이따금 솟았다 들어간다.**
-
-     한 마리인 것도, 늘 안 보이는 것도 일부러다. 이 마을은 「지나가기만 하는 것은
-     두지 않는다」로 구름·자동차를 걷어낸 자리라(머리말), 강에 넷을 풀어 상시로
-     헤엄치게 두면 걷어낸 것을 도로 들여놓는 셈이 된다. 뛰어오르는 것은 9.5초에
-     한 번, 1초 남짓 보였다 사라지는 **한 순간**이라 눈을 잡아채지 않는다.
-
-     x·y는 지도 기준 %(y는 위에서부터 재고, 여기서는 **물낯**이다). w는 지도 폭,
-     h는 지도 **높이** 기준 % — h는 물 위로 솟을 수 있는 높이다(자세한 것은 styles.css).
-
-     자리는 다리 아래다. 물 위로 솟을 높이가 나오는 데가 거기뿐이라서다 —
-     다리 위쪽 물길은 비스듬해서 세로로 4%를 못 넘기고, 그보다 위는 둑이라
-     뛰어오른 물고기가 돌담 앞에 뜬다. 다리 아래는 y 91.5~100이 통째로 물이다.
-
-     **크기의 상한도 그 8.4%가 정한다.** 물고기 키에 물 위로 뜨는 몫을 더한 것이
-     그 안에 들어와야 하는데 키가 곧 폭의 1.83배(지도 높이 기준)라, **온몸이 물
-     밖으로 나오는 뜀은 폭 3.8%가 끝**이다. 더 키우면 꼬리가 물에 잠긴 채로만 솟고,
-     그보다 위로 올리면 다리 돌아치 앞에 뜬다.
-
-     그 상한까지 올린 것은 낚시 쪽으로 쓸 것이라 눈에 들어와야 해서다 —
-     데스크톱 31x44px · 폰 14x21px로, 다원(41x55px)·까마귀(51x52px) 다음이다.
-     처음에는 2.0%(22x26px)였는데 그때는 「강에 뭔가 있다」로만 보였다. */
-  const FISH = { src: 'fish-4.png', x: 14.0, y: 99.6, w: 3.8, h: 7.7, t: 9.5 };
-
   const TYPE_LABEL = { app: '앱', doc: '문서', video: '영상', external: '외부' };
   const STATUS_LABEL = { beta: '베타', demo: 'demo', soon: '준비 중' };
 
@@ -86,7 +62,7 @@
   /** 지도 위의 「문」 전부. 하나가 열리면 나머지의 aria-expanded를 내려야 하는데,
    *  이 목록을 자리마다 따로 적어 두면 문이 늘 때 한 군데를 빠뜨린다 —
    *  까마귀가 칼럼을 열게 되면서 실제로 빠질 뻔했다. 한 곳에 모아 둔다. */
-  const DOORS = '.spot, .me-spot, .note-spot, .horn-spot, .crow-spot';
+  const DOORS = '.spot, .me-spot, .note-spot, .horn-spot, .crow-spot, .fish-spot';
   /** 방문 통계 한 줄. 마을은 URL이 바뀌지 않아 무엇을 봤는지가 자동으로는 안 남는다.
    *  ga.js가 없거나(광고 차단·로컬) 꺼져 있으면 조용히 지나간다 — 부르는 자리에
    *  조건문을 두지 않기 위한 감쌈이다. 보내는 목록은 ga.js 머리말에 모아 뒀다. */
@@ -134,19 +110,6 @@
       left: pct(p.x), bottom: upTo(p.y), width: pct(p.w), animation: 'none',
     })));
 
-    /* 물고기는 `.folk`를 쓰지 않는다 — 그 클래스에는 2.4초 들썩임(folk-idle)이
-       붙어 있어서 뛰어오르는 것과 겹친다.
-
-       바깥 상자(`.fish-pool`)는 **물낯**이다. 그 밑변이 물 표면이고
-       `overflow: hidden`이라, 물속으로 내려간 물고기는 잘려서 안 보인다 —
-       그래서 「없다가 솟는다」가 된다. 안쪽(`.fish`)이 bottom으로 오르내린다. */
-    const pool = el('div', 'fish-pool');
-    Object.assign(pool.style, {
-      left: pct(FISH.x), bottom: upTo(FISH.y),
-      width: pct(FISH.w), height: pct(FISH.h),
-    });
-    pool.appendChild(sprite('fish', FISH.src, { animationDuration: FISH.t + 's' }));
-    folks.appendChild(pool);
   }
 
   /* ── 구역 핫스팟 ─────────────────────────── */
@@ -231,7 +194,70 @@
     });
 
     makeFloater(wrap);
+    makeFish(wrap);
     makeSign(wrap);
+  }
+
+  /** 강물의 물고기 — 구역이 아니라 지도 위에 따로 선 문이다(까마귀·우편함과 같은 결).
+   *  다리 위쪽 물길에서 헤엄치다 이따금 솟구친다. 누르면 「지금日지도」로 간다.
+   *
+   *  **늘 보여야 한다.** 한때는 물속에 숨었다가 한 순간만 솟게 만들었는데,
+   *  문이 된 뒤로는 그럴 수 없다 — 누를 것이 12%의 시간에만 있으면 누를 수가 없다.
+   *  그래서 물낯에 상시로 떠 있고, 뜀은 그 위에 얹힌 한 순간이다.
+   *
+   *  **자세는 갈아 끼운다**(까마귀와 같은 규칙). 이 마을에는 프레임 애니메이션이
+   *  없어서(transform만 쓴다) 헤엄치던 물고기가 몸을 세우려면 그림이 여러 장이어야
+   *  했다 — 비스듬(swim) · 곧추섬(up) · 납작(flat) 세 장이고, 셋은 같은 배율 ·
+   *  **같은 밑변**의 한 캔버스다(tools/cut_fish.py). 밑변을 맞춰 둔 덕에 갈아 끼워도
+   *  물낯이 안 흔들린다 — 꼬리는 물에 있고 머리만 올라가는 것이 곧 뛰어오르는 몸짓이다.
+   *
+   *  **헤엄 자세를 비스듬한 것으로 고른 이유**가 있다. 이 물길은 오른쪽 아래로
+   *  40°쯤 기울어 흐르는데, 옆모습(납작)을 눕혀 놓으면 상자가 물길보다 넓어
+   *  코와 꼬리가 둑에 올라간다. 비스듬한 자세는 물길과 같은 방향이라 폭 8%까지
+   *  키워도 온몸이 물 위에 있다 — 크기를 벌어 준 것이 자세다.
+   *
+   *  상자 높이는 `ratio`(캔버스 비율)로 못 박는다. 그림이 도착해야 알 수 있는
+   *  높이에 기대면 뜀(`bottom`의 %)이 그림 오기 전에는 0이 되는데, **iOS 사파리는
+   *  그 뒤로도 다시 계산하지 않는다** — 마을이 통째로 흘러내렸던 그 함정이다. */
+  function makeFish(wrap) {
+    const g = data.fish;
+    if (!g || !g.frames) return;
+    const item = data.items.find((x) => x.id === g.item);
+    const open = item && item.url;
+    // 갈 곳이 없으면 풍경으로만 선다 — 없는 곳을 가리키는 문은 만들지 않는다
+    const box = el(open ? 'a' : 'span', 'fish-spot' + (open ? '' : ' scenery'));
+    if (open) {
+      box.href = item.url;
+      // 마을 밖으로 나가는 것은 새 탭으로 연다 — 카드와 같은 규칙이다.
+      // 같은 탭으로 보내면 돌아올 마을이 없어진다
+      if (item.type === 'app' || item.type === 'external' || item.type === 'video') {
+        box.target = '_blank';
+        box.rel = 'noopener';
+      }
+      box.setAttribute('aria-label', `${g.name} — ${item.name}`);
+      box.addEventListener('click', () => track('item_click', {
+        item: item.id, item_type: item.type, from: 'fish',
+      }));
+    } else {
+      box.setAttribute('aria-hidden', 'true');
+    }
+    Object.assign(box.style, {
+      left: pct(g.at[0]), bottom: upTo(g.at[1]), width: pct(g.w),
+      aspectRatio: g.ratio ? `${g.ratio[0]} / ${g.ratio[1]}` : 'auto',
+    });
+    if (g.jump != null) box.style.setProperty('--fish-jump', pct(g.jump));
+
+    // 역할 이름이 곧 클래스다 (swim · up · flat) — 순서에 기대면 한 장만 늘어도 어긋난다
+    const fig = el('span', 'fish-figure');
+    const body = el('span', 'fish-body');
+    Object.entries(g.frames).forEach(([role, src]) => {
+      const img = pixel(S + src);
+      img.className = 'fish-' + role;
+      body.appendChild(img);
+    });
+    fig.appendChild(body);
+    box.appendChild(fig);
+    wrap.appendChild(box);
   }
 
   /** 마을 나가는 길의 표지판 — 구역이 아니라 지도 위에 따로 선 문이다
@@ -766,7 +792,9 @@
   /** 건물과 사람들의 상시 움직임을 같은 시각에 맞춘다.
    *  각각 다른 시점에 만들어져 수십 ms 어긋나는데, 박자가 맞아야 정신 사납지 않다. */
   const IDLE_ANIMS = ['bldg-idle', 'folk-idle', 'me-idle', 'mbox-idle', 'crow-idle',
-                      'crow-frame-rest', 'crow-frame-flap', 'crow-frame-tilt', 'horn-idle'];
+                      'crow-frame-rest', 'crow-frame-flap', 'crow-frame-tilt', 'horn-idle',
+                      // 물고기는 헤엄(2.4초)만 마을 박자에 물린다 — 뜀(9초)은 저 혼자다
+                      'fish-sway'];
 
   function syncIdle() {
     const anims = document.getAnimations().filter((a) =>
