@@ -571,10 +571,11 @@
       "district": "me",
       "group": "매일 쓰는 것들",
       "type": "app",
-      "description": "",
+      "url": "https://dada-tracker.pages.dev/",
+      "description": "무드, 에너지, 수면, 생리주기까지 한번에 관리",
       "date": "2026-05",
       "icon": "📈",
-      "status": "soon",
+      "status": "live",
       "needsReview": false
     },
     {

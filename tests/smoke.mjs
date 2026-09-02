@@ -802,7 +802,11 @@ if (head('준비 중인 것도 목록에 선다')) {
   await p.goto(BASE + '/list.html', { waitUntil: 'load' });
   const data = await p.evaluate(() => fetch('/services.json').then((r) => r.json()));
   const soon = data.items.filter((i) => i.status === 'soon');
-  ok(soon.length > 0, `준비 중인 항목이 데이터에 있다 (${soon.length})`);
+  /* **지금 준비 중인 것이 없을 수도 있다** — 주소가 다 오면 0이 된다(2026-09-01에
+     트래커가 마지막으로 왔다). 그때 이 절을 통째로 지우면 다음에 주소 없는 것을
+     올릴 때 카드가 깨진 줄도 모른다. 그래서 **아래에서 가짜 항목을 하나 끼워
+     넣어** 그리는 코드는 늘 검사하고, 여기 정적 목록 쪽은 진짜가 있을 때만 본다. */
+  if (!soon.length) console.log('  · 지금은 준비 중인 항목이 없다 — 정적 목록 쪽은 건너뛴다');
 
   /* JS 없이 읽는 사람에게도 보여야 하므로 소스 HTML을 본다 */
   const src = await p.content();
@@ -833,19 +837,36 @@ if (head('준비 중인 것도 목록에 선다')) {
     .map((n) => n.textContent.trim()), soon.map((i) => `${i.icon} ${i.name}`));
   ok(timeLinks.length === 0, '만든 순서 절에서도 링크가 아니다', timeLinks.join(', '));
 
-  /* 지도 쪽 모달에서도 같아야 한다 — 같은 데이터를 그리는 다른 코드라 따로 본다 */
+  /* 지도 쪽 모달에서도 같아야 한다 — 같은 데이터를 그리는 다른 코드라 따로 본다.
+     **가짜 항목을 하나 끼워 넣는다.** 진짜 데이터에 기대면 주소가 다 온 날
+     이 검사가 아무것도 안 보게 되고, 다음에 주소 없는 것을 올릴 때 깨진 줄 모른다. */
+  const FAKE = '검사용 준비 중 항목';
+  await p.route('**/services.json*', async (route) => {
+    const r = await route.fetch();
+    const d = JSON.parse(await r.text());
+    d.items.push({ id: 'test-soon', name: FAKE, district: 'school', type: 'app',
+                   description: '주소가 아직 없는 것', date: '2026-01', icon: '🧪',
+                   status: 'soon' });
+    return route.fulfill({ response: r, body: JSON.stringify(d) });
+  });
   await p.goto(BASE + '/', { waitUntil: 'networkidle' });
   await p.waitForTimeout(600);
   await p.click('#openList');
   await p.waitForTimeout(400);
-  const modal = await p.evaluate((names) => {
+  const names = [...soon.map((i) => i.name), FAKE];
+  const modal = await p.evaluate((ns) => {
     /* 카드 이름은 첫 텍스트 노드가 이름이고 그 뒤에 표가 붙는다 — 그것만 견준다 */
     const hit = [...document.querySelectorAll('#modalBody .card')].filter((c) =>
-      names.includes((c.querySelector('.card-name')?.firstChild?.textContent || '').trim()));
-    return { n: hit.length, links: hit.filter((c) => c.tagName === 'A').length };
-  }, soon.map((i) => i.name));
-  ok(modal.n === soon.length, `모달 목록에도 다 있다 (${modal.n} / ${soon.length})`);
+      ns.includes((c.querySelector('.card-name')?.firstChild?.textContent || '').trim()));
+    return { n: hit.length, links: hit.filter((c) => c.tagName === 'A').length,
+             badges: hit.filter((c) => c.querySelector('.badge.soon')).length };
+  }, names);
+  ok(modal.n === names.length, `모달 목록에도 다 있다 (${modal.n} / ${names.length})`);
+  /* **없는 곳으로 가는 링크를 만들지 않는다** — 한때 `href="#"`를 물려, 눌리기는
+     하는데 맨 위로만 튀는 카드가 됐다 */
   ok(modal.links === 0, '모달에서도 누를 수 없다', String(modal.links));
+  ok(modal.badges === names.length, '모달에서도 준비 중이라는 표가 붙는다',
+    `${modal.badges} / ${names.length}`);
   await p.close();
 }
 
