@@ -654,6 +654,56 @@ button.crow-spot { background: none; border: 0; padding: 0; cursor: pointer; }
   50%      { transform: translateX(-50%) scale(1.07, .92) rotate(0deg); }
   75%      { transform: translateX(-50%) translateY(-18%) scale(.96, 1.07) rotate(5deg); }
 }
+/* 강물의 물고기 — 다리 위·아래 물길에 넷.
+
+   **가로로만 움직인다.** 세로로 흔들고 싶어도 `translateY`의 %는 「제 높이」
+   기준인데, 스프라이트 상자는 그림이 도착하기 전까지 높이가 0이고 **iOS 사파리는
+   그림이 온 뒤에도 다시 계산하지 않는다** — 마을이 통째로 흘러내렸던 그 함정과
+   같은 것이다(app.js의 `upTo`). 가로 %는 제 폭 기준이고 폭은 인라인으로 박혀
+   있으니 안전하고, 회전은 애초에 크기와 무관하다. 그 둘만 쓴다.
+
+   헤엄 폭은 제 몸의 ±50%다(-100% ~ 0%, 가운데가 곧 기본 자리인 -50%).
+   물길이 좁아서 이보다 넓히면 뭍에 오른다.
+
+   그림 넷이 다 왼쪽을 보고 있다. 오른쪽으로 갈 때만 좌우를 뒤집으므로
+   (fish-turn) 뒤집은 그림을 따로 저장하지 않는다. */
+.fish {
+  position: absolute;
+  transform: translateX(-50%);
+  animation: fish-swim 12s linear infinite;
+}
+.fish img {
+  display: block; width: 100%; height: auto;
+  animation: fish-turn 12s ease-in-out infinite;
+}
+
+/* **한 바퀴는 가운데에서 시작한다.** 끝(돌아서는 순간)에서 시작하게 짜면
+   `tools/shot.mjs`가 모든 움직임을 0에 세워 놓고 찍기 때문에 **찍을 때마다
+   물고기가 실오라기로 나온다** — 돌아서는 중이라 폭이 .14로 눌린 그 장면이다.
+   0은 아무 일도 없는 자리여야 한다.
+
+   가운데(0%) → 오른쪽 끝(25%) → 가운데(50%) → 왼쪽 끝(75%) → 가운데(100%).
+   빠르기는 물결처럼 — 끝에 다가가며 느려지고(ease-out) 끝에서 떠나며
+   빨라진다(ease-in). CSS는 타이밍 함수를 **구간마다** 적용하므로 한 벌로
+   `ease-in-out`을 걸면 가운데에서도 멈칫한다. 구간마다 따로 준다. */
+@keyframes fish-swim {
+  0%   { transform: translateX(-50%)  rotate(0deg);    animation-timing-function: ease-out; }
+  25%  { transform: translateX(0%)    rotate(-2.5deg); animation-timing-function: ease-in; }
+  50%  { transform: translateX(-50%)  rotate(0deg);    animation-timing-function: ease-out; }
+  75%  { transform: translateX(-100%) rotate(2.5deg);  animation-timing-function: ease-in; }
+  100% { transform: translateX(-50%)  rotate(0deg); }
+}
+/* 양 끝에서 몸을 돌린다. 폭을 0까지 줄이면 한 장면 사라진 것처럼 보여서 .14는
+   남긴다 — 옆으로 보이던 물고기가 정면을 스치고 반대로 도는 모양이 된다.
+   도는 시점(25% · 75%)은 헤엄이 가장 느려지는 곳이라 저절로 맞는다. */
+@keyframes fish-turn {
+  0%, 18%   { transform: scaleX(-1); }    /* 오른쪽으로 — 그림이 왼쪽을 보므로 뒤집는다 */
+  25%       { transform: scaleX(.14); }
+  32%, 68%  { transform: scaleX(1); }     /* 왼쪽으로 — 그림 그대로 */
+  75%       { transform: scaleX(-.14); }
+  82%, 100% { transform: scaleX(-1); }
+}
+
 .folk.person img { transform-origin: 50% 100%; transition: transform .18s ease, filter .18s ease; }
 .folks-hot .folk.person img {
   transform: scale(1.12);

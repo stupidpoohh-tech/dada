@@ -971,6 +971,88 @@ if (head('카페 앞 까마귀')) {
   await p.close();
 }
 
+/* ── 강물의 물고기 ──────────────────────────────────────
+   물고기는 마을에서 유일하게 **제자리를 오가는** 장식이다. 좌우로 제 몸폭만큼
+   갔다 오는데, 그 폭이 물길보다 넓으면 **뭍으로 올라간다** — 눈으로는 한쪽 끝에
+   갔을 때만 보여서 놓치기 쉽다(찍어 보면 늘 가운데에 서 있다). 그래서 지도 그림의
+   색을 직접 찍어 「헤엄치는 동안 늘 물 위인가」를 본다.
+
+   물인지는 파랑이 빨강보다 한참 큰가로 본다 — 강은 (80,168,242)이고 다리 밑
+   그늘도 (40,100,173)이라 넉넉히 걸리는 반면, 잔디·둑돌·도로는 오히려 빨강이 크다. */
+if (head('강물의 물고기')) {
+  const p = await desktop();
+  await town(p);
+  await p.waitForTimeout(500);
+
+  const fish = await p.evaluate(async () => {
+    const map = document.getElementById('mapImg');
+    await map.decode();
+    const c = document.createElement('canvas');
+    c.width = map.naturalWidth; c.height = map.naturalHeight;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(map, 0, 0);
+    const px = g.getImageData(0, 0, c.width, c.height).data;
+    const water = (fx, fy) => {
+      const x = Math.min(c.width - 1, Math.max(0, Math.round(fx * c.width)));
+      const y = Math.min(c.height - 1, Math.max(0, Math.round(fy * c.height)));
+      const i = (y * c.width + x) * 4;
+      return px[i + 2] - px[i] >= 60 && px[i + 2] >= 120;
+    };
+
+    // 헤엄을 멈춰 세워 「가운데 · 안 기운 상태」의 상자를 잰다. 좌우로 오가는
+    // 폭은 제 몸폭의 ±50%(fish-swim)이므로 그 상자만 알면 지나갈 자리가 다 나온다
+    document.getAnimations().forEach((a) => { try { a.pause(); a.currentTime = 0; } catch (_) {} });
+    const mr = document.getElementById('map').getBoundingClientRect();
+    const N = 18;
+    const out = [];
+    for (const box of document.querySelectorAll('.fish')) {
+      const img = box.querySelector('img');
+      await img.decode();
+      const s = document.createElement('canvas');
+      s.width = s.height = N;
+      const sg = s.getContext('2d', { willReadFrequently: true });
+      sg.drawImage(img, 0, 0, N, N);
+      const a = sg.getImageData(0, 0, N, N).data;
+      const r = box.getBoundingClientRect();
+      let dry = 0;
+      for (let k = 0; k <= 8; k++) {
+        const off = (k / 8 - 0.5) * r.width;   // 왼쪽 끝 ~ 오른쪽 끝
+        for (let v = 0; v < N; v++) for (let u = 0; u < N; u++) {
+          if (a[(v * N + u) * 4 + 3] <= 40) continue;   // 그림이 없는 자리는 뺀다
+          // 오른쪽으로 갈 때는 그림이 뒤집히므로(fish-turn) 뒤집은 쪽도 같이 본다
+          for (const uu of [u, N - 1 - u]) {
+            const x = (r.x + off + (uu + 0.5) / N * r.width - mr.x) / mr.width;
+            const y = (r.y + (v + 0.5) / N * r.height - mr.y) / mr.height;
+            if (!water(x, y)) dry++;
+          }
+        }
+      }
+      out.push({
+        src: img.getAttribute('src').split('/').pop(),
+        dry,
+        swim: getComputedStyle(box).animationDuration,
+        turn: getComputedStyle(img).animationDuration,
+        pe: getComputedStyle(box).pointerEvents,
+      });
+    }
+    return out;
+  });
+
+  ok(fish.length === 4, '강에 물고기가 넷 있다', String(fish.length));
+  ok(fish.every((f) => f.dry === 0), '헤엄치는 동안 뭍에 오르지 않는다',
+    fish.filter((f) => f.dry).map((f) => `${f.src} ${f.dry}점`).join(', '));
+  /* 헤엄(상자)과 돌아섬(그림)의 길이가 어긋나면 **오른쪽으로 가면서 왼쪽을 보는**
+     물고기가 된다. 둘 다 app.js가 한 값(FISH의 t)으로 넣어야 맞는다 */
+  ok(fish.every((f) => f.swim === f.turn), '헤엄과 돌아섬이 같은 길이다',
+    fish.map((f) => `${f.src} ${f.swim}/${f.turn}`).join(', '));
+  /* 마을의 2.4초 박자에 맞추지 않는 유일한 움직임이다 — 넷이 같은 박자면
+     한 무리가 통째로 떠밀려 가는 것처럼 보인다 */
+  ok(new Set(fish.map((f) => f.swim)).size === 4, '넷이 저마다 다른 박자로 헤엄친다',
+    fish.map((f) => f.swim).join(' '));
+  ok(fish.every((f) => f.pe === 'none'), '눌리지 않는다 — 지나가는 클릭을 먹지 않는다');
+  await p.close();
+}
+
 /* ── 12. 세모집 마당의 확성기 ────────────────────────────
    집 테마송이 나오는 자리다. `speaker.song`이 있으면 진짜 버튼이라 눌리고,
    세모집 옆에 서 있으면서도 세모집 클릭을 가로채면 안 된다. */

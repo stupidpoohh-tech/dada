@@ -34,6 +34,26 @@
     { src: 'sparrow-side.png',   x: 52,   y: 30, w: 1.7 },
     { src: 'bluebird-front.png', x: 11,   y: 50, w: 1.4 },
   ];
+  /* 강물의 물고기 넷. **가로지르는 움직임이 아니라 제자리 헤엄이다** —
+     구름·자동차를 걷어낸 이유(머리말)는 「지나가기만 하는 것」이었고, 이것들은
+     제 몸폭만큼 좌우로 오갔다가 돌아설 뿐 강을 벗어나지 않는다. 강은 마을에서
+     유일하게 아무 문도 없는 구석이라, 눈이 쉬는 자리를 뺏지도 않는다.
+
+     x·y는 지도 기준 %(y는 위에서부터 재는 밑변), w는 지도 폭 기준 %.
+     `t`는 한 번 갔다 오는 데 걸리는 초. **넷이 저마다 달라야** 한 무리가 같이
+     떠밀려 가는 것처럼 안 보인다 — 그래서 마을의 2.4초 박자에 맞추지 않고,
+     `IDLE_ANIMS`에도 넣지 않는다(박자를 맞출 것이 아니라 어긋나야 하는 것이다).
+
+     자리는 물길 폭 안에서 잡는다. 다리 위쪽 물길은 비스듬해서 좁고
+     (y=68에서 x는 0~6), 다리 아래는 넓다(y=95에서 x는 7~19).
+     헤엄 폭(제 몸의 ±50%)까지 더해도 뭍에 오르지 않을 만큼만 벌린다 —
+     넘었는지는 `npm test`가 지도 그림의 색을 찍어 본다. */
+  const FISH = [
+    { src: 'fish-1.png', x: 2.5,  y: 70.0, w: 1.8, t: 11 },    // 다리 위, 물길이 들어오는 데
+    { src: 'fish-3.png', x: 5.7,  y: 73.5, w: 2.1, t: 14 },
+    { src: 'fish-2.png', x: 13.8, y: 96.8, w: 2.4, t: 9.5 },   // 다리 아래 넓은 데
+    { src: 'fish-4.png', x: 16.4, y: 99.3, w: 1.9, t: 12.5 },
+  ];
 
   const TYPE_LABEL = { app: '앱', doc: '문서', video: '영상', external: '외부' };
   const STATUS_LABEL = { beta: '베타', demo: 'demo', soon: '준비 중' };
@@ -110,6 +130,19 @@
     PERCHED.forEach((p) => folks.appendChild(sprite('folk', p.src, {
       left: pct(p.x), bottom: upTo(p.y), width: pct(p.w), animation: 'none',
     })));
+
+    /* 물고기는 `.folk`를 쓰지 않는다 — 그 클래스에는 2.4초 들썩임(folk-idle)이
+       붙어 있어서 헤엄과 겹친다. 헤엄(상자)과 돌아섬(그림)은 **같은 길이여야
+       한다**: 어긋나면 오른쪽으로 가면서 왼쪽을 보는 물고기가 된다. 그래서 둘 다
+       여기서 한 값(f.t)으로 넣는다 (CSS의 기본값은 그 값이 안 왔을 때의 대비). */
+    FISH.forEach((f) => {
+      const box = sprite('fish', f.src, {
+        left: pct(f.x), bottom: upTo(f.y), width: pct(f.w),
+        animationDuration: f.t + 's',
+      });
+      box.firstChild.style.animationDuration = f.t + 's';
+      folks.appendChild(box);
+    });
   }
 
   /* ── 구역 핫스팟 ─────────────────────────── */
