@@ -102,6 +102,10 @@
   let phase = 'off';                 // off · entering · intro · choice · tour
   let line = 0, at = 0;              // 몇 번째 대사 · 몇 번째 투어
   let scrim, layer, ch, bubble, card, walkMs = 1500;
+  /* 배웅에서 **남길 말을 이미 남겼나.** 그 뒤의 「인사 받았어요」는 무엇을 고르라고
+     묻는 자리가 아니라 받았다고 알리는 자리라, 아무 데나 눌러도 닫혀야 한다.
+     고르는 차례(그 앞)와 갈라야 해서 따로 둔다 — 둘 다 `phase === 'bye'`다. */
+  let byeDone = false;
   const HELLO = [0.20, 0.15];        // [폰, 데스크톱] — 인사할 때 서는 자리 (지도 폭의 비율)
   const BYE_AT = [0.34, 0.32];       // 배웅할 때. 표지판 옆에 비켜 선다
   let standAt = HELLO;
@@ -604,7 +608,12 @@
     scrim = el('div', 'onb-scrim');
     scrim.addEventListener('click', () => {
       if (phase === 'intro') advance();
-      else if (phase === 'bye') sayBye(line + 1);
+      /* **인사를 남긴 뒤에는 아무 데나 눌러도 닫힌다.** 예전에는 여기서도
+         `sayBye(line + 1)`을 불렀는데, 배웅의 마지막을 지난 뒤라 그 함수는 조용히
+         돌아설 뿐이었다 — 그래서 「닫기」를 못 찾은 사람에게는 **마을 전체가
+         안 눌렸다.** 덮개는 투명해서 무엇이 막고 있는지도 안 보이고, 폰에는
+         Esc도 없다. 고르는 차례는 그대로 둔다(거기서는 골라야 한다). */
+      else if (phase === 'bye') { if (byeDone) finish('bye-wave'); else sayBye(line + 1); }
     });
     document.body.appendChild(scrim);
     return scrim;
@@ -701,6 +710,7 @@
      안내를 봤든 안 봤든 눌리므로 `wanted()`와 상관없이 선다. */
   function bye() {
     if (phase !== 'off' || !data) return;
+    byeDone = false;
     if (!layer) build(false);
     makeScrim();
     if (!ch) greeter();
@@ -821,6 +831,12 @@
     /* 서버가 못 받아도 손은 이미 떠올랐다 — 인사는 우리끼리 한 일이라
        거기서 실패했다고 사람에게 사과할 일은 아니다 */
     fetch('/api/wave', { method: 'POST' }).catch(() => {});
+
+    /* **여기는 묻는 자리가 아니라 알리는 자리다.** 그래서 나가는 길을 셋 다 연다 —
+       「닫기」를 눌러도, 아무 데나 눌러도, 가만히 둬도 닫힌다. 문을 하나만 두었더니
+       그것을 못 찾은 사람에게는 마을이 통째로 죽었다(2026-08-27, 쓰는 사람이 겪었다). */
+    byeDone = true;
+    scrim.classList.remove('quiet');
     fill(['인사 받았어요. 고마워요!'], (act) => {
       const done = el('button', 'onb-btn go', '닫기');
       done.type = 'button';
@@ -828,6 +844,10 @@
       act.appendChild(done);
       return done;
     });
+    /* 손이 다 떠오르고 나면 스스로 걷힌다 — 마지막 손은 1.7초 애니메이션에
+       0.36초까지 늦게 시작하므로 그보다 넉넉히 뒤에 둔다.
+       `finish()`가 `phase === 'off'`면 곧바로 돌아서므로 두 번 불려도 괜찮다 */
+    setTimeout(() => { if (phase === 'bye') finish('bye-wave'); }, 2400);
   }
 
   function boot(d) {

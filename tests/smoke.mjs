@@ -2621,6 +2621,54 @@ if (head('표지판 — 손 인사')) {
   /* 떠오른 손은 스스로 사라진다 — 안 걷으면 화면에 쌓인다 */
   await p.waitForTimeout(2200);
   ok(await p.locator('.onb-wave').count() === 0, '떠오른 손은 스스로 걷힌다');
+
+  /* **인사만 남기고 나면 마을이 도로 눌려야 한다.** 여기는 무엇을 고르라고 묻는
+     자리가 아니라 받았다고 알리는 자리인데, 나가는 문이 「닫기」 하나뿐이라
+     그것을 못 찾으면 마을 전체가 죽었다 — 덮개는 투명해서 무엇이 막는지도
+     안 보이고, 폰에는 Esc도 없다(2026-08-27, 쓰는 사람이 겪었다).
+     이제 가만히 둬도 스스로 걷힌다 — 위에서 이미 2.2초를 기다렸다. */
+  await p.waitForTimeout(600);
+  const after = await p.evaluate(() => {
+    const m = document.getElementById('map').getBoundingClientRect();
+    const at = document.elementFromPoint(m.left + m.width / 2, m.top + m.height / 2);
+    return { scrims: document.querySelectorAll('.onb-scrim').length,
+             at: at ? (at.className || at.tagName) : null };
+  });
+  ok(after.scrims === 0, '가만히 둬도 덮개가 스스로 걷힌다', `덮개 ${after.scrims}장`);
+  ok(!/onb-/.test(after.at || ''), '화면 한가운데를 마을이 도로 받는다', after.at);
+  await p.click('.spot[data-district="school"]', { timeout: 3000 });
+  await p.waitForTimeout(300);
+  ok(await p.locator('.pop').count() > 0, '인사를 남긴 뒤에도 구역이 눌린다');
+  await p.close();
+}
+
+/* **인사한 뒤에는 아무 데나 눌러도 닫힌다.** 스스로 걷히기를 기다리지 않고
+   화면을 눌러 빠져나오는 길도 있어야 한다 — 그게 사람이 먼저 하는 일이다.
+   다만 **고르는 차례는 그대로 잠겨 있다**(거기서는 골라야 한다). */
+if (head('표지판 — 인사 뒤에는 아무 데나 눌러도 닫힌다')) {
+  const p = await desktop();
+  await p.route('**/api/wave', (r) =>
+    r.fulfill({ contentType: 'application/json', body: '{"ok":true,"count":1}' }));
+  await town(p);
+  await p.waitForTimeout(400);
+  await p.click('.sign-spot');
+  await p.waitForSelector('.onb-bubble', { timeout: 5000 });
+  await p.waitForTimeout(400);
+  await p.click('.onb-btn.go'); await p.waitForTimeout(350);
+
+  /* 고르는 차례 — 덮개를 눌러도 안 닫힌다 */
+  await p.evaluate(() => document.querySelector('.onb-scrim').click());
+  await p.waitForTimeout(300);
+  ok(await p.locator('.onb-scrim').count() === 1,
+    '고르는 차례에는 아무 데나 눌러도 안 닫힌다 (셋 중 하나를 골라야 한다)');
+
+  await p.click('.onb-btn.go');            // 인사 남기기 👋
+  await p.waitForTimeout(400);
+  ok(await p.locator('.onb-scrim').count() === 1, '인사 직후에는 아직 덮개가 있다');
+  await p.evaluate(() => document.querySelector('.onb-scrim').click());
+  await p.waitForTimeout(400);
+  ok(await p.locator('.onb-scrim').count() === 0,
+    '인사한 뒤에는 아무 데나 누르면 닫힌다 (스스로 걷히기를 기다리지 않아도 된다)');
   await p.close();
 }
 
