@@ -976,20 +976,26 @@ if (head('카페 앞 까마귀')) {
 }
 
 /* ── 강물의 물고기 ──────────────────────────────────────
-   다리 위쪽 물길에서 헤엄치다 이따금 솟구치는 **문**이다(「지금日지도」로 간다).
-   문이 된 뒤로 지켜야 할 것이 하나 늘었다 — **늘 보여야 한다.** 예전에는 물속에
-   숨었다가 한 바퀴의 12%에만 솟았는데, 그러면 누를 것이 그 순간에만 있다.
+   다리 위쪽 물길을 오르내리다 이따금 솟구치는 **문**이다(「자연」 묶음을 연다).
+   여기서 지켜야 할 것이 넷이다.
 
-   헤엄 자세가 물 위인지는 지도 그림의 색을 직접 찍는다. 파랑이 빨강보다 한참
-   큰가로 보는데, 강은 (80,168,242)이고 다리 밑 그늘도 (40,100,173)이라 넉넉히
-   걸리는 반면 잔디·둑돌·도로는 오히려 빨강이 크다. */
+   ① **늘 보여야 한다.** 문이라서다 — 누를 것이 한 순간에만 있으면 누를 수가 없다.
+   ② **헤엄치는 동안 늘 물 위여야 한다.** 오가는 길이 물길을 벗어나면 뭍에서
+      헤엄치는 꼴이 된다. 눈으로는 한쪽 끝에 갔을 때만 보여서 놓치기 쉽다.
+   ③ **제자리에서 흔들기만 하면 안 된다.** 그렇게 뒀더니 「낚싯줄에 걸려 대롱거리는
+      것」으로 보였다 — 헤엄은 몸짓이 아니라 이동이다.
+   ④ **버튼이 물고기를 따라가야 한다.** 헤엄쳐 다니는 것이라 상자를 못 박을 수 없다
+      (쪽지와 같은 규칙). 그림만 가고 판정이 남으면 누를 수가 없다.
+
+   물인지는 파랑이 빨강보다 한참 큰가로 본다 — 강은 (80,168,242)이고 다리 밑 그늘도
+   (40,100,173)이라 넉넉히 걸리는 반면, 잔디·둑돌·도로는 오히려 빨강이 크다. */
 if (head('강물의 물고기')) {
   const p = await desktop();
   await town(p);
   await p.waitForTimeout(600);
   const data = await p.evaluate(() => fetch('services.json').then((r) => r.json()));
-
   const bun = data.fish.bundle;
+
   ok(await p.locator('.fish-spot').count() === 1, '강에 물고기가 하나 있다');
   ok(await p.getAttribute('.fish-spot', 'aria-label') === `${data.fish.name} — ${bun.title}`,
     '무엇을 여는 문인지 이름에 적혀 있다');
@@ -1011,15 +1017,14 @@ if (head('강물의 물고기')) {
   ok(panel.cards.length === want.length && want.every((n) => panel.cards.includes(n)),
     `묶음에 든 것이 다 선다 (${panel.cards.join(' · ')})`);
   ok(await p.getAttribute('.fish-spot', 'aria-expanded') === 'true', '열렸다고 말해 준다');
-  /* 같은 항목이 구역 패널에도 뜨면 중복이다 — 쪽지 묶음과 같은 규칙 */
-  const twice = data.items.filter((i) => bun.items.some((e) => e.id === i.id))
-    .map((i) => i.district);
   await p.click('.panel-close'); await p.waitForTimeout(300);
-  for (const id of new Set(twice)) {
+
+  /* 같은 항목이 구역 패널에도 뜨면 중복이다 — 쪽지 묶음과 같은 규칙 */
+  for (const id of new Set(data.items.filter((i) => bun.items.some((e) => e.id === i.id))
+                                     .map((i) => i.district))) {
     await p.click(`.spot[data-district="${id}"]`); await p.waitForTimeout(350);
     const dup = await p.evaluate((ns) => [...document.querySelectorAll('#panel .card-name')]
-      .filter((c) => ns.includes(c.firstChild.textContent.trim())).length,
-      bun.items.map((e) => (data.items.find((i) => i.id === e.id) || e).name));
+      .filter((c) => ns.includes(c.firstChild.textContent.trim())).length, want);
     ok(dup === 0, `${id} 구역 패널에는 다시 안 뜬다 (문이 이미 들고 있다)`, String(dup));
     await p.click('.panel-close'); await p.waitForTimeout(250);
   }
@@ -1041,36 +1046,19 @@ if (head('강물의 물고기')) {
 
     const spot = document.querySelector('.fish-spot');
     const fig = spot.querySelector('.fish-figure');
+    const bodyEl = spot.querySelector('.fish-body');
     const frames = [...spot.querySelectorAll('.fish-body img')];
     await Promise.all(frames.map((f) => f.decode()));
-    const jump = document.getAnimations().find((a) => a.animationName === 'fish-jump');
-    const dur = jump.effect.getTiming().duration;
+    const anims = () => document.getAnimations()
+      .filter((a) => (a.animationName || '').startsWith('fish-'));
+    const dur = anims().find((a) => a.animationName === 'fish-move')
+      .effect.getTiming().duration;
     document.getAnimations().forEach((a) => { try { a.pause(); a.currentTime = 0; } catch (_) {} });
+    // 꼬리질은 0에 세워 둔다 — 기울면 상자가 커져 물 검사가 헐거워진다
+    const seek = (t) => anims().forEach((a) => {
+      a.currentTime = a.animationName === 'fish-sway' ? 0 : dur * t;
+    });
 
-    /* 한 바퀴를 훑는다. 보는 것 셋 —
-       ① 늘 보이는가(한 장은 켜져 있는가), ② 두 장이 겹쳐 보이지는 않는가,
-       ③ 솟는 동안 자세가 헤엄이 아닌가(몸짓이 하나로 읽히려면 맞물려야 한다) */
-    const box0 = spot.getBoundingClientRect();
-    let blank = 0, doubled = 0, wrongPose = 0, peak = 0, peakPose = '', drift0 = 0;
-    const lift = () => box0.bottom - fig.getBoundingClientRect().bottom;
-    for (let k = 0; k < 60; k++) {
-      document.getAnimations().forEach((a) => {
-        if ((a.animationName || '').startsWith('fish-')) a.currentTime = dur * k / 60;
-      });
-      const on = frames.filter((f) => +getComputedStyle(f).opacity > 0.5);
-      if (!on.length) blank++;
-      if (on.length > 1) doubled++;
-      const up = lift();
-      if (up > peak) { peak = up; peakPose = on.map((f) => f.className).join('+'); }
-      // 물 밖으로 몸이 반 넘게 나왔는데 헤엄 자세면 몸짓이 어긋난 것이다
-      if (up > box0.height * 0.2 && on.some((f) => f.className === 'fish-swim')) wrongPose++;
-      const r = spot.getBoundingClientRect();
-      drift0 = Math.max(drift0, Math.abs(r.left - box0.left), Math.abs(r.top - box0.top));
-    }
-
-    /* 헤엄 자세가 물 위인가 — 알파가 있는 자리만 찍는다.
-       **거슬러 오른 끝(fish-drift의 50%)도 같이 본다.** 쉬는 자리만 보면
-       헤엄쳐 올라간 자리가 둑이어도 모른다 */
     const N = 40;
     const sc = document.createElement('canvas');
     sc.width = sc.height = N;
@@ -1078,90 +1066,110 @@ if (head('강물의 물고기')) {
     sg.drawImage(frames.find((f) => f.className === 'fish-swim'), 0, 0, N, N);
     const alpha = sg.getImageData(0, 0, N, N).data;
     const mr = document.getElementById('map').getBoundingClientRect();
-    const drift = document.getAnimations().find((a) => a.animationName === 'fish-drift');
-    let dry = 0, body = 0;
-    for (const at of [0, 0.5]) {
-      document.getAnimations().forEach((a) => {
-        if ((a.animationName || '').startsWith('fish-')) a.currentTime = 0;
-      });
-      if (drift) drift.currentTime = drift.effect.getTiming().duration * at;
-      const r = document.querySelector('.fish-body').getBoundingClientRect();
-      for (let v = 0; v < N; v++) for (let u = 0; u < N; u++) {
-        if (alpha[(v * N + u) * 4 + 3] <= 40) continue;
-        body++;
-        const x = (r.x + (u + 0.5) / N * r.width - mr.x) / mr.width;
-        const y = (r.y + (v + 0.5) / N * r.height - mr.y) / mr.height;
-        if (!water(x, y)) dry++;
+
+    let blank = 0, doubled = 0, dry = 0, body = 0, outside = 0;
+    let lift = 0, liftPose = '', swimW = 0, leapW = 0;
+    const xs = [], ys = [];
+    for (let k = 0; k < 100; k++) {
+      seek(k / 100);
+      const on = frames.filter((f) => +getComputedStyle(f).opacity > 0.5);
+      if (!on.length) blank++;
+      if (on.length > 1) doubled++;
+
+      const sr = spot.getBoundingClientRect();
+      const fr = bodyEl.getBoundingClientRect();
+      xs.push(sr.left); ys.push(sr.top);
+
+      // 물고기가 제 판정 밖으로 새지 않는가 (::after까지 친다)
+      const cs = getComputedStyle(spot, '::after');
+      const hw = Math.max(sr.width, parseFloat(cs.width) || 0);
+      const hh = Math.max(sr.height, parseFloat(cs.height) || 0);
+      const cx = sr.left + sr.width / 2, cy = sr.bottom;
+      if (fr.left < cx - hw / 2 - 1 || fr.right > cx + hw / 2 + 1
+          || fr.bottom > cy + hh / 2 + 1) outside++;
+
+      const up = sr.bottom - fr.bottom;          // 물낯 위로 뜬 높이
+      if (up > lift) { lift = up; liftPose = on.map((f) => f.className).join('+'); }
+
+      /* **물에 있을 때만** 물 검사를 한다 — 솟은 동안은 공중이라 뭍 위여도 맞다.
+         자세 이름이 아니라 실제로 떠 있는 높이로 가른다(자세가 갈리는 한 조각에서
+         이름과 높이가 어긋날 수 있다) */
+      if (up <= 0.5 && on.some((f) => f.className === 'fish-swim')) {
+        swimW = Math.max(swimW, fr.width);
+        // 헤엄치는 동안은 온몸이 물 위여야 한다
+        for (let v = 0; v < N; v++) for (let u = 0; u < N; u++) {
+          if (alpha[(v * N + u) * 4 + 3] <= 40) continue;
+          // 하류로 갈 때는 그림이 뒤집히므로(fish-move) 뒤집은 쪽도 같이 본다
+          for (const uu of [u, N - 1 - u]) {
+            body++;
+            const x = (fr.x + (uu + 0.5) / N * fr.width - mr.x) / mr.width;
+            const y = (fr.y + (v + 0.5) / N * fr.height - mr.y) / mr.height;
+            if (!water(x, y)) dry++;
+          }
+        }
+      } else {
+        leapW = Math.max(leapW, fr.width);
       }
     }
+    seek(0);
 
-    /* 꼬리질의 방향이 한 박자에 몇 번 바뀌나 — 회전각을 훑어 오르내림이 뒤집힌 횟수.
-       한 번 기우뚱하는 것과 꼬리를 치는 것을 가르는 것이 이 수다 */
+    /* 꼬리질의 방향이 한 박자에 몇 번 바뀌나 — 한 번 기우뚱하는 것과 꼬리를
+       치는 것을 가르는 수다 */
     const sway = document.getAnimations().find((a) => a.animationName === 'fish-sway');
-    const bodyEl = document.querySelector('.fish-body');
-    const angleNow = () => {
-      const m = new DOMMatrixReadOnly(getComputedStyle(bodyEl).transform);
-      return Math.atan2(m.b, m.a);
-    };
     const angles = [];
     for (let k = 0; k <= 48; k++) {
       sway.currentTime = sway.effect.getTiming().duration * k / 48;
-      angles.push(angleNow());
+      const m2 = new DOMMatrixReadOnly(getComputedStyle(bodyEl).transform);
+      angles.push(Math.atan2(m2.b, m2.a));
     }
     sway.currentTime = 0;
     let turns = 0;
     for (let k = 2; k < angles.length; k++) {
-      const a1 = Math.sign(angles[k] - angles[k - 1]);
-      const a0 = Math.sign(angles[k - 1] - angles[k - 2]);
-      if (a1 && a0 && a1 !== a0) turns++;
-    }
-
-    /* 거슬러 오르는 폭 — 제자리 흔들림과 헤엄을 가르는 것.
-       **재기 전에 0으로 되돌린다**: 위 물 검사가 끝난 자리(50%)에서 그대로 재면
-       0과 0을 견주게 되어 늘 「안 움직인다」로 나온다 */
-    let glide = 0;
-    if (drift) {
-      drift.currentTime = 0;
-      const at0 = bodyEl.getBoundingClientRect();
-      drift.currentTime = drift.effect.getTiming().duration / 2;
-      const at1 = bodyEl.getBoundingClientRect();
-      glide = Math.hypot(at1.x - at0.x, at1.y - at0.y);
-      drift.currentTime = 0;
+      const d1 = Math.sign(angles[k] - angles[k - 1]);
+      const d0 = Math.sign(angles[k - 1] - angles[k - 2]);
+      if (d1 && d0 && d1 !== d0) turns++;
     }
 
     const hit = getComputedStyle(spot, '::after');
-    return { blank, doubled, wrongPose, peak, peakPose, drift: drift0, dry, body, turns, glide,
-             lift: peak / box0.height,
-             hit: [parseFloat(hit.width), parseFloat(hit.height)],
-             sway: document.getAnimations().find((a) => a.animationName === 'fish-sway')
-                     ?.effect.getTiming().duration,
-             beat: (() => {
-               const f = document.getAnimations().find((a) => a.animationName === 'fish-sway');
-               const k = document.getAnimations().find((a) => a.animationName === 'folk-idle');
-               return f && k && Math.round(+f.startTime) === Math.round(+k.startTime);
-             })() };
+    return { blank, doubled, dry, body, outside, lift, liftPose, turns,
+      swimW, leapW, sizeUp: leapW / (swimW || 1),
+      travel: Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)),
+      boxH: spot.getBoundingClientRect().height,
+      hit: [parseFloat(hit.width), parseFloat(hit.height)],
+      sway: sway.effect.getTiming().duration,
+      beat: (() => {
+        const k = document.getAnimations().find((a) => a.animationName === 'folk-idle');
+        return k && Math.round(+sway.startTime) === Math.round(+k.startTime);
+      })() };
   });
 
-  ok(how.blank === 0, '한 바퀴 내내 보인다 — 문이 사라지는 순간이 없다', `${how.blank}/60 조각이 빈칸`);
+  ok(how.blank === 0, '한 바퀴 내내 보인다 — 문이 사라지는 순간이 없다', `${how.blank}/100 조각이 빈칸`);
   ok(how.doubled === 0, '자세는 늘 한 장뿐이다 (두 장이 겹쳐 보이지 않는다)', String(how.doubled));
-  ok(how.dry === 0, '헤엄치는 동안 늘 물 위다 (거슬러 오른 끝까지)',
-    `${how.dry}/${how.body}점이 뭍`);
-  ok(how.lift > 0.25, '뛰어오른다 — 제 상자의 4분의 1보다 높이 솟는다', how.lift.toFixed(2));
-  ok(!how.peakPose.includes('fish-swim'), '꼭대기에서는 헤엄 자세가 아니다', how.peakPose);
-  ok(how.wrongPose === 0, '솟는 동안 내내 뛰는 자세다', `${how.wrongPose}조각이 어긋남`);
-  /* 누를 자리가 흔들리면 조준이 안 된다 — 움직이는 것은 안쪽 그림뿐이어야 한다 */
-  ok(how.drift < 0.5, '누를 상자는 흔들리지 않는다 (그림만 움직인다)', how.drift.toFixed(2) + 'px');
+  ok(how.dry === 0, '헤엄치는 동안 늘 물 위다 (오가는 두 끝까지)', `${how.dry}/${how.body}점이 뭍`);
+  /* 제자리에서 흔들기만 하면 「낚싯줄에 걸린 것」으로 보인다 — 헤엄은 이동이다 */
+  /* **제 몸길이보다 멀리 간다**를 기준으로 삼는다. 「제자리에서 흔드는 것」과
+     「헤엄쳐 다니는 것」을 가르는 선이 거기다 — 화면 크기에 따라 px은 달라져도
+     제 몸을 기준으로 재면 뜻이 유지된다 */
+  ok(how.travel > how.swimW, '물길을 오르내린다 (제자리에서 흔들지 않는다)',
+    `${Math.round(how.travel)}px 이동 (몸길이 ${Math.round(how.swimW)}px)`);
+  ok(how.lift > 4, '뛰어오른다 — 물낯 위로 솟는다', how.lift.toFixed(1) + 'px');
+  ok(!how.liftPose.includes('fish-swim'), '꼭대기에서는 헤엄 자세가 아니다', how.liftPose);
+  /* **헤엄칠 때는 몸을 줄인다.** 솟을 때만 제 크기다 — 뛰어오르는 것이 이 문에서
+     유일하게 큰 사건이라서다(2026-09에 다원님이 「대롱대롱 걸려 있다」고 잡았다) */
+  ok(how.sizeUp > 1.2, '솟을 때가 헤엄칠 때보다 크다', how.sizeUp.toFixed(2) + '배');
+  /* 그림만 가고 판정이 남으면 누를 수가 없다 — 버튼이 물고기를 따라가야 한다 */
+  ok(how.outside === 0, '물고기가 늘 제 판정 안에 있다 (버튼이 따라간다)', `${how.outside}조각이 밖`);
   ok(how.hit[0] >= 44 && how.hit[1] >= 44, `판정 영역이 터치 기준 44px 이상 (${how.hit[0]}x${how.hit[1]})`);
-  /* 헤엄은 마을과 같은 2.4초 한 박자에 물린다 — 뜀(9초)만 저 혼자 논다 */
   ok(how.sway === 2400 && how.beat, '꼬리질은 마을과 같은 2.4초 한 박자다',
     `${how.sway}ms · 박자 ${how.beat}`);
-  /* **가만히 있을 때가 제일 어렵다.** 한 박자에 한 번 기우뚱하게 뒀더니 「죽은
-     물고기가 물에 떠서 흔들리는 것」으로 보였다. 산 물고기와 죽은 물고기를 가르는
-     것은 폭이 아니라 박자다 — 한 박자 안에서 방향이 네 번 바뀌는지를 본다 */
   ok(how.turns >= 4, '한 박자에 꼬리를 네 번 이상 친다 (떠 있는 게 아니라 헤엄친다)',
     `${how.turns}번`);
-  ok(how.glide > 0.5, '제자리에서만 흔들지 않는다 — 물길을 거슬러 오르내린다',
-    how.glide.toFixed(1) + 'px');
+
+  /* **손을 대면 멈춘다.** 헤엄쳐 다니는 것을 눌러야 하므로 이게 없으면 조준이 안 된다
+     (쪽지와 같은 이유) */
+  await p.hover('.fish-spot'); await p.waitForTimeout(200);
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector('.fish-spot')).animationPlayState)
+     === 'paused', '손을 대면 멈춘다 (움직이는 것을 눌러야 하므로)');
   await p.close();
 }
 

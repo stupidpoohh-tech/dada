@@ -199,59 +199,73 @@
   }
 
   /** 강물의 물고기 — 구역이 아니라 지도 위에 따로 선 문이다(쪽지·까마귀와 같은 결).
-   *  다리 위쪽 물길에서 헤엄치다 이따금 솟구친다. 누르면 「강에서 건진 것」이 열린다.
+   *  다리 위쪽 물길을 오르내리다 이따금 솟구친다. 누르면 「자연」 묶음이 열린다.
    *
-   *  **곧바로 나가는 링크가 아니라 묶음을 여는 버튼이다**(2026-09에 바꿨다).
-   *  까마귀처럼 한 곳으로 곧장 보내면 물고기는 그 한 항목의 아이콘이 되어 버리는데,
-   *  여기는 강이라 나중에 낚시 쪽 것들이 더 붙는다 — 쪽지가 「매일 쓰는 것들」을
-   *  들고 있는 것과 같은 자리다. 항목이 늘어도 문은 그대로 하나다.
+   *  **곧바로 나가는 링크가 아니라 묶음을 여는 버튼이다.** 까마귀처럼 한 곳으로
+   *  곧장 보내면 물고기가 그 한 항목의 아이콘이 되어 버리는데, 여기는 강이라
+   *  나중에 낚시 쪽 것들이 더 붙는다 — 쪽지가 「매일 쓰는 것들」을 들고 있는 것과
+   *  같은 자리다. 항목이 늘어도 문은 그대로 하나다.
    *
-   *  **늘 보여야 한다.** 한때는 물속에 숨었다가 한 순간만 솟게 만들었는데,
-   *  문이 된 뒤로는 그럴 수 없다 — 누를 것이 12%의 시간에만 있으면 누를 수가 없다.
-   *  그래서 물낯에 상시로 떠 있고, 뜀은 그 위에 얹힌 한 순간이다.
+   *  **버튼이 물고기를 따라 움직인다.** 다른 문들은 상자를 못 박아 두는데(누를
+   *  자리가 흔들리면 조준이 안 된다) 이건 헤엄쳐 다니는 것이라 그럴 수 없다 —
+   *  쪽지와 같은 규칙으로 **버튼째 물길을 오간다.** 대신 손을 대면 멈춘다.
+   *
+   *  **가만히 있을 때가 제일 어려웠다.** 제자리에서 몸만 흔들게 뒀더니
+   *  「낚싯줄에 걸려 대롱거리는 것」으로 보였다(다원님이 잡았다). 헤엄은 몸짓이
+   *  아니라 **이동**이라, 물길을 실제로 오르내리게 하고 헤엄칠 때는 몸을 줄였다.
    *
    *  **자세는 갈아 끼운다**(까마귀와 같은 규칙). 이 마을에는 프레임 애니메이션이
    *  없어서(transform만 쓴다) 헤엄치던 물고기가 몸을 세우려면 그림이 여러 장이어야
-   *  했다 — 비스듬(swim) · 곧추섬(up) · 납작(flat) 세 장이고, 셋은 같은 배율 ·
+   *  했다 — 옆모습(swim) · 곧추섬(up) · 비스듬(tip) 세 장이고, 셋은 같은 배율 ·
    *  **같은 밑변**의 한 캔버스다(tools/cut_fish.py). 밑변을 맞춰 둔 덕에 갈아 끼워도
    *  물낯이 안 흔들린다 — 꼬리는 물에 있고 머리만 올라가는 것이 곧 뛰어오르는 몸짓이다.
    *
-   *  **헤엄 자세를 비스듬한 것으로 고른 이유**가 있다. 이 물길은 오른쪽 아래로
-   *  40°쯤 기울어 흐르는데, 옆모습(납작)을 눕혀 놓으면 상자가 물길보다 넓어
-   *  코와 꼬리가 둑에 올라간다. 비스듬한 자세는 물길과 같은 방향이라 폭 8%까지
-   *  키워도 온몸이 물 위에 있다 — 크기를 벌어 준 것이 자세다.
+   *  그림 넷 다 왼쪽을 보고 있어서 하류(오른쪽)로 갈 때만 좌우를 뒤집는다.
    *
-   *  상자 높이는 `ratio`(캔버스 비율)로 못 박는다. 그림이 도착해야 알 수 있는
-   *  높이에 기대면 뜀·꼬리질(`bottom`과 `transform-origin`의 %)이 그림 오기 전에는
-   *  0이 되는데, **iOS 사파리는 그 뒤로도 다시 계산하지 않는다** — 마을이 통째로
-   *  흘러내렸던 그 함정이다. */
+   *  좌표·크기는 전부 CSS 변수로 넘긴다 — 오가는 두 끝, 헤엄칠 때의 배율, 솟는 높이.
+   *  상자 높이는 `ratio`(캔버스 비율)로 못 박는데, 그림이 도착해야 알 수 있는 높이에
+   *  기대면 `bottom`·`transform-origin`의 세로 %가 그림 오기 전에는 0이 되고
+   *  **iOS 사파리는 그 뒤로도 다시 계산하지 않는다** — 마을이 통째로 흘러내렸던
+   *  그 함정이다(upTo). */
   function makeFish(wrap) {
     const g = data.fish;
-    if (!g || !g.frames || !g.bundle) return;
+    if (!g || !g.frames || !g.bundle || !(g.path || []).length) return;
+    const [up, down] = g.path.length > 1 ? g.path : [g.path[0], g.path[0]];
+
     const btn = el('button', 'fish-spot');
     btn.type = 'button';
     btn.setAttribute('aria-label', `${g.name} — ${g.bundle.title}`);
     btn.setAttribute('aria-expanded', 'false');
-    Object.assign(btn.style, {
-      left: pct(g.at[0]), bottom: upTo(g.at[1]), width: pct(g.w),
-      aspectRatio: g.ratio ? `${g.ratio[0]} / ${g.ratio[1]}` : 'auto',
-    });
+    btn.style.width = pct(g.w);
+    if (g.ratio) btn.style.aspectRatio = `${g.ratio[0]} / ${g.ratio[1]}`;
+    // 애니메이션이 없어도(움직임을 끈 브라우저 등) 물길 가운데에 서 있는다
+    btn.style.left = pct((up[0] + down[0]) / 2);
+    btn.style.bottom = upTo((up[1] + down[1]) / 2);
+    btn.style.setProperty('--fish-x0', pct(up[0]));
+    btn.style.setProperty('--fish-y0', upTo(up[1]));
+    btn.style.setProperty('--fish-x1', pct(down[0]));
+    btn.style.setProperty('--fish-y1', upTo(down[1]));
+    /* 한 바퀴는 **두 끝이 아니라 가운데**에서 시작한다. tools/shot.mjs가 모든
+       움직임을 0에 세워 놓고 찍는데, 끝에서 시작하면 찍을 때마다 돌아서느라 폭이
+       눌린 실오라기가 나온다 — 0은 아무 일도 없는 자리여야 한다. */
+    btn.style.setProperty('--fish-xm', pct((up[0] + down[0]) / 2));
+    btn.style.setProperty('--fish-ym', upTo((up[1] + down[1]) / 2));
+    if (g.swim != null) btn.style.setProperty('--fish-swim', (g.swim / 100).toFixed(3));
     if (g.jump != null) btn.style.setProperty('--fish-jump', pct(g.jump));
+    if (g.leap != null) btn.style.setProperty('--fish-leap', (g.leap / 100).toFixed(3));
+    if (g.dur) btn.style.setProperty('--fish-dur', g.dur + 's');
 
-    // 뜀(.fish-figure) · 거슬러 오르내림(.fish-drift) · 꼬리질(.fish-body)을
-    // 세 요소에 나눠 건다. 한 요소에 겹치면 한쪽 transform이 다른 쪽을 덮어쓴다
-    // (쪽지가 오르내림과 호버 확대를 나눠 건 것과 같은 이유)
+    // 오르내림(버튼) · 뜀과 뒤집힘(.fish-figure) · 꼬리질(.fish-body)을 나눠 건다.
+    // 한 요소에 겹치면 한쪽 transform이 다른 쪽을 덮어쓴다 (쪽지와 같은 이유)
     const fig = el('span', 'fish-figure');
-    const drift = el('span', 'fish-drift');
     const body = el('span', 'fish-body');
-    // 역할 이름이 곧 클래스다 (swim · up · flat) — 순서에 기대면 한 장만 늘어도 어긋난다
+    // 역할 이름이 곧 클래스다 (swim · up · tip) — 순서에 기대면 한 장만 늘어도 어긋난다
     Object.entries(g.frames).forEach(([role, src]) => {
       const img = pixel(S + src);
       img.className = 'fish-' + role;
       body.appendChild(img);
     });
-    drift.appendChild(body);
-    fig.appendChild(drift);
+    fig.appendChild(body);
     btn.appendChild(fig);
 
     btn.addEventListener('click', () => toggleBundle(btn, g, 'fish'));

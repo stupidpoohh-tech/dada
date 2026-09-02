@@ -667,25 +667,34 @@
   ],
   "fish": {
     "name": "강물의 물고기",
-    "icon": "🎣",
-    "label": "RIVER",
-    "at": [
-      6.0,
-      77.0
+    "icon": "🌿",
+    "label": "NATURE",
+    "path": [
+      [
+        2.6,
+        70.1
+      ],
+      [
+        7.5,
+        75.0
+      ]
     ],
-    "w": 8.0,
+    "w": 7.0,
     "ratio": [
       140,
       143
     ],
-    "jump": 45,
+    "swim": 55,
+    "jump": 18,
+    "leap": 85,
+    "dur": 14,
     "frames": {
-      "swim": "fish-tilt.png",
+      "swim": "fish-side.png",
       "up": "fish-up.png",
-      "flat": "fish-side.png"
+      "tip": "fish-tilt.png"
     },
     "bundle": {
-      "title": "강에서 건진 것",
+      "title": "자연",
       "items": [
         {
           "id": "korea4season"
