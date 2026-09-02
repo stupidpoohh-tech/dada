@@ -686,14 +686,18 @@ button.crow-spot { background: none; border: 0; padding: 0; cursor: pointer; }
 
    빠르기는 던진 것처럼 — 올라갈 때는 점점 느려지고(94%→100%) 떨어질 때는 점점
    빨라진다(0%→6%). CSS는 타이밍 함수를 구간마다 적용하므로 구간별로 따로 준다.
-   물속에 있는 6%~94% 동안 몸을 되돌리는데, 어차피 잘려서 안 보인다. */
+   물속에 있는 6%~94% 동안 몸을 되돌리는데, 어차피 잘려서 안 보인다.
+
+   **기울기는 작게 준다(-8°~12°).** transform-origin이 윗변이라 기울인 각도만큼
+   꼬리가 옆으로 쓸리는데, 물고기가 커진 만큼 그 폭도 같이 커진다 — 20°면 꼬리가
+   제 폭의 절반을 넘게 나가 물길 밖으로 쓸린다. */
 @keyframes fish-jump {
-  0%   { bottom: 44%;   transform: rotate(4deg);
+  0%   { bottom: 9%;    transform: rotate(2deg);
          animation-timing-function: cubic-bezier(.6, 0, .9, .4); }   /* 꼭대기 → 떨어진다 */
-  6%   { bottom: -100%; transform: rotate(24deg); }                  /* 물속으로 */
-  94%  { bottom: -100%; transform: rotate(-15deg);
+  6%   { bottom: -100%; transform: rotate(12deg); }                  /* 물속으로 */
+  94%  { bottom: -100%; transform: rotate(-8deg);
          animation-timing-function: cubic-bezier(.1, .6, .4, 1); }   /* 솟는다 */
-  100% { bottom: 44%;   transform: rotate(4deg); }
+  100% { bottom: 9%;    transform: rotate(2deg); }
 }
 
 .folk.person img { transform-origin: 50% 100%; transition: transform .18s ease, filter .18s ease; }

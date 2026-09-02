@@ -1036,16 +1036,25 @@ if (head('강에서 뛰어오르는 물고기')) {
       if (!seen) hidden++;
     }
 
-    // 한 바퀴의 시작(=tools/shot.mjs가 세워 놓고 찍는 자리)에는 보여야 한다
-    anim.currentTime = 0;
+    /* 한 바퀴의 시작(= tools/shot.mjs가 세워 놓고 찍는 자리)이 **가장 잘 보이는
+       자리**여야 한다. 한 바퀴를 마흔 조각으로 훑어 물 밖에 나온 높이를 재고,
+       0이 그중 꼭대기인지 본다 */
     const pr0 = pool.getBoundingClientRect();
+    let peak = 0;
+    for (let k = 1; k < 40; k++) {
+      anim.currentTime = dur * k / 40;
+      peak = Math.max(peak, pr0.bottom - box.getBoundingClientRect().top);
+    }
+    anim.currentTime = 0;
     const r0 = box.getBoundingClientRect();
-    const apex = (pr0.bottom - r0.bottom) / pr0.height;   // 물낯 위로 나온 높이
+    const shown = pr0.bottom - r0.top;                    // 물 밖에 나온 높이
+    const apex = shown >= peak - 1;                       // 0이 그 꼭대기인가
+    const clear = pr0.bottom - r0.bottom;                 // 꼬리까지 물 밖으로 나왔나
     // 쉬는 동안(한 바퀴의 절반)에는 아예 안 보여야 한다
     anim.currentTime = dur * 0.5;
     const rest = box.getBoundingClientRect().top >= pool.getBoundingClientRect().bottom;
 
-    return { dry, hidden, out, apex, rest, clip: getComputedStyle(pool).overflow,
+    return { dry, hidden, out, apex, clear, rest, clip: getComputedStyle(pool).overflow,
              pe: getComputedStyle(pool).pointerEvents,
              src: img.getAttribute('src').split('/').pop(),
              n: document.querySelectorAll('.fish').length };
@@ -1061,7 +1070,8 @@ if (head('강에서 뛰어오르는 물고기')) {
   ok(fish.hidden <= 2, '뛰는 구간에서는 실제로 보인다', `${fish.hidden}/21 조각이 물속`);
   /* **찍을 때 보여야 한다.** tools/shot.mjs는 모든 움직임을 0에 세워 놓고 찍는데,
      물속에서 한 바퀴가 시작하면 찍을 때마다 물고기가 아예 안 나온다 */
-  ok(fish.apex > 0.3, '한 바퀴의 시작이 꼭대기다 (찍으면 나온다)', fish.apex.toFixed(2));
+  ok(fish.apex, '한 바퀴의 시작이 곧 꼭대기다 (찍으면 가장 잘 보이는 자리가 나온다)');
+  ok(fish.clear > 0, '꼭대기에서는 꼬리까지 물 밖으로 나온다', fish.clear.toFixed(1) + 'px');
   ok(fish.pe === 'none', '눌리지 않는다 — 지나가는 클릭을 먹지 않는다');
   await p.close();
 }
