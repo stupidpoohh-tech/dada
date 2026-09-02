@@ -1498,9 +1498,11 @@
         const out = await res.json().catch(() => ({}));
         if (res.ok && out.ok) {
           // 남긴 뒤에는 폼을 치우고 고마웠다는 말만 남긴다 — 또 쓰라고 빈 칸을
-          // 다시 내밀면 방금 남긴 것이 안 갔나 싶어진다
+          // 다시 내밀면 방금 남긴 것이 안 갔나 싶어진다.
+          // **치우되 없애지는 않는다**(`hidden`) — 창을 다시 열 때 `resetSay()`가
+          // 되돌린다. `remove()`로 뽑아 버렸더니 그 뒤로는 아무것도 없는 창이 떴다
           track('say_sent', {});
-          form.remove();
+          form.hidden = true;
           say('고맙습니다. 잘 받았어요.', 'good');
           return;
         }
@@ -1513,8 +1515,29 @@
     });
   }
 
+  /** 창을 열 때마다 폼을 되돌린다.
+   *
+   *  **남긴 직후와 다시 연 때는 다른 순간이다.** 남긴 직후에 빈 칸을 다시 내밀면
+   *  방금 남긴 것이 안 갔나 싶어지므로 폼을 치운다. 그런데 치운 채로 두었더니
+   *  **다시 열었을 때 고맙다는 말만 있는 빈 창이 떴다** — 새로고침하기 전에는 그
+   *  세션에서 두 번 다시 남길 수 없었다(2026-09-01에 알았다).
+   *
+   *  적은 글만 비우고 **이름과 답장받을 곳은 남긴다** — 같은 사람이 다시 남기는
+   *  것이 보통이라, 매번 다시 적게 하면 그만큼 안 남긴다. */
+  function resetSay() {
+    const form = $('sayForm');
+    if (!form) return;
+    form.hidden = false;
+    $('sayText').value = '';
+    $('sayBtn').disabled = false;      // 보내는 동안 잠갔던 것이 성공한 자리에서는 안 풀린다
+    const note = $('sayNote');
+    note.textContent = '';
+    note.className = 'say-note';
+  }
+
   function openSay() {
     track('say_open', {});
+    resetSay();
     lastFocus = document.activeElement;
     $('sayModal').hidden = false;
     document.body.style.overflow = 'hidden';

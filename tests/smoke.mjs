@@ -1357,13 +1357,40 @@ if (head('제작자에게 한마디')) {
   await p.waitForTimeout(400);
   const done = await p.evaluate(() => ({
     good: document.getElementById('sayNote').classList.contains('say-good'),
-    gone: !document.getElementById('sayForm'),
+    gone: document.getElementById('sayForm').hidden,
     stillOpen: !document.getElementById('sayModal').hidden,
   }));
   ok(sent && sent.text === '마을 잘 봤어요' && sent.name === '다원' && sent.reply === 'a@b.c',
     '적은 것이 그대로 서버로 간다', JSON.stringify(sent));
   ok(done.good && done.gone && done.stillOpen,
     '남기면 폼이 사라지고 고맙다는 말만 남는다', JSON.stringify(done));
+
+  /* **다시 열면 또 남길 수 있어야 한다.** 남긴 직후와 다시 연 때는 다른 순간인데,
+     예전에는 폼을 `remove()`로 뽑아 버려서 그 세션에서는 새로고침 전까지 두 번
+     다시 남길 수 없었다 — 고맙다는 말만 있는 빈 창이 떴다(2026-09-01). */
+  await p.click('#sayClose'); await p.waitForTimeout(250);
+  await p.click('#sayHi'); await p.waitForTimeout(350);
+  const again = await p.evaluate(() => ({
+    form: !document.getElementById('sayForm').hidden,
+    text: document.getElementById('sayText').value,
+    name: document.getElementById('sayName').value,
+    reply: document.getElementById('sayReply').value,
+    btn: document.getElementById('sayBtn').disabled,
+    note: document.getElementById('sayNote').textContent,
+  }));
+  ok(again.form && !again.btn, '다시 열면 폼이 돌아오고 보내기도 다시 눌린다',
+    JSON.stringify(again));
+  ok(again.text === '' && again.note === '', '적었던 글과 지난 인사말은 비어 있다');
+  /* 같은 사람이 다시 남기는 것이 보통이다 — 매번 다시 적게 하면 그만큼 안 남긴다 */
+  ok(again.name === '다원' && again.reply === 'a@b.c',
+    '이름과 답장받을 곳은 남아 있다', JSON.stringify(again));
+
+  /* 두 번째도 실제로 서버까지 간다 — 폼만 돌아오고 안 보내지면 더 나쁘다 */
+  sent = null;
+  await p.fill('#sayText', '두 번째 한마디');
+  await p.click('#sayBtn'); await p.waitForTimeout(400);
+  ok(sent && sent.text === '두 번째 한마디', '두 번째도 그대로 서버로 간다',
+    JSON.stringify(sent));
 
   // 바깥을 눌러도 닫힌다 (목록 모달과 같은 규칙)
   await p.mouse.click(5, 5);
