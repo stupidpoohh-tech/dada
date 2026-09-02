@@ -667,6 +667,8 @@
   ],
   "fish": {
     "name": "강물의 물고기",
+    "icon": "🎣",
+    "label": "RIVER",
     "at": [
       6.0,
       77.0
@@ -682,7 +684,14 @@
       "up": "fish-up.png",
       "flat": "fish-side.png"
     },
-    "item": "korea4season"
+    "bundle": {
+      "title": "강에서 건진 것",
+      "items": [
+        {
+          "id": "korea4season"
+        }
+      ]
+    }
   },
   "sign": {
     "sprite": "sign.png",

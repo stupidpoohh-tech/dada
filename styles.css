@@ -655,19 +655,19 @@ button.crow-spot { background: none; border: 0; padding: 0; cursor: pointer; }
   75%      { transform: translateX(-50%) translateY(-18%) scale(.96, 1.07) rotate(5deg); }
 }
 /* ── 강물의 물고기 ──────────────────────────
-   다리 위쪽 물길에서 헤엄치다 이따금 솟구친다. 누르면 「지금日지도」로 가는
-   문이라(app.js의 makeFish) 까마귀와 같은 규칙을 따른다 — 링크 상자는 가만히
+   다리 위쪽 물길에서 헤엄치다 이따금 솟구친다. 누르면 「강에서 건진 것」이 열리는
+   문이라(app.js의 makeFish) 쪽지·까마귀와 같은 규칙을 따른다 — 누를 상자는 가만히
    있고 움직이는 것은 안쪽 그림뿐이다. 누를 자리가 흔들리면 조준이 안 된다.
 
    **늘 보인다.** 한때는 물속에 숨었다가 한 순간만 솟게 만들었는데(물낯을
    overflow: hidden으로 잘랐다), 문이 된 뒤로는 그럴 수 없다 — 누를 것이 한
    바퀴의 12%에만 있으면 누를 수가 없다.
 
-   높낮이(뜀)는 `bottom`으로 준다. translateY의 %는 「제 높이」 기준인데 그림이
-   도착하기 전에는 0이고 **iOS 사파리는 그 뒤로도 다시 계산하지 않는다** —
-   마을이 통째로 흘러내렸던 그 함정이다(app.js의 upTo). 여기서는 상자에
-   `aspect-ratio`를 박아 두므로(캔버스 비율, app.js가 넣는다) 그림이 없어도
-   높이가 정해져 있고, 그 % 기준의 bottom은 안전하다. */
+   **상자에 `aspect-ratio`를 박아 둔다**(캔버스 비율, app.js가 넣는다). 안쪽 겹들이
+   전부 그 높이를 물려받으므로 `bottom`·`translateY`·`transform-origin`의 세로 %가
+   **그림이 도착하기 전에도 제 값**을 갖는다. 그림이 와야 알 수 있는 높이에 기대면
+   그 값들이 0이 되는데, iOS 사파리는 그 뒤로도 다시 계산하지 않는다 — 마을이
+   통째로 흘러내렸던 그 함정이다(app.js의 upTo). */
 .fish-spot {
   position: absolute;
   pointer-events: auto;
@@ -676,6 +676,8 @@ button.crow-spot { background: none; border: 0; padding: 0; cursor: pointer; }
   z-index: 4;
   line-height: 0;
 }
+/* 묶음을 여는 물고기는 <button>이다 — 확성기·까마귀와 같이 배경 없는 버튼으로 되돌린다 */
+button.fish-spot { background: none; border: 0; padding: 0; cursor: pointer; }
 /* 폰에서 상자는 29px 남짓. 판정은 그림보다 넉넉하게 (터치 기준 44px) */
 .fish-spot::after {
   content: '';
@@ -683,22 +685,25 @@ button.crow-spot { background: none; border: 0; padding: 0; cursor: pointer; }
   transform: translate(-50%, -50%);
   width: max(100%, 56px); height: max(100%, 56px);
 }
-/* 갈 곳이 없으면 풍경이다 — 누를 수 없는 것이 손가락을 부르면 안 된다 */
-.fish-spot.scenery { pointer-events: none; cursor: default; }
-.fish-spot.scenery::after { content: none; }
 
-/* 뛰어오르는 것은 이 겹이 맡는다. 밑변(=물낯)에 붙어 있다가 bottom으로 솟는다 */
-.fish-figure {
+/* 겹이 셋이다. 뜀 · 거슬러 오르내림 · 꼬리질 — 박자가 다 달라서 한 요소에 못 건다
+   (한 요소에 두 애니메이션을 걸면 transform이 서로를 덮어쓴다). */
+.fish-figure {                              /* 뛰어오른다 — 9초에 한 번 */
   position: absolute; left: 0; bottom: 0; width: 100%;
+  aspect-ratio: inherit;
   transform-origin: 50% 100%;
   animation: fish-jump 9s linear infinite;
 }
-/* 헤엄은 이 겹이 맡는다 — 마을과 같은 2.4초 한 박자다. 뜀(9초)과 겹은 나눠 둔다:
-   한 겹에 두 애니메이션을 걸면 transform이 서로를 덮어쓴다. 여기서는 크기와
-   무관한 것(회전 · 제 폭 기준의 가로 이동)만 써서 그림이 늦게 와도 어긋나지 않는다 */
-.fish-body {
-  display: block;
-  transform-origin: 50% 100%;
+.fish-drift {                               /* 물길을 조금 거슬러 올랐다 내려온다 */
+  display: block; height: 100%;
+  animation: fish-drift 7.2s ease-in-out infinite;
+}
+.fish-body {                                /* 꼬리질 — 마을과 같은 2.4초 한 박자 */
+  display: block; height: 100%;
+  /* **머리를 축으로 돈다.** 밑변(꼬리)을 축으로 삼았더니 머리가 좌우로 흔들려
+     물에 뜬 채 떠밀리는 것처럼 보였다 — 살아 있는 물고기는 머리를 두고 꼬리를 친다.
+     30% 32%는 비스듬 자세의 머리께다 */
+  transform-origin: 30% 32%;
   animation: fish-sway 2.4s ease-in-out infinite;
 }
 .fish-body img {
@@ -742,13 +747,32 @@ button.crow-spot { background: none; border: 0; padding: 0; cursor: pointer; }
 @keyframes fish-frame-up   { 0%, 77% { opacity: 0; } 78%, 84% { opacity: 1; } 85%, 100% { opacity: 0; } }
 @keyframes fish-frame-flat { 0%, 84% { opacity: 0; } 85%, 92% { opacity: 1; } 93%, 100% { opacity: 0; } }
 
-/* 물살에 몸을 맡긴 채 좌우로 흔들린다. 가로 %는 제 폭 기준이라(폭은 인라인으로
-   박혀 있다) 그림이 늦게 와도 어긋나지 않는다 */
+/* **가만히 있을 때가 제일 어렵다.** 처음에는 2.4초에 한 번 몸을 기우뚱하게 뒀는데
+   「죽은 물고기가 물에 떠서 흔들리는 것」으로 보였다. 산 물고기와 죽은 물고기를
+   가르는 것은 폭이 아니라 **박자와 축**이다 —
+
+   ① 한 박자(2.4초) 안에서 꼬리를 **네 번** 친다. 느리게 한 번 기우는 것은 물결에
+      떠밀리는 것이고, 여러 번 치는 것은 제가 하는 짓이다.
+   ② 축이 **머리**다(.fish-body의 transform-origin). 꼬리를 축으로 돌리면 머리가
+      흔들려 떠밀리는 꼴이 된다.
+   ③ 꼬리를 칠 때마다 몸이 앞으로 아주 조금 나아간다(translate) — 힘을 쓰는 표시다. */
 @keyframes fish-sway {
-  0%, 100% { transform: rotate(0deg)    translateX(0); }
-  25%      { transform: rotate(-3.5deg) translateX(-6%); }
-  50%      { transform: rotate(0deg)    translateX(0); }
-  75%      { transform: rotate(3.5deg)  translateX(6%); }
+  0%, 100% { transform: translate(0, 0)        rotate(0deg); }
+  12.5%    { transform: translate(-1.2%, -.5%) rotate(-6deg); }
+  25%      { transform: translate(0, 0)        rotate(.5deg); }
+  37.5%    { transform: translate(-1.2%, -.5%) rotate(6deg); }
+  50%      { transform: translate(0, 0)        rotate(0deg); }
+  62.5%    { transform: translate(-1.2%, -.5%) rotate(-6deg); }
+  75%      { transform: translate(0, 0)        rotate(.5deg); }
+  87.5%    { transform: translate(-1.2%, -.5%) rotate(6deg); }
+}
+/* 제자리에서만 흔들면 헤엄이 아니라 몸부림이다. 물길을 조금 거슬러 올랐다
+   내려오는 이 겹이 「가고 있다」를 만든다. 방향은 물길과 같다 — 이 강은 오른쪽
+   아래로 흐르므로 거슬러 오르는 것은 왼쪽 위다(가로 %는 제 폭, 세로 %는 제 높이
+   기준인데 둘 다 aspect-ratio로 정해져 있다). 세 박자(7.2초)에 한 번 왕복한다 */
+@keyframes fish-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-8%, -6.4%); }
 }
 
 .folk.person img { transform-origin: 50% 100%; transition: transform .18s ease, filter .18s ease; }

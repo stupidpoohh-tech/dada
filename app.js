@@ -198,8 +198,13 @@
     makeSign(wrap);
   }
 
-  /** 강물의 물고기 — 구역이 아니라 지도 위에 따로 선 문이다(까마귀·우편함과 같은 결).
-   *  다리 위쪽 물길에서 헤엄치다 이따금 솟구친다. 누르면 「지금日지도」로 간다.
+  /** 강물의 물고기 — 구역이 아니라 지도 위에 따로 선 문이다(쪽지·까마귀와 같은 결).
+   *  다리 위쪽 물길에서 헤엄치다 이따금 솟구친다. 누르면 「강에서 건진 것」이 열린다.
+   *
+   *  **곧바로 나가는 링크가 아니라 묶음을 여는 버튼이다**(2026-09에 바꿨다).
+   *  까마귀처럼 한 곳으로 곧장 보내면 물고기는 그 한 항목의 아이콘이 되어 버리는데,
+   *  여기는 강이라 나중에 낚시 쪽 것들이 더 붙는다 — 쪽지가 「매일 쓰는 것들」을
+   *  들고 있는 것과 같은 자리다. 항목이 늘어도 문은 그대로 하나다.
    *
    *  **늘 보여야 한다.** 한때는 물속에 숨었다가 한 순간만 솟게 만들었는데,
    *  문이 된 뒤로는 그럴 수 없다 — 누를 것이 12%의 시간에만 있으면 누를 수가 없다.
@@ -217,47 +222,40 @@
    *  키워도 온몸이 물 위에 있다 — 크기를 벌어 준 것이 자세다.
    *
    *  상자 높이는 `ratio`(캔버스 비율)로 못 박는다. 그림이 도착해야 알 수 있는
-   *  높이에 기대면 뜀(`bottom`의 %)이 그림 오기 전에는 0이 되는데, **iOS 사파리는
-   *  그 뒤로도 다시 계산하지 않는다** — 마을이 통째로 흘러내렸던 그 함정이다. */
+   *  높이에 기대면 뜀·꼬리질(`bottom`과 `transform-origin`의 %)이 그림 오기 전에는
+   *  0이 되는데, **iOS 사파리는 그 뒤로도 다시 계산하지 않는다** — 마을이 통째로
+   *  흘러내렸던 그 함정이다. */
   function makeFish(wrap) {
     const g = data.fish;
-    if (!g || !g.frames) return;
-    const item = data.items.find((x) => x.id === g.item);
-    const open = item && item.url;
-    // 갈 곳이 없으면 풍경으로만 선다 — 없는 곳을 가리키는 문은 만들지 않는다
-    const box = el(open ? 'a' : 'span', 'fish-spot' + (open ? '' : ' scenery'));
-    if (open) {
-      box.href = item.url;
-      // 마을 밖으로 나가는 것은 새 탭으로 연다 — 카드와 같은 규칙이다.
-      // 같은 탭으로 보내면 돌아올 마을이 없어진다
-      if (item.type === 'app' || item.type === 'external' || item.type === 'video') {
-        box.target = '_blank';
-        box.rel = 'noopener';
-      }
-      box.setAttribute('aria-label', `${g.name} — ${item.name}`);
-      box.addEventListener('click', () => track('item_click', {
-        item: item.id, item_type: item.type, from: 'fish',
-      }));
-    } else {
-      box.setAttribute('aria-hidden', 'true');
-    }
-    Object.assign(box.style, {
+    if (!g || !g.frames || !g.bundle) return;
+    const btn = el('button', 'fish-spot');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', `${g.name} — ${g.bundle.title}`);
+    btn.setAttribute('aria-expanded', 'false');
+    Object.assign(btn.style, {
       left: pct(g.at[0]), bottom: upTo(g.at[1]), width: pct(g.w),
       aspectRatio: g.ratio ? `${g.ratio[0]} / ${g.ratio[1]}` : 'auto',
     });
-    if (g.jump != null) box.style.setProperty('--fish-jump', pct(g.jump));
+    if (g.jump != null) btn.style.setProperty('--fish-jump', pct(g.jump));
 
-    // 역할 이름이 곧 클래스다 (swim · up · flat) — 순서에 기대면 한 장만 늘어도 어긋난다
+    // 뜀(.fish-figure) · 거슬러 오르내림(.fish-drift) · 꼬리질(.fish-body)을
+    // 세 요소에 나눠 건다. 한 요소에 겹치면 한쪽 transform이 다른 쪽을 덮어쓴다
+    // (쪽지가 오르내림과 호버 확대를 나눠 건 것과 같은 이유)
     const fig = el('span', 'fish-figure');
+    const drift = el('span', 'fish-drift');
     const body = el('span', 'fish-body');
+    // 역할 이름이 곧 클래스다 (swim · up · flat) — 순서에 기대면 한 장만 늘어도 어긋난다
     Object.entries(g.frames).forEach(([role, src]) => {
       const img = pixel(S + src);
       img.className = 'fish-' + role;
       body.appendChild(img);
     });
-    fig.appendChild(body);
-    box.appendChild(fig);
-    wrap.appendChild(box);
+    drift.appendChild(body);
+    fig.appendChild(drift);
+    btn.appendChild(fig);
+
+    btn.addEventListener('click', () => toggleBundle(btn, g, 'fish'));
+    wrap.appendChild(btn);
   }
 
   /** 마을 나가는 길의 표지판 — 구역이 아니라 지도 위에 따로 선 문이다
@@ -472,18 +470,25 @@
     sheet.insertRule(`@keyframes note-fly{${fly}}`, sheet.cssRules.length);
     btn.style.animationDuration = (m.dur || 40) + 's';
 
-    btn.addEventListener('click', () => toggleBundle(btn));
+    btn.addEventListener('click', () => toggleBundle(btn, m, 'bundle'));
     wrap.appendChild(btn);
   }
 
-  /** 쪽지가 여는 묶음 팝업. 구역 패널을 그대로 쓰되 자리는 쪽지를 따라간다. */
-  function toggleBundle(btn) {
-    if (openId === 'bundle') return closePanel();
-    openBundle(btn);
+  /** 지도 위의 문이 여는 묶음 팝업. 구역 패널을 그대로 쓰되 자리는 그 문을 따라간다.
+   *
+   *  **쪽지 전용이었다가 둘이 됐다**(2026-09, 강물의 물고기). 쪽지는 「매일 쓰는 것들」을,
+   *  물고기는 「강에서 건진 것」을 든다 — 여는 문만 다르고 하는 일은 같아서, 무엇을
+   *  들고 있는지(`src.bundle`)와 누가 열었는지(`key`)만 밖에서 받는다.
+   *  `key`는 열려 있는 것이 무엇인지 가리는 이름이라 문마다 달라야 한다 —
+   *  같은 이름을 쓰면 쪽지를 열어 둔 채 물고기를 눌렀을 때 「이미 열려 있다」로
+   *  잘못 읽어 그냥 닫힌다. */
+  function toggleBundle(btn, src, key) {
+    if (openId === key) return closePanel();
+    openBundle(btn, src, key);
   }
 
-  function openBundle(btn) {
-    const b = data.floater.bundle;
+  function openBundle(btn, src, key) {
+    const b = src.bundle;
     stopSong();        // 노래를 들으며 쪽지를 눌러도 조용히 멈춘다
     const panel = $('panel');
     panel.textContent = '';
@@ -491,8 +496,8 @@
       .forEach((x) => x.setAttribute('aria-expanded', String(x === btn)));
 
     const head = el('div', 'panel-head');
-    head.appendChild(el('h2', 'panel-title', `${data.floater.icon} ${b.title}`));
-    if (data.floater.label) head.appendChild(el('span', 'panel-label', data.floater.label));
+    head.appendChild(el('h2', 'panel-title', `${src.icon} ${b.title}`));
+    if (src.label) head.appendChild(el('span', 'panel-label', src.label));
     const close = el('button', 'icon-btn panel-close', '✕');
     close.type = 'button';
     close.setAttribute('aria-label', '닫기');
@@ -517,7 +522,7 @@
 
     $('panelWrap').hidden = false;
     panel.scrollTop = 0;
-    openId = 'bundle';
+    openId = key;
     lastSpot = btn;
     placePanel({ liveBox: () => btn.getBoundingClientRect() });
     panel.focus({ preventScroll: true });
@@ -1635,10 +1640,11 @@
     // 두 문(구역 패널·쪽지)에서 똑같이 뜨는 건 중복이다. 목록(list.html)·검색 모달은
     // 이 필터를 안 거친다 — 거기는 지도 위 문과 상관없이 「만든 것 전부」를 보여주는
     // 자리라, 클리어 위크도 그대로 나온다.
-    const floaterIds = new Set(
-      (data.floater && data.floater.bundle ? data.floater.bundle.items : []).map((e) => e.id));
+    // 문이 둘이 됐다 — 쪽지(매일 쓰는 것들)와 물고기(강에서 건진 것)
+    const held = new Set([data.floater, data.fish]
+      .flatMap((m) => (m && m.bundle ? m.bundle.items : [])).map((e) => e.id));
     data.items.forEach((i) => {
-      if (floaterIds.has(i.id)) return;
+      if (held.has(i.id)) return;
       (byDistrict[i.district] ||= []).push(i);
     });
 
