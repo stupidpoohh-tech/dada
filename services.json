@@ -534,6 +534,19 @@
       "needsReview": false
     },
     {
+      "id": "seal-look",
+      "no": 34,
+      "name": "씰룩 Seal Look",
+      "district": "park",
+      "type": "app",
+      "url": "https://remotwerk.pages.dev",
+      "description": "보고싶을때 연인컴퓨터로 보내는 엉덩이춤",
+      "date": "2026-09",
+      "icon": "🦭",
+      "status": "live",
+      "needsReview": false
+    },
+    {
       "id": "korea4season",
       "no": 33,
       "name": "지금日지도",
