@@ -1018,21 +1018,42 @@ if (head('강물의 물고기')) {
     `묶음에 든 것이 다 선다 (${panel.cards.join(' · ')})`);
   ok(await p.getAttribute('.fish-spot', 'aria-expanded') === 'true', '열렸다고 말해 준다');
 
-  /* **묶음이 든 파일이 실제로 서 있는가.** 참고문서(PDF)처럼 마을 안에 둔 파일은
-     주소를 손으로 적으므로 오타 하나면 죽은 링크가 된다 — 카드는 멀쩡히 보이고
-     누른 사람만 404를 본다. 그래서 여기서 직접 받아 본다 */
-  for (const e of bun.items.filter((x) => (x.url || '').startsWith('/'))) {
-    const res = await p.request.get(BASE + e.url);
-    ok(res.ok(), `${e.name} 파일이 실제로 있다`, `${res.status()} ${e.url}`);
+  /* ── 카드에 딸린 참고문서(집게) ──────────────────────
+     카드 오른쪽 위 모서리에 얹은 파일 링크다. 여기서 볼 것이 셋 —
+     ① **카드 안에 들어 있으면 안 된다.** 카드가 이미 링크 하나라 그 안에 또 링크를
+        넣으면 안 되는 마크업이 된다(브라우저가 제멋대로 풀고 스크린리더는 두 번 읽는다).
+     ② **주소가 살아 있어야 한다.** 손으로 적는 자리라 오타 하나면 죽은 링크가 되는데,
+        카드는 멀쩡히 보이고 누른 사람만 404를 본다.
+     ③ **새 탭으로 열려야 한다.** 같은 탭이면 브라우저 PDF 뷰어가 마을을 덮고
+        열려 있던 묶음이 닫힌다. */
+  const clip = await p.evaluate(() => [...document.querySelectorAll('#panel .card-file')]
+    .map((f) => ({ href: f.getAttribute('href'), target: f.target,
+                   inside: !!f.closest('a.card'), label: f.getAttribute('aria-label'),
+                   w: Math.round(f.getBoundingClientRect().width) })));
+  const withFile = data.items.filter((i) => i.file && bun.items.some((e) => e.id === i.id));
+  ok(clip.length === withFile.length, `딸린 문서가 있는 카드에 집게가 선다 (${clip.length})`);
+  ok(clip.every((c) => !c.inside), '집게는 카드 안이 아니라 형제다 (링크 안에 링크를 넣지 않는다)');
+  ok(clip.every((c) => c.target === '_blank'), '집게는 새 탭으로 연다',
+    clip.map((c) => c.target).join(','));
+  ok(clip.every((c) => c.label && c.w >= 24), '무엇을 여는 집게인지 읽어 준다',
+    clip.map((c) => `${c.label} ${c.w}px`).join(' · '));
+  for (const c of clip.filter((x) => (x.href || '').startsWith('/'))) {
+    const res = await p.request.get(BASE + c.href);
+    ok(res.ok(), `딸린 문서가 실제로 있다 (${c.href})`, String(res.status()));
   }
-  /* 파일은 페이지가 아니라 내려받는 것이라 새 탭으로 연다 — 같은 탭으로 열면
-     브라우저의 PDF 뷰어가 마을을 덮고 열려 있던 묶음이 닫힌다 */
-  const tabs = await p.evaluate(() => [...document.querySelectorAll('#panel a.card')]
-    .filter((a) => /\.pdf(\?|$)/i.test(a.getAttribute('href') || ''))
-    .map((a) => a.target));
-  ok(tabs.every((t) => t === '_blank'), '내려받는 파일은 새 탭으로 연다', tabs.join(','));
+  /* 집게를 눌러도 카드가 열리면 안 된다 — 둘은 서로 다른 문이다 */
+  if (clip.length) {
+    const here = p.url();
+    const [tab] = await Promise.all([
+      p.waitForEvent('popup', { timeout: 4000 }).catch(() => null),
+      p.click('#panel .card-file'),
+    ]);
+    await p.waitForTimeout(300);
+    ok(p.url() === here, '집게를 눌러도 보던 마을은 그대로다');
+    if (tab) { ok(tab.url().includes('.pdf'), '집게가 그 문서를 연다', tab.url()); await tab.close(); }
+  }
 
-  await p.click('.panel-close'); await p.waitForTimeout(300);
+  await p.click('.panel-close').catch(() => {}); await p.waitForTimeout(300);
 
   /* 같은 항목이 구역 패널에도 뜨면 중복이다 — 쪽지 묶음과 같은 규칙 */
   for (const id of new Set(data.items.filter((i) => bun.items.some((e) => e.id === i.id))

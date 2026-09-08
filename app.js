@@ -929,7 +929,32 @@
     a.appendChild(body);
 
     a.appendChild(el('span', 'card-go', '›'));
-    return a;
+    if (!item.file || !item.file.url) return a;
+
+    /* 딸린 파일(참고문서)이 있으면 카드 오른쪽 위 모서리에 집게를 하나 얹는다.
+     *
+     *  **카드 안에 넣을 수 없다.** 카드 자체가 이미 링크 하나(`<a class="card">`)라
+     *  그 안에 또 링크를 넣으면 안 되는 마크업이 된다 — 브라우저가 제멋대로 풀어
+     *  놓고, 스크린리더는 링크 하나를 두 번 읽는다. 그래서 카드를 감싸는 칸을
+     *  하나 두고 **형제**로 얹는다. `.cards`가 그리드라 이 칸이 그리드 칸을
+     *  그대로 이어받는다(`.card-slot`).
+     *
+     *  파일은 페이지가 아니므로 새 탭으로 연다 — 같은 탭으로 열면 브라우저의
+     *  PDF 뷰어가 마을을 덮고 열려 있던 묶음이 닫힌다. */
+    const slot = el('div', 'card-slot');
+    slot.appendChild(a);
+    const f = el('a', 'card-file', item.file.icon || '📎');
+    f.href = item.file.url;
+    f.target = '_blank';
+    f.rel = 'noopener';
+    const label = `${item.name} ${item.file.name || '첨부파일'}`;
+    f.setAttribute('aria-label', label);
+    f.title = label;
+    f.addEventListener('click', () => track('item_click', {
+      item: item.id + '-file', item_type: 'doc', from: 'card-file',
+    }));
+    slot.appendChild(f);
+    return slot;
   }
 
   function groupCards(items, container) {
