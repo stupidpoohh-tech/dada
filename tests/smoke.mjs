@@ -1017,6 +1017,21 @@ if (head('강물의 물고기')) {
   ok(panel.cards.length === want.length && want.every((n) => panel.cards.includes(n)),
     `묶음에 든 것이 다 선다 (${panel.cards.join(' · ')})`);
   ok(await p.getAttribute('.fish-spot', 'aria-expanded') === 'true', '열렸다고 말해 준다');
+
+  /* **묶음이 든 파일이 실제로 서 있는가.** 참고문서(PDF)처럼 마을 안에 둔 파일은
+     주소를 손으로 적으므로 오타 하나면 죽은 링크가 된다 — 카드는 멀쩡히 보이고
+     누른 사람만 404를 본다. 그래서 여기서 직접 받아 본다 */
+  for (const e of bun.items.filter((x) => (x.url || '').startsWith('/'))) {
+    const res = await p.request.get(BASE + e.url);
+    ok(res.ok(), `${e.name} 파일이 실제로 있다`, `${res.status()} ${e.url}`);
+  }
+  /* 파일은 페이지가 아니라 내려받는 것이라 새 탭으로 연다 — 같은 탭으로 열면
+     브라우저의 PDF 뷰어가 마을을 덮고 열려 있던 묶음이 닫힌다 */
+  const tabs = await p.evaluate(() => [...document.querySelectorAll('#panel a.card')]
+    .filter((a) => /\.pdf(\?|$)/i.test(a.getAttribute('href') || ''))
+    .map((a) => a.target));
+  ok(tabs.every((t) => t === '_blank'), '내려받는 파일은 새 탭으로 연다', tabs.join(','));
+
   await p.click('.panel-close'); await p.waitForTimeout(300);
 
   /* 같은 항목이 구역 패널에도 뜨면 중복이다 — 쪽지 묶음과 같은 규칙 */

@@ -866,9 +866,13 @@
 
     const a = el('a', 'card');
     a.href = item.url || item.route || '#';
-    // 마을 밖으로 나가는 것은 새 탭으로 연다 — 영상도 그렇다(릴스·유튜브 모두
-    // 남의 집이라, 같은 탭으로 보내면 돌아올 마을이 없어진다)
-    if (item.type === 'app' || item.type === 'external' || item.type === 'video') {
+    /* 마을 밖으로 나가는 것은 새 탭으로 연다 — 영상도 그렇다(릴스·유튜브 모두
+       남의 집이라, 같은 탭으로 보내면 돌아올 마을이 없어진다).
+       **내려받는 파일도 같다**(2026-09, 지금일지도 사업계획서 PDF). 종류로는
+       `doc`이지만 페이지가 아니라 파일이라, 같은 탭으로 열면 브라우저의 PDF
+       뷰어가 마을을 덮는다 — 뒤로 가면 돌아오기는 해도 열려 있던 묶음은 닫힌다. */
+    const isFile = /\.(pdf|zip)(\?|$)/i.test(a.href);
+    if (isFile || item.type === 'app' || item.type === 'external' || item.type === 'video') {
       a.target = '_blank';
       a.rel = 'noopener';
     }

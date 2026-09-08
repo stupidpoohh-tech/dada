@@ -711,6 +711,15 @@
       "items": [
         {
           "id": "korea4season"
+        },
+        {
+          "id": "korea4season-plan",
+          "name": "지금일지도 사업계획서",
+          "url": "/assets/docs/korea4season-plan.pdf",
+          "type": "doc",
+          "date": "2026-09",
+          "icon": "📄",
+          "description": "왜 만들었고 어떻게 할 것인지. 창업 멘토링 프로그램에 낸 지원서 그대로입니다."
         }
       ]
     }
