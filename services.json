@@ -491,6 +491,11 @@
       "type": "external",
       "url": "https://www.airbnb.co.kr/rp/9f027d?p=recommendations&product=experience&listing_id=6971108",
       "description": "역사를 듣고, 한글을 배우고, 영상으로 남기는 에어비앤비 체험",
+      "file": {
+        "url": "/assets/docs/skk-tour-script.pdf",
+        "name": "투어 대본",
+        "icon": "📎"
+      },
       "date": "2026-03",
       "icon": "🏛",
       "status": "live",

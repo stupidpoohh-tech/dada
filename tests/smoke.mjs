@@ -465,6 +465,22 @@ if (head('데이터 단일 소스')) {
   }
   ok(true, '구역 라벨이 전부 데이터와 맞다');
 
+  /* **딸린 문서(집게)는 항목마다 붙는다.** 강물의 물고기 절은 「자연」 묶음 하나만
+     보므로, 다른 구역 항목에 단 문서는 거기서 안 걸린다 — 주소를 손으로 적는
+     자리라 오타 하나면 죽은 링크가 되고, 카드는 멀쩡히 보이고 누른 사람만 404를
+     본다. 목록 모달에는 항목이 전부 서므로 여기서 한꺼번에 본다. */
+  const withFile = data.items.filter((i) => i.file && i.file.url);
+  const clips = await p.evaluate(() => [...document.querySelectorAll('#modalBody .card-file')]
+    .map((f) => ({ href: f.getAttribute('href'), target: f.target, inside: !!f.closest('a.card') })));
+  ok(clips.length === withFile.length,
+    `딸린 문서가 있는 항목마다 집게가 선다 (${clips.length} / ${withFile.length})`);
+  ok(clips.every((c) => !c.inside && c.target === '_blank'),
+    '집게는 카드 밖에 있고 새 탭으로 연다');
+  for (const i of withFile.filter((x) => x.file.url.startsWith('/'))) {
+    const res = await p.request.get(BASE + i.file.url);
+    ok(res.ok(), `${i.name}에 딸린 문서가 실제로 있다`, `${res.status()} ${i.file.url}`);
+  }
+
   // 만든 순서 — 속도가 이 사이트의 주장 중 하나라 날짜가 빠지면 주장이 무너진다
   const undated = data.items.filter((i) => !/^\d{4}-\d{2}$/.test(i.date || ''));
   ok(undated.length === 0, '모든 항목에 만든 시기(YYYY-MM)가 있다',
