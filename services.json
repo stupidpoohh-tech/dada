@@ -583,6 +583,19 @@
       "needsReview": false
     },
     {
+      "id": "boida",
+      "no": 36,
+      "name": "보이ㄷㅏ",
+      "district": "park",
+      "type": "app",
+      "url": "https://letlight.pages.dev/",
+      "description": "알수록 보이는 세계",
+      "date": "2026-09",
+      "icon": "💡",
+      "status": "live",
+      "needsReview": false
+    },
+    {
       "id": "anih",
       "no": 21,
       "name": "아니그래서",
@@ -734,6 +747,9 @@
       "items": [
         {
           "id": "korea4season"
+        },
+        {
+          "id": "boida"
         }
       ]
     }
