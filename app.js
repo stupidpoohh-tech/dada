@@ -35,7 +35,11 @@
     { src: 'bluebird-front.png', x: 11,   y: 50, w: 1.4 },
   ];
   const TYPE_LABEL = { app: '앱', doc: '문서', video: '영상', external: '외부' };
-  const STATUS_LABEL = { beta: '베타', demo: 'demo', soon: '준비 중' };
+  /* 표는 「아직 다 되지 않았다」를 네 가지로 갈라 말한다. 서로 다른 상태다 —
+     `soon`은 **주소가 아직 없는 것**이고(눌리지 않는 카드가 된다),
+     `wip`는 **주소는 있는데 아직 만드는 중인 것**이다(눌리기는 한다).
+     둘을 한 말로 뭉뚱그리면 방문자가 눌러도 되는지를 알 수 없다. */
+  const STATUS_LABEL = { beta: '베타', demo: 'demo', wip: '제작 중', soon: '준비 중' };
 
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => {

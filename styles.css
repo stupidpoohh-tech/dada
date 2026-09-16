@@ -988,7 +988,9 @@ button.fish-spot { background: none; border: 0; padding: 0; cursor: pointer; }
   font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px;
   background: var(--accent-tint); color: var(--accent);
 }
-.badge.beta, .badge.demo { background: #F7EEDC; color: #8C6A28; }
+/* 「아직 다 되지 않았다」 쪽은 같은 모래색으로 묶는다 — 베타 · demo · 제작 중.
+   「준비 중」만 회색인 것은 그것만 **누를 수 없는** 상태라서다(위 .badge.soon) */
+.badge.beta, .badge.demo, .badge.wip { background: #F7EEDC; color: #8C6A28; }
 
 .empty { text-align: center; color: var(--sub); font-size: 13.5px; padding: 16px 10px; }
 .empty strong { display: block; font-size: 14.5px; color: var(--ink); margin-bottom: 3px; }

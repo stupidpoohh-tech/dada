@@ -21,7 +21,7 @@ data = json.loads((ROOT / 'services.json').read_text(encoding='utf-8'))
 
 SITE = data['site']['url'].rstrip('/')
 TYPE_LABEL = {'app': '앱', 'doc': '문서', 'video': '영상', 'external': '외부'}
-STATUS_LABEL = {'beta': '베타', 'demo': 'demo', 'soon': '준비 중'}
+STATUS_LABEL = {'beta': '베타', 'demo': 'demo', 'wip': '제작 중', 'soon': '준비 중'}
 
 e = html.escape
 
