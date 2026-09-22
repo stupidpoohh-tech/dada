@@ -874,9 +874,21 @@
        남의 집이라, 같은 탭으로 보내면 돌아올 마을이 없어진다).
        **내려받는 파일도 같다**(2026-09, 지금일지도 사업계획서 PDF). 종류로는
        `doc`이지만 페이지가 아니라 파일이라, 같은 탭으로 열면 브라우저의 PDF
-       뷰어가 마을을 덮는다 — 뒤로 가면 돌아오기는 해도 열려 있던 묶음은 닫힌다. */
+       뷰어가 마을을 덮는다 — 뒤로 가면 돌아오기는 해도 열려 있던 묶음은 닫힌다.
+
+       **「마을 밖」은 주소로 가린다, 종류로 가리지 않는다**(2026-09-20). 위
+       문장이 줄곧 여기 적혀 있었는데 판단은 `type`으로 하고 있었다. 지금
+       항목들은 우연히 맞아떨어지지만, 남의 집 주소를 `doc`으로 올리는 순간
+       같은 탭으로 열린다. 그러면 마을이 덮이는 것으로 끝나지 않는다 — 이
+       화면을 아이폰 홈 화면에 추가해 두면 Safari 탭이 아니라 앱처럼 뜨고,
+       그 안에서 다른 도메인으로 그냥 이동하면 iOS가 화면을 Safari로 내보낼지
+       정하지 못해 계속 다시 불러온다. 깜빡이기만 하고 끝내 안 들어가진다
+       (dada-learn에서 실제로 겪었다). `a.href`는 이미 절대 주소라 `a.origin`을
+       그대로 비교하면 된다. 마을 안 주소(`/game/`처럼)는 같은 origin이라
+       예전처럼 같은 탭에 남는다. */
     const isFile = /\.(pdf|zip)(\?|$)/i.test(a.href);
-    if (isFile || item.type === 'app' || item.type === 'external' || item.type === 'video') {
+    const leavesTown = !!a.origin && a.origin !== location.origin;
+    if (isFile || leavesTown || item.type === 'app' || item.type === 'external' || item.type === 'video') {
       a.target = '_blank';
       a.rel = 'noopener';
     }
