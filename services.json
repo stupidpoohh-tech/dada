@@ -437,22 +437,9 @@
       "district": "school",
       "type": "app",
       "url": "https://dada-learn.pages.dev/",
-      "description": "문법, 리스닝, 패턴까지 3가지 학습도구",
+      "description": "문법, 리스닝, 패턴, 보카맵까지 4가지 학습도구",
       "date": "2026-06",
       "icon": "📚",
-      "status": "live",
-      "needsReview": false
-    },
-    {
-      "id": "chinese",
-      "no": 4,
-      "name": "상하이여행중국어",
-      "district": "school",
-      "type": "app",
-      "url": "https://chinese-travel.pages.dev/",
-      "description": "상하이의 일정과 배경 지식, 회화",
-      "date": "2026-06",
-      "icon": "🇨🇳",
       "status": "live",
       "needsReview": false
     },
