@@ -873,14 +873,6 @@ button.fish-spot { background: none; border: 0; padding: 0; cursor: pointer; }
 .topbar .wordmark a { color: inherit; text-decoration: none; }
 .topbar .wordmark a:hover { color: var(--accent); }
 
-/* 목록 모달 아래의 "전체 목록 페이지" 링크 */
-.modal-foot {
-  flex: none; padding: 10px 16px 14px; text-align: center;
-  border-top: 1px solid var(--line);
-  font-size: 13px;
-}
-.modal-foot a { color: var(--sub); }
-
 /* ── 구역 패널 ───────────────────────────── */
 
 .panel {

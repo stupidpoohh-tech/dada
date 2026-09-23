@@ -557,11 +557,14 @@ if (head('/list 정적 페이지')) {
       .filter((h) => !h || h === '#' || h === '/'));
   ok(dead.length === 0, '죽은 링크가 없다', dead.join(', '));
 
-  // 마을에서 이 페이지로 가는 길
-  await town(p);
-  await p.waitForTimeout(500);
-  await p.click('#openList'); await p.waitForTimeout(400);
-  ok(await p.locator('.modal-foot a').count() === 1, '목록 모달에서 이 페이지로 가는 링크가 있다');
+  /* **이 페이지에서 마을로 돌아오는 길.** 반대쪽(마을 → 이 페이지) 링크는
+     걷어냈다(2026-09-23) — 목록 모달이 같은 것을 이미 보여주므로 기능이 겹쳤다.
+     그래서 이 페이지는 이제 **사람이 눌러 오는 곳이 아니라 크롤러가 읽는 곳**이다
+     (sitemap이 가리킨다 — 아래 「크롤러 시점」 절). 대신 여기 온 사람이 마을로
+     못 돌아가면 막다른 길이 되므로, 돌아가는 길은 반드시 있어야 한다. */
+  const back = await p.evaluate(() =>
+    [...document.querySelectorAll('a')].filter((a) => a.getAttribute('href') === '/').length);
+  ok(back >= 1, '이 페이지에서 마을로 돌아가는 길이 있다', String(back));
   await p.close();
 }
 
