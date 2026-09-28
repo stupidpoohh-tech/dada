@@ -1691,7 +1691,11 @@ if (head('제작자에게 한마디')) {
    매번 바깥 스크립트를 받으러 나가느라 `networkidle`에 기대는 다른 검사들이
    남의 서버 사정에 흔들리고, 내가 고치면서 여닫은 것이 통계에 섞인다.
    마을은 URL이 바뀌지 않으므로 무엇을 봤는지는 커스텀 이벤트로만 남는다 —
-   그래서 세 페이지 전부에 붙어 있는지, 부르는 자리가 실제로 부르는지 본다. */
+   그래서 세 페이지 전부에 붙어 있는지, 부르는 자리가 실제로 부르는지 본다.
+
+   **여기 검사의 절반은 「한 번만 세는가」다.** 통계는 틀려도 화면에 아무 표시가
+   안 난다 — 문 하나가 두 줄을 남겨도 몇 달 뒤 보고서에서 숫자가 커 보일 뿐이라,
+   깨진 줄을 알아차릴 길이 검사밖에 없다. */
 if (head('방문 통계')) {
   const p = await desktop();
   const sent = [];
@@ -1720,16 +1724,160 @@ if (head('방문 통계')) {
   await p.click('.mbox-spot'); await p.waitForTimeout(300);
   sent.push(...await p.evaluate(() => window.__ga));
   const names = sent.map(([n]) => n);
-  ok(names.includes('district_open') && names.includes('list_open')
-     && names.includes('mailbox_open'),
-    '구역·목록·우편함이 각자 신호를 보낸다', names.join(','));
+  ok(names.includes('district_open') && names.includes('list_open'),
+    '구역·목록이 각자 신호를 보낸다', names.join(','));
   const dis = sent.find(([n]) => n === 'district_open');
   const nSchool = await p.evaluate(() => fetch('services.json').then((r) => r.json())
     .then((d) => d.items.filter((i) => i.district === 'school').length));
   ok(dis && dis[1].district === 'school' && dis[1].items === nSchool,
     '무엇을 열었는지가 함께 간다', `${JSON.stringify(dis)} / 학교 ${nSchool}개`);
+
+  /* 우편함(안내서)은 **항목 하나를 여는 문**이다. 제 이름으로만 세면 안내서를
+     본 것이 프로젝트 열람 수에서 빠진다 — 문마다 이름이 다르면 못 더한다 */
+  const mb = sent.find(([n, q]) => n === 'item_click' && q.from === 'mailbox');
+  ok(!!mb && mb[1].item === 'game-guide',
+    '우편함도 item_click으로 센다 (from=mailbox)', JSON.stringify(mb));
+  ok(names.filter((n) => n === 'mailbox_open').length === 0,
+    '우편함 전용 이름은 더 안 쓴다 (한 동작이 두 줄을 남기지 않는다)');
   await p.close();
 }
+
+/* 프로젝트 열람은 **item_click 하나로 센다.** 여는 길이 넷인데(지도 문 · 목록 카드 ·
+   바로 펼치는 책 · 투어) 어느 하나라도 다른 이름을 쓰면 「몇 개를 봤나」를 물을 수가
+   없고, 두 줄을 남기면 봤다고 한 수가 부풀려진다. 길마다 **딱 한 줄**인지 본다. */
+if (want('방문 통계')) {
+  const p = await desktop();
+  await town(p);
+  const grab = () => p.evaluate(() => {
+    const g = window.__ga; window.__ga = []; return g;
+  });
+  await p.evaluate(() => { window.__ga = []; window.dadaTrack = (n, q) => window.__ga.push([n, q]); });
+
+  // ① 바로 책을 펼치는 구역 문(박물관) — 카드를 거치지 않는 길
+  await p.click('.spot[data-district="museum"]'); await p.waitForTimeout(500);
+  let g = await grab();
+  let clicks = g.filter(([n]) => n === 'item_click');
+  ok(clicks.length === 1 && clicks[0][1].item === 'art-portfolio' && clicks[0][1].from === 'map',
+    '바로 펼치는 책도 열람 한 줄을 남긴다', JSON.stringify(g));
+  ok(g.some(([n]) => n === 'book_open'),
+    'book_open은 그 다음 칸이다 (열람과 더하지 않는다)', g.map(([n]) => n).join(','));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  await grab();
+
+  // ② 목록 카드 — 새 탭으로 나가는 항목이라 눌러도 이 페이지는 남는다
+  await p.click('#openList'); await p.waitForTimeout(400);
+  await p.evaluate(() => {
+    const a = document.querySelector('#modal .card[href]');
+    a.removeAttribute('href');          // 진짜로 새 탭을 열 것까지는 없다
+    a.click();
+  });
+  await p.waitForTimeout(300);
+  g = await grab();
+  clicks = g.filter(([n]) => n === 'item_click');
+  ok(clicks.length === 1 && clicks[0][1].from === 'list',
+    '목록 카드도 열람 한 줄이다 (어디서 왔는지는 from이 말한다)', JSON.stringify(g));
+
+  /* ③ 첨부파일을 든 항목은 card()가 상자를 돌려준다. 투어가 그것을 못 열면
+        tour_open만 남고 item_click이 안 남아 통계에 구멍이 난다 */
+  const withFile = await p.evaluate(() => fetch('services.json').then((r) => r.json())
+    .then((d) => (d.items.find((i) => i.file) || {}).id || ''));
+  ok(!!withFile, '첨부파일을 든 항목이 있다 (아래 검사의 전제)', withFile);
+  await p.evaluate((id) => { window.__ga = []; window.dadaTown.open(id, 'tour'); }, withFile);
+  await p.waitForTimeout(300);
+  g = await grab();
+  clicks = g.filter(([n]) => n === 'item_click');
+  ok(clicks.length === 1 && clicks[0][1].item === withFile && clicks[0][1].from === 'tour',
+    '첨부파일을 든 항목도 투어가 열고 한 줄을 남긴다', JSON.stringify(g));
+
+  /* ④ 클립(첨부파일)은 프로젝트를 연 것이 아니다 — id에 `-file`이 붙어
+        열람 수와 갈린다. 붙여 두지 않으면 문서 열람이 프로젝트 열람으로 샌다 */
+  await p.evaluate(() => { window.__ga = []; });
+  await p.evaluate(() => {
+    const f = document.querySelector('#modal .card-file');
+    f.removeAttribute('href');
+    f.click();
+  });
+  await p.waitForTimeout(200);
+  g = await grab();
+  ok(g.length === 1 && g[0][1].from === 'card-file' && /-file$/.test(g[0][1].item),
+    '클립은 프로젝트 열람과 갈리는 id로 간다', JSON.stringify(g));
+
+  // 검색칸에 남의 연락처가 들어와도 글자는 안 나간다
+  await p.fill('#search', 'someone@example.com');
+  await p.waitForTimeout(1500);
+  g = await grab();
+  const se = g.find(([n]) => n === 'list_search');
+  ok(!!se && se[1].search_term === '(가려둠)',
+    '검색어가 메일 주소면 가린 채로 센다', JSON.stringify(se));
+  await p.fill('#search', '지도');
+  await p.waitForTimeout(1500);
+  g = await grab();
+  const se2 = g.find(([n]) => n === 'list_search');
+  ok(!!se2 && se2[1].search_term === '지도',
+    '보통 검색어는 그대로 간다 (셀 수 없게 만들지 않는다)', JSON.stringify(se2));
+  await p.close();
+}
+
+/* 나가는 길 — **표지판 하나에 한 줄**, 배웅에서 고른 것은 `bye_choice` 하나.
+   예전에는 표지판이 `sign_click`과 `bye_open` 둘을 남겼고, 배웅에서 고른 것이
+   `intro_choice`(첫 안내에서 고른 것)에까지 섞여 들어갔다. */
+if (want('방문 통계')) {
+  const p = await desktop();
+  await town(p);
+  await p.evaluate(() => { window.__ga = []; window.dadaTrack = (n, q) => window.__ga.push([n, q]); });
+  await p.click('.sign-spot'); await p.waitForTimeout(2600);
+  let g = await p.evaluate(() => window.__ga);
+  ok(g.filter(([n]) => n === 'bye_open').length === 1,
+    '표지판은 배웅 한 줄만 남긴다', g.map(([n]) => n).join(','));
+  ok(g.filter(([n]) => n === 'sign_click').length === 0,
+    '표지판 자체를 따로 세지 않는다 (같은 동작이다)');
+
+  // 마지막 줄까지 넘긴 뒤 「그냥 둘러볼게요」를 고른다
+  await p.evaluate(() => { window.__ga = []; });
+  for (let i = 0; i < 6; i++) {
+    const next = await p.$('.onb-act .onb-btn.go');
+    const skip = await p.$('.onb-skip');
+    if (skip) { await skip.click(); break; }
+    if (!next) break;
+    await next.click(); await p.waitForTimeout(250);
+  }
+  await p.waitForTimeout(600);
+  g = await p.evaluate(() => window.__ga);
+  const chose = g.filter(([n]) => n === 'bye_choice');
+  ok(chose.length === 1 && chose[0][1].choice === 'none',
+    '배웅에서 고른 것은 한 줄이다', JSON.stringify(g));
+  ok(g.filter(([n]) => n === 'intro_choice').length === 0,
+    '나가는 길이 첫 안내의 선택에 섞이지 않는다', JSON.stringify(g));
+  await p.close();
+}
+
+/* 내 방문을 가르는 표(`?dada=dev`)와 `?gadebug`. **이 장치가 조용히 실패하는
+   방식은 하나뿐이다** — 켠 줄 알았는데 안 켜져 있는 것. 그래서 켜지는지,
+   다음에 평범하게 열어도 남아 있는지, 끌 수 있는지를 본다. */
+if (want('방문 통계')) {
+  const p = await desktop();
+  const flag = () => p.evaluate(() => window.dadaGA);
+  await town(p);
+  ok((await flag()).internal === false, '보통 방문에는 표가 없다');
+
+  await town(p, BASE + '/?dada=dev');
+  ok((await flag()).internal === true, '?dada=dev가 표를 남긴다');
+  await town(p);
+  ok((await flag()).internal === true, '다음에 평범하게 열어도 표가 남아 있다');
+
+  await town(p, BASE + '/?gadebug');
+  const d = await flag();
+  ok(d.debug === true && d.internal === true,
+    '?gadebug로 들어온 방문은 내 방문으로 친다 (리허설이 성과에 얹히지 않게)',
+    JSON.stringify(d));
+
+  await town(p, BASE + '/?dada=off');
+  ok((await flag()).internal === false, '?dada=off가 표를 걷는다');
+  await town(p);
+  ok((await flag()).internal === false, '걷은 뒤에는 되살아나지 않는다');
+  await p.close();
+}
+
 if (want('방문 통계')) {
   const p = await desktop();
   await p.goto(BASE + '/game/', { waitUntil: 'networkidle' });

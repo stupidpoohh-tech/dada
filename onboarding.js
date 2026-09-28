@@ -316,7 +316,19 @@
      `pointer-events: none`이라 지나가며 무엇을 가리지도 않는다. */
   function finish(how, then) {
     if (phase === 'off') return;
-    track('intro_choice', { choice: how });
+    /* **`finish()`는 인사도 배웅도 같이 접는다** — 화면을 치우는 일이 똑같아서
+       한 함수가 맡는다. 그런데 세는 것까지 같이 두었더니 `intro_choice`에
+       `bye-mail`·`bye-esc` 같은 것이 섞여 들어왔다. 「첫 안내에서 무엇을
+       골랐나」를 물으면 나가는 길에 한 일이 함께 나오는 것이다.
+
+       접는 일은 그대로 나누지 않고, **세는 자리만 가른다.** 배웅에서 고른 것은
+       각 버튼이 이미 `bye_choice`로 남기므로 여기서는 다시 세지 않는다 —
+       Esc로 그냥 닫은 길만 세는 자리가 없어서 여기서 채운다. */
+    if (/^bye/.test(how)) {
+      if (how === 'bye-esc') track('bye_choice', { choice: 'esc' });
+    } else {
+      track('intro_choice', { choice: how });
+    }
     phase = 'off';
     /* **화면에 있는 덮개를 다 걷는다.** 변수가 가리키는 것만 치우면, 어쩌다
        미아가 된 덮개 하나가 마을을 통째로 못 누르게 만든다(실제로 그랬다).

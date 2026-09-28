@@ -299,10 +299,10 @@
     if (live) {
       box.type = 'button';
       box.setAttribute('aria-label', g.name || '마을 나가기');
-      box.addEventListener('click', () => {
-        track('sign_click', {});
-        window.dadaBye();
-      });
+      /* **여기서는 세지 않는다.** 이 버튼이 하는 일은 배웅을 여는 것 하나뿐이고
+         (`dadaBye`를 부르는 자리는 여기가 유일하다), 배웅은 열리면서 스스로
+         `bye_open`을 남긴다. 둘 다 세면 표지판 하나가 통계에 두 줄이 된다. */
+      box.addEventListener('click', () => window.dadaBye());
     } else {
       box.setAttribute('aria-hidden', 'true');   // 누를 수 없는 것을 읽어줄 이유가 없다
     }
@@ -729,7 +729,11 @@
       // 새 탭(⌘·중클릭)은 브라우저에 맡긴다
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
       e.preventDefault();
-      track('mailbox_open', { item: item.id });
+      /* **우편함도 「항목 하나를 여는 문」이다.** 예전에는 `mailbox_open`이라는
+         제 이름으로만 셌는데, 그러면 안내서를 본 것이 프로젝트 열람 수(item_click)에
+         안 잡힌다 — 문마다 이름이 다르면 「몇 개를 봤나」를 물을 수가 없다.
+         어디서 왔는지는 `from`이 말해 주므로 잃는 것이 없다. */
+      track('item_click', { item: item.id, item_type: item.type, from: 'mailbox' });
       sendMail(a, mbox, item);
     });
     wrap.appendChild(a);
@@ -1076,7 +1080,13 @@
     // 항목이 하나뿐인 구역은 팝오버를 거치지 않고 바로 그것을 연다
     if (d && d.direct) {
       const it = data.items.find((x) => x.id === d.direct);
-      if (it && it.open === 'book') return openBook(bookOf(it), 1);
+      if (it && it.open === 'book') {
+        /* 카드를 거치지 않고 바로 펼치는 길이라 `item_click`을 부르는 자리가
+           없었다 — 박물관·세모집만 열람 수에서 빠졌다. 카드로 열 때와 같은
+           순서(item_click → book_open)로 맞춘다. */
+        track('item_click', { item: it.id, item_type: it.type, from: 'map' });
+        return openBook(bookOf(it), 1);
+      }
     }
     if (openId === id) return closePanel();
     openPanel(id, btn);
@@ -1185,7 +1195,12 @@
   function openItem(id, from) {
     const item = data.items.find((x) => x.id === id);
     if (!item) return null;
-    const a = card(item, from);
+    let a = card(item, from);
+    /* 첨부파일이 있는 항목은 `card()`가 클립을 형제로 둔 **상자**(.card-slot)를
+       돌려준다. 그대로 `tagName`을 보면 A가 아니라 null이 되어, 투어의
+       「열어보기」가 조용히 문 두드리기로 떨어진다 — 그러면 `tour_open`은
+       남는데 `item_click`은 안 남아 통계에 구멍이 난다. 상자면 속의 링크를 꺼낸다. */
+    if (a.classList && a.classList.contains('card-slot')) a = a.querySelector('a') || a;
     if (a.tagName !== 'A') return null;
     const stays = !!a.target;              // target="_blank" — 새 탭이라 이 페이지는 남는다
     const leaves = !stays && item.open !== 'book' && item.open !== 'song';
@@ -1756,7 +1771,12 @@
       const q = query.trim();
       if (q.length < 2) return;
       typed = setTimeout(() => track('list_search', {
-        search_term: q.slice(0, 100), results: visibleItems().length,
+        /* **검색칸에 적은 것이 늘 프로젝트 이름은 아니다.** 메일 주소나 전화번호를
+           붙여 넣는 사람이 있고, 그것이 그대로 통계에 남으면 내가 남의 연락처를
+           모아 둔 것이 된다. 몇 번 검색했는지는 그대로 세고 글자만 가린다. */
+        search_term: /[\w.+-]+@[\w-]+\.[\w.]+|\d[\d\s-]{7,}/.test(q)
+          ? '(가려둠)' : q.slice(0, 100),
+        results: visibleItems().length,
       }), 1200);
     });
 
