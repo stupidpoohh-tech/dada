@@ -38,7 +38,7 @@
 
 | 항목 | 타입 | URL |
 |---|---|---|
-| 사업팀 운영보드 | 🖥 | sindorang-team.vercel.app/demo.html (demo) |
+| 사업팀 운영보드 | 🖥 | sindorang-team.pages.dev (demo) |
 
 ### 🏛 성균관 (1)
 
