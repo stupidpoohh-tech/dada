@@ -3000,8 +3000,13 @@ if (head('발자국 — 읽는 화면')) {
   ok(t[2][0] === '3', '손 인사도 기간에 맞춰 더한다', JSON.stringify(t));
 
   let f = await funnel();
-  ok(f.length === 4 && f[0].label === '다녀간 사람' && f[0].n === '11번',
+  ok(f.length === 4 && f[0].label === '마을에 들어옴' && f[0].n === '11번',
     '깔때기 맨 윗칸은 방문 횟수가 아니라 사람이다', JSON.stringify(f[0]));
+  /* Cloudflare가 안 켜져 있으면 윗줄도 발자국 숫자로 서고, **그렇다고 적는다** */
+  ok((await p.textContent('#ibSrcTop')).includes('발자국'),
+    'Cloudflare가 없으면 윗줄 출처가 발자국이라고 적힌다', await p.textContent('#ibSrcTop'));
+  ok(await p.evaluate(() => document.getElementById('ibExtra').hidden),
+    'Cloudflare만 아는 칸은 접혀 있다');
   /* **아래로 갈수록 넓어지면 어딘가 틀린 것이다.** 세션 단위와 쪽 단위를
      한 막대에 겹치면 실제로 그렇게 된다 */
   const nums = f.map((x) => Number(x.n.replace('번', '')));
@@ -3066,6 +3071,95 @@ if (head('발자국 — 읽는 화면')) {
   const over = await m.evaluate(() => [document.body.scrollWidth, document.documentElement.clientWidth]);
   ok(over[0] <= over[1], '폰에서 가로로 밀리지 않는다', over.join(' / '));
   await m.close();
+}
+
+/* ── 두 출처를 섞는다 ──────────────────────────────────
+   같은 방문을 Cloudflare 비콘과 마을의 발자국이 따로 센다. 둘은 세는 기준도
+   차단기에 걸리는 비율도 달라서 **더하거나 서로 나누면 안 된다.** 그래서 칸마다
+   어디서 온 숫자인지 적고, 깔때기는 한쪽(발자국)만으로 세운다 —
+   윗칸만 Cloudflare 것으로 바꿔 놓으면 비율이 조용히 거짓이 된다. */
+if (want('발자국 — 읽는 화면')) {
+  const p = await desktop();
+  const d = (back, o) => ({
+    day: new Date(Date.now() - back * 86400000).toISOString().slice(0, 10), ...o });
+  const body = {
+    ok: true,
+    days: [d(0, { visit: 9, people: 6, view: 3, say: 2, sent: 1, list: 4, tour: 1,
+                  ref: { '-': 4, 'google.com': 2 } }),
+           ...Array.from({ length: 29 }, (_, i) => d(i + 1, {}))],
+    recent: [{ at: new Date().toISOString(), from: 'google.com' }],
+    cf: { ok: true,
+      days: [{ day: d(0, {}).day, views: 31, visits: 20 }],
+      ref: { 'google.com': 12, '-': 8 },
+      country: { 'South Korea': 18, Japan: 2 },
+      device: { mobile: 14, desktop: 6 } },
+  };
+  await p.route('**/api/word?*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ ok: true, words: [], hello: 3, days: [] }) }));
+  await p.route('**/api/hits?*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(body) }));
+  await p.goto(BASE + '/inbox.html', { waitUntil: 'load' });
+  await p.fill('#ibKey', 'secret');
+  await p.click('#ibKeyForm button[type=submit]');
+  await p.waitForTimeout(500);
+  await p.click('#ibTabs button[data-days="7"]');
+  await p.waitForTimeout(200);
+
+  const tiles = await p.$$eval('#ibTiles .ib-tile', (ns) => ns.map((n) =>
+    [n.querySelector('b').textContent, n.querySelector('span').textContent]));
+  ok(tiles[0][0] === '20' && tiles[1][0] === '31',
+    '윗줄은 Cloudflare 숫자로 선다 (차단기에 덜 걸리는 쪽)', JSON.stringify(tiles));
+  ok((await p.textContent('#ibSrcTop')).includes('Cloudflare'),
+    '그렇다고 바로 아래 줄에 적혀 있다', await p.textContent('#ibSrcTop'));
+
+  /* **깔때기는 한쪽만으로 세운다.** 윗칸만 Cloudflare(20)로 바꾸면 그 아래
+     발자국 숫자(3·2·1)와의 비율이 통째로 거짓이 된다 */
+  const top = await p.$eval('#ibFunnel .ib-step:first-child', (n) => [
+    n.querySelector('.ib-step-top span').textContent,
+    n.querySelector('.ib-step-top b').textContent]);
+  ok(top[1] === '6번', '깔때기 맨 윗칸은 발자국 숫자 그대로다', JSON.stringify(top));
+  ok(top[0] !== tiles[0][1],
+    '윗줄 타일과 이름이 달라야 한다 (숫자가 다른데 같은 말이면 하나가 틀린 것처럼 보인다)',
+    `${top[0]} / ${tiles[0][1]}`);
+
+  const ref = await p.$$eval('#ibRef .ib-step', (ns) => ns.map((n) => [
+    n.querySelector('.ib-step-top span').textContent,
+    n.querySelector('.ib-step-top b').textContent]));
+  ok(ref[0][0] === 'google.com' && ref[0][1] === '12번',
+    '「어디서 들어왔나」도 Cloudflare 것을 쓴다', JSON.stringify(ref));
+  ok(ref.some((r) => r[0] === '바로 들어옴'),
+    '빈 referrer는 발자국과 같은 말로 선다', JSON.stringify(ref));
+
+  ok(!await p.evaluate(() => document.getElementById('ibExtra').hidden),
+    'Cloudflare만 아는 칸이 열린다');
+  /* 안쪽 절의 표제가 규칙을 못 받아 혼자 커져 있었다 — 눈에만 보이는 종류라
+     고쳐 놓고도 다음에 또 밟는다 */
+  const sizes = await p.$$eval('#ibFoot h2', (ns) => [...new Set(ns.map((n) =>
+    getComputedStyle(n).fontSize))]);
+  ok(sizes.length === 1, '표제 크기가 다 같다', sizes.join(', '));
+  const extra = await p.$$eval('#ibCountry .ib-step, #ibDevice .ib-step', (ns) =>
+    ns.map((n) => n.querySelector('.ib-step-top span').textContent));
+  ok(extra.includes('South Korea') && extra.includes('mobile'),
+    '나라와 기기가 선다', JSON.stringify(extra));
+
+  const note = await p.textContent('#ibFootNote');
+  ok(note.includes('두 군데') && note.includes('더하거나'),
+    '두 출처를 섞어 쓰면 안 된다고 화면에 적혀 있다', note);
+
+  /* Cloudflare가 거절했을 때 — **왜 안 됐는지가 화면에 올라와야** 고칠 데를 안다 */
+  await p.unroute('**/api/hits?*');
+  await p.route('**/api/hits?*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ ...body, cf: { ok: false, error: 'unknown field countryName' } }) }));
+  await p.reload({ waitUntil: 'load' });
+  await p.waitForTimeout(600);
+  const why = await p.textContent('#ibSrcTop');
+  ok(why.includes('발자국') && why.includes('countryName'),
+    'Cloudflare가 거절하면 그 말이 화면에 뜬다', why);
+  const t2 = await p.$eval('#ibTiles .ib-tile b', (n) => n.textContent);
+  ok(t2 === '6', '그래도 발자국 숫자로 화면이 선다', t2);
+  await p.close();
 }
 
 /* 발자국은 **배포된 도메인에서만** 남는다. 이 가드가 풀리면 내가 고치며 백 번

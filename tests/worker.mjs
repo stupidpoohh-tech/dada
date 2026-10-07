@@ -436,5 +436,76 @@ head('발자국 — 읽기');
     '서버에 열쇠가 없으면 읽기가 통째로 막힌다 (설정 안 된 자물쇠는 열린 자물쇠다)');
 }
 
+/* ── Cloudflare Web Analytics 섞기 ─────────────────────
+   같은 방문을 두 군데서 센다. **이쪽이 안 된다고 발자국까지 막으면 안 된다** —
+   토큰이 없거나 느리거나 스키마가 달라도 화면은 그대로 서야 하고, 대신 왜 안 됐는지는
+   그대로 올라와야 한다(그 말이 없으면 「숫자가 안 뜬다」만 남아 고칠 데를 못 찾는다). */
+head('Cloudflare 섞기');
+{
+  const base = { WORDS: fakeKV(), ADMIN_KEY: 'zzz' };
+  const ask = (env) => call(new Request('https://x/api/hits?key=zzz&days=7'), env).then((r) => r.json());
+
+  const off = await ask(base);
+  ok(off.ok === true && off.cf.ok === false && off.cf.error === 'not_configured',
+    '안 넣어 뒀으면 발자국만으로 선다', JSON.stringify(off.cf));
+
+  /* GraphQL은 거절해도 200으로 답한다 — 칸 이름이 하나 달라도 여기로 온다 */
+  const real = globalThis.fetch;
+  const cfEnv = { ...base, CF_API_TOKEN: 't', CF_ACCOUNT_ID: 'a', CF_SITE_TAG: 's' };
+  let sent = null;
+  globalThis.fetch = async (url, init) => {
+    sent = { url: String(url), init };
+    return new Response(JSON.stringify({ errors: [{ message: 'unknown field countryName' }] }),
+      { headers: { 'content-type': 'application/json' } });
+  };
+  const bad = await ask(cfEnv);
+  ok(bad.ok === true && bad.cf.ok === false && bad.cf.error.includes('countryName'),
+    'GraphQL이 거절하면 그 말을 그대로 올려 보낸다', JSON.stringify(bad.cf));
+  ok(bad.days.length === 7, '그래도 발자국은 그대로 나온다', String(bad.days.length));
+
+  /* **사이트를 안 집으면 계정의 다른 사이트 방문까지 한 숫자로 섞여 나온다** */
+  ok(sent.init.body.includes('"site":"s"') && sent.init.body.includes('siteTag:$site'),
+    '사이트 태그를 반드시 함께 묻는다', sent.init.body.slice(0, 80));
+  ok(sent.init.headers.authorization === 'Bearer t', '토큰은 헤더로만 간다');
+
+  globalThis.fetch = async () => new Response(JSON.stringify({ data: { viewer: { accounts: [{
+    byDay: [
+      { count: 9, sum: { visits: 6 }, dimensions: { date: '2026-10-07' } },
+      { count: 4, sum: { visits: 3 }, dimensions: { date: '2026-10-06' } },
+    ],
+    byRef: [{ sum: { visits: 5 }, dimensions: { refererHost: 'google.com' } },
+            { sum: { visits: 4 }, dimensions: { refererHost: '' } }],
+    byCountry: [{ sum: { visits: 8 }, dimensions: { countryName: 'South Korea' } }],
+    byDevice: [{ sum: { visits: 7 }, dimensions: { deviceType: 'mobile' } }],
+  }] } } }), { headers: { 'content-type': 'application/json' } });
+  const good = await ask(cfEnv);
+  ok(good.cf.ok === true && good.cf.days.length === 2
+     && good.cf.days[0].views === 9 && good.cf.days[0].visits === 6,
+    '쪽을 연 수와 들어온 수를 갈라 준다', JSON.stringify(good.cf.days[0]));
+  ok(good.cf.ref['google.com'] === 5 && good.cf.ref['-'] === 4,
+    '빈 referrer는 발자국과 같은 자리(-)에 선다', JSON.stringify(good.cf.ref));
+  ok(good.cf.country['South Korea'] === 8 && good.cf.device.mobile === 7,
+    '나라와 기기도 함께 온다', JSON.stringify([good.cf.country, good.cf.device]));
+
+  /* **더해서 주지 않는다.** 한 숫자로 합치면 화면에서 출처를 가를 수가 없다 */
+  ok(Array.isArray(good.days) && good.days[0].visit === undefined,
+    '발자국과 Cloudflare를 섞어서 주지 않는다 (섞는 자리는 화면이다)');
+
+  globalThis.fetch = async () => { throw new Error('timeout'); };
+  const dead = await ask(cfEnv);
+  ok(dead.ok === true && dead.cf.error === 'unreachable',
+    '못 닿아도 화면은 선다', JSON.stringify(dead.cf));
+
+  globalThis.fetch = real;
+
+  const h = await (await call(new Request('https://x/api/health'), cfEnv)).json();
+  ok(h.cf === true, '설정 확인이 Cloudflare 쪽도 말해 준다');
+  ok(!JSON.stringify(h).includes('"t"') && !JSON.stringify(h).includes('Bearer'),
+    '그래도 값은 한 글자도 안 나간다', JSON.stringify(h));
+  const half = await (await call(new Request('https://x/api/health'),
+    { ...base, CF_API_TOKEN: 't' })).json();
+  ok(half.cf === false, '셋 중 하나만 넣으면 아니오다 (조용히 안 켜지는 것을 막는다)');
+}
+
 console.log(`\n${fail ? '❌' : '✅'}  통과 ${pass} · 실패 ${fail}`);
 process.exit(fail ? 1 : 0);

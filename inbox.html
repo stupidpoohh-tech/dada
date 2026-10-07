@@ -64,7 +64,9 @@
    보여서, 0인 것이 0으로 안 보이면 알아챌 길이 없다. 그래서 띠는 값이 0이면
    아예 안 그리고, 「앞 칸의 몇 %」를 글자로 같이 적는다. */
 .ib-sec { margin-top: 34px; }
-.ib-sec > h2 { font-size: 15px; margin: 0 0 10px; letter-spacing: -.01em; }
+/* **자손 선택자여야 한다.** `>`로 두면 「Cloudflare가 더 아는 것」처럼 안쪽
+   절에 든 표제가 규칙을 안 받아 브라우저 기본 크기로 혼자 커진다 */
+.ib-sec h2 { font-size: 15px; margin: 0 0 10px; letter-spacing: -.01em; }
 .ib-note { margin: -4px 0 12px; color: var(--faint); font-size: 12px; line-height: 1.6; }
 
 .ib-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
@@ -94,6 +96,14 @@
 .ib-step-top i { font-style: normal; color: var(--faint); font-size: 11.5px; }
 .ib-bar { height: 5px; margin-top: 8px; border-radius: 999px; background: var(--surface-2); }
 .ib-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+
+/* **칸마다 어디서 온 숫자인지 적는다.** 두 군데서 센 것을 한 화면에 세우면
+   몇 달 뒤 내가 그 둘로 비율을 만든다 — 세는 기준도 차단기에 걸리는 비율도
+   달라서 그 비율은 아무 뜻이 없다 */
+.ib-src { margin: -6px 0 10px; color: var(--faint); font-size: 11.5px; }
+.ib-src b { color: var(--sub); font-weight: 700; }
+.ib-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; }
+.ib-pair h3 { font-size: 13px; margin: 0 0 6px; color: var(--sub); }
 
 .ib-log { margin-top: 10px; font-size: 12px; color: var(--sub); }
 .ib-log div { padding: 6px 0; border-top: 1px solid var(--line); display: flex; gap: 10px; }
@@ -136,18 +146,32 @@
       <button type="button" data-days="30" aria-pressed="false">30일</button>
     </div>
 
+    <p class="ib-src" id="ibSrcTop"></p>
     <div class="ib-tiles" id="ibTiles"></div>
 
     <h2 style="margin-top:26px">어디까지 가다 멈추나</h2>
+    <p class="ib-src">출처 <b>발자국</b> — 마을이 직접 센 것. 커스텀 이벤트라 Cloudflare는 모르는 칸이다</p>
     <div id="ibFunnel"></div>
 
     <h2 style="margin-top:26px">그 밖에</h2>
+    <p class="ib-src">출처 <b>발자국</b> — 윗줄 타일과 생김새가 같아서 적어 둔다</p>
     <div class="ib-tiles" id="ibElse"></div>
 
     <h2 style="margin-top:26px">어디서 들어왔나</h2>
+    <p class="ib-src" id="ibSrcRef"></p>
     <div id="ibRef"></div>
 
+    <section id="ibExtra" hidden>
+      <h2 style="margin-top:26px">Cloudflare가 더 아는 것</h2>
+      <p class="ib-src">출처 <b>Cloudflare</b> — 발자국은 나라도 기기도 안 담는다</p>
+      <div class="ib-pair">
+        <div><h3>어느 나라에서</h3><div id="ibCountry"></div></div>
+        <div><h3>무엇으로</h3><div id="ibDevice"></div></div>
+      </div>
+    </section>
+
     <h2 style="margin-top:26px">최근 방문</h2>
+    <p class="ib-src">출처 <b>발자국</b> — Cloudflare는 모아 놓은 숫자만 주고 한 줄씩은 안 준다</p>
     <div class="ib-log" id="ibRecent"></div>
   </section>
 
@@ -290,6 +314,7 @@
     $('ibNew').hidden = true;
     $('ibWave').textContent = '';
     $('ibFoot').hidden = true;
+    $('ibExtra').hidden = true;
     hits = null;
     show('열쇠를 잊었어요.');
   });
@@ -302,8 +327,11 @@
      막대에 겹쳐 놓으면 「방문 13번 중 열람 2명」처럼 읽혀 비율이 거짓이 된다.
      그래서 깔때기의 맨 윗칸은 방문 횟수가 아니라 **다녀간 사람**이다. */
   const DAYS = 'dada.inboxDays';
+  /* **맨 윗칸 이름을 타일과 다르게 둔다.** 타일의 「다녀간 사람」은 Cloudflare가
+     센 것이고 여기는 발자국이 센 것이라 **숫자가 다르다.** 같은 이름으로 두면
+     한 화면에 같은 말이 두 숫자로 서서, 둘 중 하나가 틀린 것처럼 보인다 */
   const FUNNEL = [
-    ['people', '다녀간 사람'],
+    ['people', '마을에 들어옴'],
     ['view', '프로젝트를 열어봄'],
     ['say', '한마디 창을 엶'],
     ['sent', '한마디를 남김'],
@@ -341,6 +369,32 @@
     box.appendChild(row);
   }
 
+  /** 출처 한 줄. **이 줄이 없으면 두 숫자가 한 출처처럼 보인다** */
+  function src(node, [who, why]) {
+    node.textContent = '출처 ';
+    node.appendChild(el('b', null, who));
+    node.append(' — ' + why);
+  }
+
+  /** `{이름: 수}`를 많은 순으로 띠로 세운다. 들어온 곳·나라·기기가 같은 모양이다 */
+  function bars(box, obj, empty) {
+    const rows = Object.entries(obj || {}).filter(([, n]) => n > 0)
+      .sort((a, b) => b[1] - a[1]);
+    box.textContent = '';
+    if (!rows.length) { box.appendChild(el('p', 'ib-empty', empty)); return; }
+    const most = rows[0][1];
+    rows.forEach(([k, n]) => step(box, k === '-' ? '바로 들어옴' : k, n, most, ''));
+  }
+
+  /** 하루치 덩이에 들어 있는 `{이름: 수}` 칸을 기간만큼 더한다 */
+  function tally(win, key) {
+    const out = {};
+    win.forEach((d) => Object.entries(d[key] || {}).forEach(([k, n]) => {
+      out[k] = (out[k] || 0) + n;
+    }));
+    return out;
+  }
+
   function drawHits(days) {
     /* 탭 표시를 **그릴 때마다 맞춘다.** 기억해 둔 기간으로 처음 그릴 때
        마크업에 적어 둔 기본값(7일)이 그대로 눌린 채로 남아, 30일을 보고 있는데
@@ -350,11 +404,26 @@
     const win = hits.days.slice(0, days);
     const got = (k) => sum(win, k);
 
+    /* ── 윗줄 숫자는 **Cloudflare 것을 먼저 쓴다.** 쿠키를 안 심는 비콘이라
+       차단기에 덜 걸려서 「몇 명 왔나」는 이쪽이 더 참값에 가깝다. 안 켜져
+       있으면 발자국 숫자로 서고, 어느 쪽인지 바로 아래 줄에 적는다 */
+    const cf = hits.cf && hits.cf.ok ? hits.cf : null;
+    const from = win[win.length - 1] ? win[win.length - 1].day : '';
+    const cfIn = (k) => (cf ? cf.days.filter((d) => d.day >= from)
+      .reduce((n, d) => n + (Number(d[k]) || 0), 0) : 0);
+
     tile($('ibTiles'), [
-      [got('people'), '다녀간 사람'],
-      [got('visit'), '방문 횟수'],
+      [cf ? cfIn('visits') : got('people'), '다녀간 사람'],
+      [cf ? cfIn('views') : got('visit'), '방문 횟수'],
       [waveIn(win), '손 인사'],
     ]);
+    src($('ibSrcTop'), cf
+      ? ['Cloudflare', '쿠키를 안 심는 비콘이라 차단기에 덜 걸린다. 「다녀간 사람」은 밖에서 들어온 수(visits)다']
+      : ['발자국', !hits.cf
+          ? 'Worker가 아직 옛 판이다 — 배포가 돌고 나면 Cloudflare 숫자가 섞인다'
+          : hits.cf.error === 'not_configured'
+            ? 'Cloudflare 쪽은 시크릿 셋(CF_API_TOKEN · CF_ACCOUNT_ID · CF_SITE_TAG)을 넣으면 켜진다'
+            : 'Cloudflare를 못 읽었다 — ' + hits.cf.error]);
 
     const box = $('ibFunnel');
     box.textContent = '';
@@ -372,19 +441,21 @@
     ]);
 
     /* 들어온 곳. `-`는 주소를 바로 치거나 북마크로 온 것이다 —
-       카카오톡·메모장처럼 어디서 왔는지 안 알려 주는 곳도 여기 섞인다 */
-    const ref = {};
-    win.forEach((d) => Object.entries(d.ref || {}).forEach(([h, n]) => {
-      ref[h] = (ref[h] || 0) + n;
-    }));
-    const rows = Object.entries(ref).sort((a, b) => b[1] - a[1]);
-    const rbox = $('ibRef');
-    rbox.textContent = '';
-    if (!rows.length) rbox.appendChild(el('p', 'ib-empty', '아직 들어온 길이 없어요.'));
-    else {
-      const most = rows[0][1];
-      rows.forEach(([h, n]) => step(rbox, h === '-' ? '바로 들어옴' : h, n, most, ''));
+       카카오톡·메모장처럼 어디서 왔는지 안 알려 주는 곳도 여기 섞인다.
+
+       **Cloudflare 것이 있으면 그쪽을 쓴다.** 다만 기간은 못 자른다 — 그쪽
+       숫자는 날짜별로 안 오고 묶음으로 오므로, 받아 온 창(30일) 전체다.
+       그래서 출처 줄에 그 말을 적어 둔다 */
+    bars($('ibRef'), cf ? cf.ref : tally(win, 'ref'), '아직 들어온 길이 없어요.');
+    src($('ibSrcRef'), cf
+      ? ['Cloudflare', '이 칸만 기간 탭을 안 따른다 — 받아 온 30일 전체다']
+      : ['발자국', '빈 referrer는 「바로 들어옴」으로 묶었다']);
+
+    if (cf) {
+      bars($('ibCountry'), cf.country, '아직 없어요.');
+      bars($('ibDevice'), cf.device, '아직 없어요.');
     }
+    $('ibExtra').hidden = !cf;
 
     const log = $('ibRecent');
     log.textContent = '';
@@ -400,9 +471,11 @@
     });
 
     $('ibFootNote').textContent =
-      '「다녀간 사람」은 브라우저 세션이다 — 같은 사람이 내일 또 오면 두 번 센다. '
-      + '깔때기 네 칸은 세션에 한 번씩만 세고, 방문 횟수는 쪽을 연 수다. '
-      + '내 방문(?dada=dev)과 ?gadebug로 들어온 것은 아예 안 담긴다.';
+      '숫자가 두 군데서 온다 — 윗줄과 「어디서 들어왔나」는 Cloudflare, 깔때기와 '
+      + '최근 방문은 마을이 직접 센 발자국이다. 세는 기준이 달라 둘을 더하거나 '
+      + '서로 나누면 안 된다. 깔때기 네 칸은 브라우저 세션에 한 번씩만 세므로 '
+      + '같은 사람이 내일 또 오면 두 번 센다. '
+      + '내 방문(?dada=dev)과 ?gadebug로 들어온 것은 발자국에 아예 안 담긴다.';
     $('ibFoot').hidden = false;
   }
 

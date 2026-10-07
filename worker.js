@@ -338,6 +338,120 @@ async function hit(request, env) {
   return json({ ok: true });
 }
 
+/* ── Cloudflare Web Analytics에서 받아 오는 것 ──────────────
+ * **같은 방문을 두 군데서 센다.** 하나는 위의 발자국(내가 심은 `/api/hit`),
+ * 하나는 Cloudflare가 존에 알아서 끼워 넣는 비콘이다. 겹치는 게 아니라 서로
+ * 못 하는 것을 메운다.
+ *
+ *   발자국    깔때기를 안다(무엇을 눌렀나). 대신 광고 차단기가 막기 쉽다
+ *   Cloudflare 몇 명 왔나·어디서·어느 나라·무슨 기기를 더 정확히 안다.
+ *             대신 **커스텀 이벤트가 없어서** 깔때기는 한 칸도 모른다
+ *
+ * 그래서 `/inbox`는 **칸마다 출처를 갈라 쓴다.** 윗줄 숫자와 「어디서 들어왔나」는
+ * Cloudflare, 깔때기는 발자국이다. 섞어서 한 막대에 올리지 않는다 — 세는 기준도
+ * 차단기에 걸리는 비율도 달라서, 그 둘로 만든 비율은 아무 뜻이 없다.
+ *
+ * ── 넣어 둘 것 (셋 다 있어야 켜진다) ──────────
+ *   npx wrangler secret put CF_API_TOKEN     권한 Account Analytics: Read 하나면 된다
+ *   npx wrangler secret put CF_ACCOUNT_ID    대시보드 오른쪽 아래 Account ID
+ *   npx wrangler secret put CF_SITE_TAG      Web Analytics → 사이트 → Site Tag
+ *
+ * **`CF_SITE_TAG`를 빠뜨리면 안 된다.** 이 데이터셋은 계정 단위라, 사이트를 안
+ * 집으면 그 계정의 **다른 사이트 방문까지 한 숫자로 섞여 나온다.**
+ *
+ * ── 안 되면 조용히 물러난다 ────────────────
+ * 토큰이 없거나, 느리거나, 스키마가 달라 GraphQL이 거절하면 **발자국 숫자만으로
+ * 화면이 선다.** 이쪽이 안 된다고 글과 깔때기까지 막을 이유가 없다. 다만 왜 안 됐는지는
+ * `cf.error`로 그대로 올려 보낸다 — 열쇠가 있어야 보이는 자리고, 그 말이 없으면
+ * 「숫자가 안 뜬다」만 남아 고칠 데를 못 찾는다.
+ */
+const CF_GQL = 'https://api.cloudflare.com/client/v4/graphql';
+const CF_TIMEOUT = 6000;
+
+/* 묶음 넷을 한 번에 묻는다. 나눠 보내면 그만큼 느려지고, 어느 하나가 실패했을 때
+   화면이 반만 차는 상태가 생긴다 */
+const CF_QUERY = `query($acc:String!,$site:String!,$start:Time!,$end:Time!){
+  viewer{ accounts(filter:{accountTag:$acc}){
+    byDay: rumPageloadEventsAdaptiveGroups(
+      filter:{siteTag:$site, datetime_geq:$start, datetime_leq:$end},
+      limit:1000, orderBy:[date_ASC]){ count sum{visits} dimensions{ date } }
+    byRef: rumPageloadEventsAdaptiveGroups(
+      filter:{siteTag:$site, datetime_geq:$start, datetime_leq:$end},
+      limit:30, orderBy:[sum_visits_DESC]){ sum{visits} dimensions{ refererHost } }
+    byCountry: rumPageloadEventsAdaptiveGroups(
+      filter:{siteTag:$site, datetime_geq:$start, datetime_leq:$end},
+      limit:30, orderBy:[sum_visits_DESC]){ sum{visits} dimensions{ countryName } }
+    byDevice: rumPageloadEventsAdaptiveGroups(
+      filter:{siteTag:$site, datetime_geq:$start, datetime_leq:$end},
+      limit:10, orderBy:[sum_visits_DESC]){ sum{visits} dimensions{ deviceType } }
+  } }
+}`;
+
+/** 묶음 하나를 `{이름: 수}`로 편다. 차원 이름이 묶음마다 달라서 받아서 쓴다.
+ *  **빈 이름은 `-`로 둔다** — 발자국 쪽의 「바로 들어옴」과 같은 자리에 서야 한다. */
+const cfTally = (rows, dim) => {
+  const out = {};
+  (rows || []).forEach((r) => {
+    const name = (r.dimensions && r.dimensions[dim]) || '-';
+    out[name] = (out[name] || 0) + (r.sum ? r.sum.visits : 0);
+  });
+  return out;
+};
+
+async function cfRum(env, want) {
+  if (!env.CF_API_TOKEN || !env.CF_ACCOUNT_ID || !env.CF_SITE_TAG) {
+    return { ok: false, error: 'not_configured' };
+  }
+  const end = new Date();
+  const start = new Date(end.getTime() - (want - 1) * 86400000);
+  start.setUTCHours(0, 0, 0, 0);
+
+  let out;
+  try {
+    const res = await fetch(CF_GQL, {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer ' + env.CF_API_TOKEN,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: CF_QUERY,
+        variables: {
+          acc: env.CF_ACCOUNT_ID, site: env.CF_SITE_TAG,
+          start: start.toISOString(), end: end.toISOString(),
+        },
+      }),
+      signal: AbortSignal.timeout(CF_TIMEOUT),
+    });
+    out = await res.json();
+    if (!res.ok && !out) return { ok: false, error: 'http_' + res.status };
+  } catch (e) {
+    /* 느리거나 끊겼다. **화면은 그대로 서야 한다** — 발자국만으로도 할 말은 있다 */
+    return { ok: false, error: 'unreachable' };
+  }
+
+  /* GraphQL은 거절해도 200으로 답한다. 칸 이름이 하나 달라도 여기로 온다 —
+     그 말을 그대로 올려 보내야 무엇을 고칠지 안다 */
+  if (out.errors && out.errors.length) {
+    return { ok: false, error: String(out.errors[0].message || 'graphql').slice(0, 200) };
+  }
+  const acc = out.data && out.data.viewer && out.data.viewer.accounts
+    && out.data.viewer.accounts[0];
+  if (!acc) return { ok: false, error: 'no_account' };
+
+  return {
+    ok: true,
+    days: (acc.byDay || []).map((r) => ({
+      day: r.dimensions.date,
+      views: r.count || 0,                       // 쪽을 연 수
+      visits: r.sum ? r.sum.visits : 0,          // 밖에서 들어온 수 (≈ 다녀간 사람)
+    })),
+    ref: cfTally(acc.byRef, 'refererHost'),
+    country: cfTally(acc.byCountry, 'countryName'),
+    device: cfTally(acc.byDevice, 'deviceType'),
+  };
+}
+
 /** 발자국을 읽는다 (`GET /api/hits?key=<ADMIN_KEY>&days=7`).
  *
  *  **하루치 키를 직접 만들어 읽는다.** 목록으로 훑으면 지운 날·빈 날까지
@@ -368,7 +482,11 @@ async function readHits(url, env) {
     return { at: new Date(ms).toISOString(), from: part.slice(3).join(':') || '-' };
   });
 
-  return json({ ok: true, days, recent });
+  /* **Cloudflare 쪽은 나란히 담아 보낸다. 더해서 주지 않는다.** 한 숫자로 합쳐
+     버리면 화면에서 어느 칸이 어디서 온 것인지 알 수 없고, 몇 달 뒤 내가 그
+     비율을 믿어 버린다. 섞는 자리는 화면이지 여기가 아니다. */
+  const cf = await cfRum(env, want);
+  return json({ ok: true, days, recent, cf });
 }
 
 /* ── 설정이 들어갔나 (`GET /api/health`) ────────────────────
@@ -384,6 +502,9 @@ function health(env) {
     ok: true,
     kv: !!env.WORDS,                                        // 남긴 말을 담을 곳
     adminKey: !!env.ADMIN_KEY,                              // /inbox.html을 여는 열쇠
+    /* 셋이 다 있어야 Cloudflare 숫자가 섞인다. 하나만 빠져도 조용히 안 켜지므로
+       여기서 예/아니오로 말해 준다 (값은 한 글자도 안 나간다) */
+    cf: !!(env.CF_API_TOKEN && env.CF_ACCOUNT_ID && env.CF_SITE_TAG),
     notify: {
       mail: !!(env.RESEND_KEY && env.NOTIFY_EMAIL),         // 둘 다 있어야 메일이 나간다
       hook: !!env.NOTIFY_URL,
