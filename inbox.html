@@ -11,7 +11,12 @@
 <link rel="stylesheet" href="styles.css">
 <style>
 /* 이 화면에서만 쓰는 것들. styles.css의 토큰(--ink · --accent …)을 그대로 쓴다 */
-.ib { max-width: 720px; margin: 0 auto; padding: 26px 16px 60px; }
+/* **`width: 100%`를 꼭 같이 준다.** styles.css가 마을을 위해 `body`를 세로
+   flex로 두는데, 거기서 `margin: 0 auto`를 주면 가로로 늘어나는 대신
+   **내용만큼만 좁아진다**(auto 여백이 stretch를 끈다). 그러면 상자는 390px
+   화면에서 404px이 되어 폰에서만 가로로 밀린다 — 이 화면에 발자국을 붙이며
+   재 보다 알았다(2026-10-07). 넓은 화면에서는 멀쩡해 보인다. */
+.ib { width: 100%; max-width: 720px; margin: 0 auto; padding: 26px 16px 60px; }
 .ib-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
 .ib-head h1 { font-size: 22px; margin: 0; letter-spacing: -.02em; }
 .ib-sub { margin: 0 0 20px; color: var(--sub); font-size: 13.5px; }
@@ -53,6 +58,52 @@
 .ib-reply a { color: var(--accent); font-weight: 700; }
 .ib-foot { margin-top: 26px; text-align: center; font-size: 13px; }
 .ib-foot a { color: var(--accent); }
+
+/* ── 발자국 ─────────────────────────────────────────
+   **숫자는 글보다 먼저 거짓말을 한다.** 칸을 예쁘게 채우면 그 자체로 그럴듯해
+   보여서, 0인 것이 0으로 안 보이면 알아챌 길이 없다. 그래서 띠는 값이 0이면
+   아예 안 그리고, 「앞 칸의 몇 %」를 글자로 같이 적는다. */
+.ib-sec { margin-top: 34px; }
+.ib-sec > h2 { font-size: 15px; margin: 0 0 10px; letter-spacing: -.01em; }
+.ib-note { margin: -4px 0 12px; color: var(--faint); font-size: 12px; line-height: 1.6; }
+
+.ib-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.ib-tabs button {
+  flex: 1; padding: 9px 4px; font-size: 13px; font-weight: 700; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--sub);
+}
+.ib-tabs button[aria-pressed="true"] {
+  background: var(--ink); border-color: var(--ink); color: #fff;
+}
+
+/* 칸 수를 못 박지 않는다 — 「그 밖에」는 둘뿐이라, 셋으로 고정하면
+   빈 칸 하나가 「여기 뭔가 더 있어야 하는데」로 읽힌다 */
+.ib-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
+.ib-tile {
+  border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+  padding: 14px 10px; text-align: center;
+}
+.ib-tile b { display: block; font-size: 22px; letter-spacing: -.03em; }
+.ib-tile span { display: block; margin-top: 3px; color: var(--faint); font-size: 11.5px; }
+
+.ib-step { border-top: 1px solid var(--line); padding: 11px 0 12px; }
+.ib-step:first-child { border-top: 0; }
+.ib-step-top { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; }
+.ib-step-top b { margin-left: auto; font-size: 14px; }
+.ib-step-top i { font-style: normal; color: var(--faint); font-size: 11.5px; }
+.ib-bar { height: 5px; margin-top: 8px; border-radius: 999px; background: var(--surface-2); }
+.ib-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+
+.ib-log { margin-top: 10px; font-size: 12px; color: var(--sub); }
+.ib-log div { padding: 6px 0; border-top: 1px solid var(--line); display: flex; gap: 10px; }
+.ib-log div:first-child { border-top: 0; }
+.ib-log time { color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ib-empty { color: var(--faint); font-size: 13px; padding: 16px 0; text-align: center; }
+
+@media (max-width: 420px) {
+  .ib-tile b { font-size: 19px; }
+}
 </style>
 </head>
 <body>
@@ -74,6 +125,31 @@
 
   <p class="ib-msg" id="ibMsg" hidden></p>
   <div class="ib-list" id="ibList"></div>
+
+  <section class="ib-sec" id="ibFoot" hidden>
+    <h2>👣 발자국</h2>
+    <p class="ib-note" id="ibFootNote"></p>
+
+    <div class="ib-tabs" id="ibTabs">
+      <button type="button" data-days="1" aria-pressed="false">오늘</button>
+      <button type="button" data-days="7" aria-pressed="true">7일</button>
+      <button type="button" data-days="30" aria-pressed="false">30일</button>
+    </div>
+
+    <div class="ib-tiles" id="ibTiles"></div>
+
+    <h2 style="margin-top:26px">어디까지 가다 멈추나</h2>
+    <div id="ibFunnel"></div>
+
+    <h2 style="margin-top:26px">그 밖에</h2>
+    <div class="ib-tiles" id="ibElse"></div>
+
+    <h2 style="margin-top:26px">어디서 들어왔나</h2>
+    <div id="ibRef"></div>
+
+    <h2 style="margin-top:26px">최근 방문</h2>
+    <div class="ib-log" id="ibRecent"></div>
+  </section>
 
   <p class="ib-foot"><a href="/">← 마을로 돌아가기</a></p>
 </main>
@@ -194,7 +270,9 @@
     $('ibForget').hidden = false;
     $('ibKey').value = '';
     $('ibKey').placeholder = '열쇠 기억함';
+    waveDays = data.days || [];      // 손 인사 — 발자국 칸이 기간을 맞춰 더한다
     render(data);
+    loadHits(key);                   // 글과 따로 받는다. 한쪽이 늦어도 다른 쪽은 보인다
   }
 
   $('ibKeyForm').addEventListener('submit', (e) => {
@@ -211,7 +289,151 @@
     $('ibList').textContent = '';
     $('ibNew').hidden = true;
     $('ibWave').textContent = '';
+    $('ibFoot').hidden = true;
+    hits = null;
     show('열쇠를 잊었어요.');
+  });
+
+  /* ── 발자국 ─────────────────────────────────────────
+     `/api/hits`가 주는 것은 하루치 덩이뿐이다. 더하고 나누는 것은 여기서 한다 —
+     서버가 미리 더해 주면 기간 탭을 누를 때마다 다시 물어야 한다.
+
+     **깔때기 네 칸은 세션 단위, 방문 횟수는 쪽을 연 수다.** 단위가 다른 둘을 한
+     막대에 겹쳐 놓으면 「방문 13번 중 열람 2명」처럼 읽혀 비율이 거짓이 된다.
+     그래서 깔때기의 맨 윗칸은 방문 횟수가 아니라 **다녀간 사람**이다. */
+  const DAYS = 'dada.inboxDays';
+  const FUNNEL = [
+    ['people', '다녀간 사람'],
+    ['view', '프로젝트를 열어봄'],
+    ['say', '한마디 창을 엶'],
+    ['sent', '한마디를 남김'],
+  ];
+  let hits = null;      // 마지막으로 받아 온 것 (탭만 바꿀 때 다시 안 묻는다)
+
+  const sum = (days, k) => days.reduce((n, d) => n + (Number(d[k]) || 0), 0);
+
+  function tile(box, rows) {
+    box.textContent = '';
+    rows.forEach(([n, label]) => {
+      const t = el('div', 'ib-tile');
+      t.append(el('b', null, String(n)), el('span', null, label));
+      box.appendChild(t);
+    });
+  }
+
+  /** 한 칸. **0이면 띠를 아예 안 그린다** — 1px짜리 띠가 남아 있으면
+   *  「조금은 있다」로 보이고, 0은 0으로 보여야 다음에 무엇을 고칠지 알 수 있다. */
+  function step(box, label, n, base, baseLabel) {
+    const row = el('div', 'ib-step');
+    const top = el('div', 'ib-step-top');
+    top.appendChild(el('span', null, label));
+    const pct = base > 0 ? Math.round((n / base) * 100) : 0;
+    top.appendChild(el('b', null, `${n}번`));
+    if (baseLabel) top.appendChild(el('i', null, `${baseLabel} ${pct}%`));
+    row.appendChild(top);
+    const bar = el('div', 'ib-bar');
+    if (n > 0 && base > 0) {
+      const fill = el('span');
+      fill.style.width = Math.max(2, Math.min(100, pct)) + '%';
+      bar.appendChild(fill);
+    }
+    row.appendChild(bar);
+    box.appendChild(row);
+  }
+
+  function drawHits(days) {
+    /* 탭 표시를 **그릴 때마다 맞춘다.** 기억해 둔 기간으로 처음 그릴 때
+       마크업에 적어 둔 기본값(7일)이 그대로 눌린 채로 남아, 30일을 보고 있는데
+       7일이 켜져 있는 화면이 된다 */
+    [...$('ibTabs').children].forEach((b) =>
+      b.setAttribute('aria-pressed', String(Number(b.dataset.days) === days)));
+    const win = hits.days.slice(0, days);
+    const got = (k) => sum(win, k);
+
+    tile($('ibTiles'), [
+      [got('people'), '다녀간 사람'],
+      [got('visit'), '방문 횟수'],
+      [waveIn(win), '손 인사'],
+    ]);
+
+    const box = $('ibFunnel');
+    box.textContent = '';
+    const top = got('people');
+    FUNNEL.forEach(([k, label], i) => {
+      step(box, label, got(k), i === 0 ? top : got(FUNNEL[i - 1][0]),
+        i === 0 ? '' : '앞 칸의');
+    });
+
+    /* 깔때기에 이미 선 칸은 여기 다시 세우지 않는다 — 같은 숫자가 두 군데
+       있으면 더해도 되는 것처럼 보인다 */
+    tile($('ibElse'), [
+      [got('list'), '목록을 엶'],
+      [got('tour'), '투어 시작'],
+    ]);
+
+    /* 들어온 곳. `-`는 주소를 바로 치거나 북마크로 온 것이다 —
+       카카오톡·메모장처럼 어디서 왔는지 안 알려 주는 곳도 여기 섞인다 */
+    const ref = {};
+    win.forEach((d) => Object.entries(d.ref || {}).forEach(([h, n]) => {
+      ref[h] = (ref[h] || 0) + n;
+    }));
+    const rows = Object.entries(ref).sort((a, b) => b[1] - a[1]);
+    const rbox = $('ibRef');
+    rbox.textContent = '';
+    if (!rows.length) rbox.appendChild(el('p', 'ib-empty', '아직 들어온 길이 없어요.'));
+    else {
+      const most = rows[0][1];
+      rows.forEach(([h, n]) => step(rbox, h === '-' ? '바로 들어옴' : h, n, most, ''));
+    }
+
+    const log = $('ibRecent');
+    log.textContent = '';
+    const recent = hits.recent || [];
+    if (!recent.length) log.appendChild(el('p', 'ib-empty', '아직 기록이 없어요.'));
+    recent.forEach((r) => {
+      const row = el('div');
+      const t = el('time', null, new Date(r.at).toLocaleString('ko-KR',
+        { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }));
+      t.dateTime = r.at;
+      row.append(t, el('span', null, r.from === '-' ? '바로 들어옴' : r.from));
+      log.appendChild(row);
+    });
+
+    $('ibFootNote').textContent =
+      '「다녀간 사람」은 브라우저 세션이다 — 같은 사람이 내일 또 오면 두 번 센다. '
+      + '깔때기 네 칸은 세션에 한 번씩만 세고, 방문 횟수는 쪽을 연 수다. '
+      + '내 방문(?dada=dev)과 ?gadebug로 들어온 것은 아예 안 담긴다.';
+    $('ibFoot').hidden = false;
+  }
+
+  /* 손 인사는 예전부터 `/api/word`가 날짜별로 주고 있다 — 발자국과 따로 세는
+     것이라 여기서 기간만 맞춰 더한다 */
+  let waveDays = [];
+  const waveIn = (win) => {
+    const from = win[win.length - 1] && win[win.length - 1].day;
+    if (!from) return 0;
+    return waveDays.filter((d) => d.day >= from).reduce((n, d) => n + d.n, 0);
+  };
+
+  async function loadHits(key) {
+    let res;
+    try {
+      res = await fetch('/api/hits?key=' + encodeURIComponent(key) + '&days=30',
+        { cache: 'no-store' });
+    } catch (e) { return; }                      // 발자국이 안 보이는 것으로 글까지 막지 않는다
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* 아래에서 걸러진다 */ }
+    if (!data.ok) return;                        // 아직 새 Worker가 안 떠 있을 수도 있다
+    hits = data;
+    drawHits(Number(store.get(DAYS)) || 7);
+  }
+
+  $('ibTabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-days]');
+    if (!b || !hits) return;
+    store.set(DAYS, b.dataset.days);
+    [...$('ibTabs').children].forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    drawHits(Number(b.dataset.days));
   });
 
   // 기억해 둔 열쇠가 있으면 바로 연다 — 올 때마다 넣게 하면 안 오게 된다

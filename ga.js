@@ -186,6 +186,98 @@
     };
   }
 
+  /* ── 발자국 — 내 서버에 바로 쌓는 셈 ──────────────────
+     GA와 겹치지만 하는 일이 다르다. GA의 숫자는 **남의 화면에 로그인해야** 보이고
+     하루쯤 지나야 자리를 잡는다. 이쪽은 내 Worker에 바로 쌓여 `/inbox`에서 곧바로
+     보인다 — 둘 중 하나를 고르는 것이 아니라 빠르고 거친 쪽을 하나 더 두는 것이다.
+
+     **깔때기 네 칸은 브라우저 세션에 한 번씩만 보낸다.** 「본 횟수」로 세면 한 사람이
+     열두 개를 열어본 날 열람이 방문보다 많아져서, 깔때기가 아래로 갈수록 넓어진다.
+     이미 보낸 칸은 sessionStorage가 기억하므로 **한 세션이 쓰는 것은 보통 두 번**이다
+     (KV 쓰기는 무료 한도가 하루 1,000번이다 — worker.js의 「쓰는 횟수」 참고).
+
+     **내 방문은 아예 안 보낸다.** `?dada=dev` 표가 붙어 있거나 `?gadebug`로 들어온
+     방문이면 한 줄도 안 나간다. GA 쪽은 필터로 거르면 되지만 여기는 거를 장치가
+     없어서, 들어오기 전에 막는 편이 맞다.
+
+     **담는 것은 이것뿐이다** — 어느 칸까지 갔나, 그리고 들어온 곳의 **호스트 이름**.
+     전체 주소에는 남의 검색어가 붙어 오는 수가 있어서 여기서 잘라 보낸다. */
+  var FOOT = { item_click: 'view', say_open: 'say', say_sent: 'sent',
+               tour_start: 'tour', list_open: 'list' };
+  var SEAT = 'dada.foot';
+
+  function seen() {
+    try { return JSON.parse(sessionStorage.getItem(SEAT)) || []; }
+    catch (e) { return null; }      // 시크릿 창 — 기억할 데가 없다
+  }
+  function remember(list) {
+    try { sessionStorage.setItem(SEAT, JSON.stringify(list)); } catch (e) { /* 같다 */ }
+  }
+
+  /** 들어온 곳의 호스트 이름. 제 사이트에서 넘어온 것은 「바로 들어옴」과 갈라야
+   *  하므로 빈 문자열로 둔다 — 마을 안을 오간 것은 새로 들어온 것이 아니다. */
+  function cameFrom() {
+    try {
+      if (!document.referrer) return '';
+      var h = new URL(document.referrer).hostname;
+      return h === location.hostname ? '' : h;
+    } catch (e) { return ''; }
+  }
+
+  function send(steps, fresh) {
+    var body = JSON.stringify({ steps: steps, fresh: !!fresh, from: fresh ? cameFrom() : '' });
+    /* **로컬에서는 보내는 대신 찍는다.** 여기 받을 Worker가 없어서 보내 봐야
+       404만 쌓이는데, 그러면 「어느 자리에서 무엇이 나가는지」를 손으로 볼 길이
+       통째로 없어진다. `?gadebug`를 붙였을 때만 열린다 (GA 이벤트와 같은 손잡이) */
+    if (!onHost) { console.log('[foot:off]', body); return; }
+    try {
+      /* `sendBeacon`은 **화면을 떠나는 중에도 간다.** 마지막 걸음(한마디를 남기고
+         창을 닫는 것)이 여기 걸리는 일이 많아서 이쪽을 먼저 쓴다 */
+      if (navigator.sendBeacon
+          && navigator.sendBeacon('/api/hit', new Blob([body], { type: 'application/json' }))) return;
+      fetch('/api/hit', { method: 'POST', body: body, keepalive: true }).catch(function () {});
+    } catch (e) { /* 발자국이 안 남는 것으로 사람에게 사과할 일은 아니다 */ }
+  }
+
+  /** 한 칸을 밟았다고 알린다.
+   *
+   *  **`visit`만 규칙이 다르다.** 깔때기 칸은 세션에 한 번이지만 방문은 페이지를
+   *  열 때마다 센다 — 둘을 같이 묶었더니 한 세션에서 쪽을 여럿 넘겨도 방문이
+   *  1로 굳어, 「방문 횟수」가 늘 「다녀간 사람」과 같은 수가 됐다.
+   *  `fresh`(= 이 세션의 첫 방문인가)가 그 둘을 가른다. */
+  function foot(step) {
+    if (!step) return;
+    if (onHost && internal) return;        // 라이브에서 내 방문 — 한 줄도 안 담는다
+    if (!onHost && !debug) return;         // 로컬에서는 `?gadebug`일 때만 리허설한다
+    var done = seen();
+
+    if (step === 'visit') {
+      var first = done === null || done.indexOf('visit') < 0;
+      if (done && first) { done.push('visit'); remember(done); }
+      send(['visit'], first);
+      return;
+    }
+
+    if (done === null) { send([step], false); return; }   // 기억할 데가 없으면 그냥 보낸다
+    if (done.indexOf(step) >= 0) return;
+    done.push(step);
+    remember(done);
+    send([step], false);
+  }
+
+  /* 부르는 자리는 손대지 않는다 — 이미 있는 `dadaTrack`을 한 겹 감싼다.
+     GA가 꺼져 있어도(측정 ID가 비어도) 발자국은 그대로 남는다 */
+  window.dadaTrack = (function (inner) {
+    return function (name, params) {
+      foot(FOOT[name]);
+      inner(name, params);
+    };
+  })(window.dadaTrack);
+
+  /* 방문은 **페이지를 열 때마다** 센다. 깔때기 네 칸과 단위가 다른데, 그래서
+     `/inbox`도 「방문 횟수」와 「다녀간 사람」을 따로 보여 준다 */
+  foot('visit');
+
   /* Cloudflare Web Analytics 비콘. **지금은 CF_TOKEN이 비어 있어 안 붙는다** —
      존이 알아서 넣어 주므로 손으로 넣을 것이 없다. 코드는 남긴다: 존이 아닌
      주소에 다시 걸 일이 생기면 토큰만 도로 적으면 된다.

@@ -2860,6 +2860,10 @@ if (head('남긴 말 — 읽는 화면')) {
     seen.push(new URL(route.request().url()).searchParams.get('key'));
     route.fulfill({ status: 200, contentType: 'application/json', body });
   });
+  /* 발자국은 아래 절에서 따로 본다. 여기서는 404만 안 나면 된다 —
+     안 세워 두면 「콘솔 오류 없음」이 이 절 때문에 깨진다 */
+  await p.route('**/api/hits?*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json', body: '{"ok":false}' }));
   await p.goto(BASE + '/inbox.html', { waitUntil: 'load' });
   await p.waitForTimeout(300);
 
@@ -2894,6 +2898,9 @@ if (head('남긴 말 — 읽는 화면')) {
     await p.textContent('#ibNew'));
   ok(await p.locator('.ib-card.new').count() === 2, '안 읽은 것은 띠로 표시된다');
   ok((await p.textContent('#ibWave')).includes('12'), '손 인사 수도 같이 보인다');
+  /* 발자국을 못 받아도 글은 그대로 보인다 — 한쪽이 늦다고 다른 쪽을 막지 않는다 */
+  ok(await p.evaluate(() => document.getElementById('ibFoot').hidden),
+    '발자국이 안 오면 그 칸만 접힌다');
 
   /* 열쇠를 기억한다 — 올 때마다 넣게 하면 안 오게 된다.
      그리고 본 것은 본 것으로 친다 — 아니면 「새 글」이라는 말이 뜻을 잃는다 */
@@ -2927,6 +2934,176 @@ if (head('남긴 말 — 읽는 화면')) {
     if (/api\/word/.test(errors[i]) || /status of 403/.test(errors[i])) errors.splice(i, 1);
   }
   await p.close();
+}
+
+/* ── 발자국 (/inbox.html 아래칸) ───────────────────────────
+   GA는 남의 화면에 로그인해야 보이고 하루쯤 지나야 자리를 잡는다. 이쪽은 내
+   Worker에 바로 쌓여 여기서 곧바로 보인다.
+
+   **여기 검사는 전부 「숫자가 거짓말을 하는가」다.** 깔때기가 아래로 갈수록
+   넓어지거나, 0인 것이 0으로 안 보이거나, 기간을 바꿔도 같은 숫자가 서 있거나 —
+   전부 화면에는 아무 표시가 안 나고 몇 달 뒤 「생각보다 잘 되네」로만 보인다. */
+if (head('발자국 — 읽는 화면')) {
+  const p = await desktop();
+  const asked = [];
+  const day = (back, o) => ({
+    day: new Date(Date.now() - back * 86400000).toISOString().slice(0, 10), ...o,
+  });
+  /* 오늘은 많이, 닷새 전에 조금. 기간 탭이 실제로 창을 좁히는지 보려면
+     **창 밖에 둘 것이 있어야** 한다 */
+  const hits = {
+    ok: true,
+    days: [
+      day(0, { visit: 9, people: 6, view: 3, say: 2, sent: 1, list: 4, tour: 1,
+               ref: { '-': 4, 'google.com': 2 } }),
+      day(1, {}), day(2, {}), day(3, {}), day(4, {}),
+      day(5, { visit: 5, people: 5, view: 1, ref: { 'dada-learn.pages.dev': 5 } }),
+      ...Array.from({ length: 24 }, (_, i) => day(6 + i, {})),
+    ],
+    recent: [{ at: new Date(Date.now() - 6e5).toISOString(), from: 'google.com' },
+             { at: new Date(Date.now() - 9e5).toISOString(), from: '-' }],
+  };
+  await p.route('**/api/word?*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ ok: true, words: [], hello: 3,
+      days: [{ day: hits.days[0].day, n: 2 }, { day: hits.days[5].day, n: 1 }] }),
+  }));
+  await p.route('**/api/hits?*', (route) => {
+    asked.push(new URL(route.request().url()).searchParams.get('key'));
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(hits) });
+  });
+
+  await p.goto(BASE + '/inbox.html', { waitUntil: 'load' });
+  await p.waitForTimeout(200);
+  ok(await p.evaluate(() => document.getElementById('ibFoot').hidden),
+    '열쇠 없이는 발자국도 안 보인다');
+
+  await p.fill('#ibKey', 'secret');
+  await p.click('#ibKeyForm button[type=submit]');
+  await p.waitForTimeout(500);
+  ok(asked[0] === 'secret', '같은 열쇠로 발자국도 물어본다', String(asked[0]));
+  ok(!await p.evaluate(() => document.getElementById('ibFoot').hidden), '발자국 칸이 열린다');
+
+  const tiles = () => p.$$eval('#ibTiles .ib-tile', (ns) =>
+    ns.map((n) => [n.querySelector('b').textContent, n.querySelector('span').textContent]));
+  const funnel = () => p.$$eval('#ibFunnel .ib-step', (ns) => ns.map((n) => ({
+    label: n.querySelector('.ib-step-top span').textContent,
+    n: n.querySelector('.ib-step-top b').textContent,
+    rate: (n.querySelector('.ib-step-top i') || {}).textContent || '',
+    bar: !!n.querySelector('.ib-bar > span'),
+  })));
+
+  // 기본은 7일 — 닷새 전 것까지 들어온다
+  let t = await tiles();
+  ok(t[0][0] === '11' && t[0][1] === '다녀간 사람', '7일이면 닷새 전 것까지 더한다', JSON.stringify(t));
+  ok(t[1][0] === '14' && t[1][1] === '방문 횟수', '방문 횟수는 따로 센다', JSON.stringify(t));
+  ok(t[2][0] === '3', '손 인사도 기간에 맞춰 더한다', JSON.stringify(t));
+
+  let f = await funnel();
+  ok(f.length === 4 && f[0].label === '다녀간 사람' && f[0].n === '11번',
+    '깔때기 맨 윗칸은 방문 횟수가 아니라 사람이다', JSON.stringify(f[0]));
+  /* **아래로 갈수록 넓어지면 어딘가 틀린 것이다.** 세션 단위와 쪽 단위를
+     한 막대에 겹치면 실제로 그렇게 된다 */
+  const nums = f.map((x) => Number(x.n.replace('번', '')));
+  ok(nums.every((v, i) => i === 0 || v <= nums[i - 1]),
+    '깔때기가 아래로 갈수록 좁아진다', nums.join(' → '));
+  ok(f[1].rate === '앞 칸의 36%', '앞 칸의 몇 %인지 글자로 적는다', f[1].rate);
+
+  // 오늘만 — 창이 실제로 좁아지는지
+  await p.click('#ibTabs button[data-days="1"]');
+  await p.waitForTimeout(200);
+  t = await tiles();
+  ok(t[0][0] === '6' && t[1][0] === '9', '「오늘」은 오늘 것만 센다', JSON.stringify(t));
+  ok(asked.length === 1, '탭을 바꿔도 서버에 다시 묻지 않는다', String(asked.length));
+
+  /* 0인 칸에 띠가 1px이라도 남으면 「조금은 있다」로 보인다 */
+  await p.click('#ibTabs button[data-days="30"]');
+  await p.waitForTimeout(200);
+  const ref = await p.$$eval('#ibRef .ib-step', (ns) => ns.map((n) => [
+    n.querySelector('.ib-step-top span').textContent,
+    Number(n.querySelector('.ib-step-top b').textContent.replace('번', '')),
+  ]));
+  ok(ref.map((r) => r[0]).join() === 'dada-learn.pages.dev,바로 들어옴,google.com'
+     && ref.every((r, i) => i === 0 || r[1] <= ref[i - 1][1]),
+    '들어온 곳이 많은 순으로 선다 (빈 referrer는 「바로 들어옴」)', JSON.stringify(ref));
+
+  const log = await p.$$eval('#ibRecent div', (ns) => ns.map((n) => n.textContent));
+  ok(log.length === 2 && log[1].includes('바로 들어옴'),
+    '최근 방문이 줄로 선다 (어디서 왔는지 모르면 「바로 들어옴」)', JSON.stringify(log));
+
+  /* **이 화면은 숫자의 단위를 말해 줘야 한다.** 「사람」이 실은 브라우저 세션인
+     것을 안 적어 두면, 몇 달 뒤 내가 그 숫자를 사람 수로 읽는다 */
+  const note = await p.textContent('#ibFootNote');
+  ok(note.includes('세션') && note.includes('dada=dev'),
+    '무엇을 센 숫자인지 화면에 적혀 있다', note);
+
+  // 기간 선택이 기억된다 — 올 때마다 다시 고르게 하면 안 보게 된다
+  await p.reload({ waitUntil: 'load' });
+  await p.waitForTimeout(500);
+  ok(await p.$eval('#ibTabs button[data-days="30"]', (b) => b.getAttribute('aria-pressed')) === 'true',
+    '고른 기간이 다음에도 그대로다');
+
+  await p.click('#ibForget');
+  await p.waitForTimeout(200);
+  ok(await p.evaluate(() => document.getElementById('ibFoot').hidden),
+    '「잊기」를 누르면 발자국도 같이 접힌다');
+  await p.close();
+
+  /* **폰에서 가로로 밀리면 안 된다.** 이 화면은 `margin: 0 auto`를 쓰는데
+     styles.css가 마을을 위해 `body`를 세로 flex로 두어서, 폭을 안 못 박으면
+     상자가 내용만큼만 좁아지는 대신 화면보다 넓어진다 — 넓은 화면에서는
+     멀쩡해 보이고 폰에서만 드러난다 (실제로 그 상태로 있었다) */
+  const m = await phone();
+  await m.route('**/api/word?*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ ok: true, hello: 3, words: [], days: [] }) }));
+  await m.route('**/api/hits?*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(hits) }));
+  await m.goto(BASE + '/inbox.html', { waitUntil: 'load' });
+  await m.fill('#ibKey', 'secret');
+  await m.click('#ibKeyForm button[type=submit]');
+  await m.waitForTimeout(500);
+  const over = await m.evaluate(() => [document.body.scrollWidth, document.documentElement.clientWidth]);
+  ok(over[0] <= over[1], '폰에서 가로로 밀리지 않는다', over.join(' / '));
+  await m.close();
+}
+
+/* 발자국은 **배포된 도메인에서만** 남는다. 이 가드가 풀리면 내가 고치며 백 번
+   여닫은 것이 방문자 수가 되고, 검사가 돌 때마다 /api/hit이 404로 쌓인다. */
+if (want('발자국 — 읽는 화면')) {
+  const p = await desktop();
+  const beats = [];
+  p.on('request', (r) => { if (r.url().includes('/api/hit')) beats.push(r.url()); });
+  await town(p);
+  await p.click('.spot[data-district="school"]'); await p.waitForTimeout(400);
+  await p.click('#openList'); await p.waitForTimeout(300);
+  ok(beats.length === 0, 'localhost에서는 발자국을 한 줄도 안 보낸다', beats.join(','));
+  await p.close();
+
+  /* `?gadebug`면 보내는 대신 콘솔에 찍는다 — 어느 자리에서 무엇이 나가는지
+     로컬에서 그대로 보려는 것이다. 여기서 깔때기 규칙도 함께 본다 */
+  const q = await desktop();
+  const lines = [];
+  q.on('console', (m) => { if (m.text().startsWith('[foot:off]')) lines.push(m.text()); });
+  await town(q, BASE + '/?gadebug');
+  await q.waitForTimeout(400);
+  const got = () => lines.map((l) => JSON.parse(l.slice(l.indexOf('{'))));
+  ok(got().length === 1 && got()[0].steps[0] === 'visit' && got()[0].fresh === true,
+    '열면 방문 한 줄, 이 세션의 첫 방문이다', JSON.stringify(got()));
+
+  await q.click('#openList'); await q.waitForTimeout(300);
+  await q.click('#closeList'); await q.waitForTimeout(200);
+  await q.click('#openList'); await q.waitForTimeout(300);
+  ok(got().filter((x) => x.steps.includes('list')).length === 1,
+    '같은 칸은 한 세션에 한 번만 간다 (두 번 열어도 한 줄)', JSON.stringify(got()));
+
+  lines.length = 0;
+  await town(q, BASE + '/?gadebug');     // 같은 세션에서 쪽을 다시 열었다
+  await q.waitForTimeout(400);
+  const again = got();
+  ok(again.length === 1 && again[0].steps[0] === 'visit' && again[0].fresh === false,
+    '쪽을 다시 열면 방문은 늘되 사람은 안 는다', JSON.stringify(again));
+  await q.close();
 }
 
 /* ── 마을 나가는 길의 표지판 ───────────────────────────────

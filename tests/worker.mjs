@@ -332,5 +332,109 @@ head('설정 확인');
   ok(bad.status === 405, '읽기만 되는 주소다', String(bad.status));
 }
 
+/* ── 발자국 ────────────────────────────────────────────
+   `/inbox`의 숫자가 거짓말을 해도 화면에는 아무 표시가 안 난다. 깔때기가 아래로
+   갈수록 넓어지거나, 내가 들여다본 것이 방문자로 잡히거나 — 몇 달 뒤 숫자를 보고
+   「생각보다 잘 되네」로만 보인다. 그래서 여기서 지킨다. */
+head('발자국 — 담기');
+{
+  const env = { WORDS: fakeKV() };
+  const beat = (body, ip = '1.1.1.1') => call(new Request('https://x/api/hit', {
+    method: 'POST', headers: { 'cf-connecting-ip': ip }, body: JSON.stringify(body),
+  }), env);
+
+  const r = await beat({ steps: ['visit'], fresh: true, from: 'google.com' });
+  ok(r.status === 200 && (await r.json()).ok === true, '한 걸음을 받는다');
+
+  const day = [...env.WORDS._m.keys()].find((k) => k.startsWith('h:'));
+  ok(!!day, '하루에 키 하나로 모은다', day || '(없다)');
+  let d = JSON.parse(env.WORDS._m.get(day));
+  ok(d.visit === 1 && d.people === 1, '방문과 사람을 따로 센다', JSON.stringify(d));
+  ok(d.ref && d.ref['google.com'] === 1, '들어온 곳도 같이 센다', JSON.stringify(d.ref));
+
+  /* 같은 세션이 쪽을 하나 더 열었다 — 방문은 늘고 사람은 그대로여야 한다.
+     둘을 같이 묶으면 「방문 횟수」가 늘 「다녀간 사람」과 같은 수가 된다 */
+  await beat({ steps: ['visit'], fresh: false });
+  d = JSON.parse(env.WORDS._m.get(day));
+  ok(d.visit === 2 && d.people === 1, '이어서 연 쪽은 사람 수를 안 늘린다', JSON.stringify(d));
+  ok(Object.keys(d.ref).length === 1, '들어온 곳도 세션에 한 번만 센다', JSON.stringify(d.ref));
+
+  await beat({ steps: ['view', 'say'] });
+  d = JSON.parse(env.WORDS._m.get(day));
+  ok(d.view === 1 && d.say === 1, '여러 칸을 한 번에 받는다', JSON.stringify(d));
+
+  /* 모르는 이름을 세어 주면 아무나 하루치 덩이에 쓰레기 칸을 늘릴 수 있다 */
+  const junk = await beat({ steps: ['drop table', 'view'] });
+  d = JSON.parse(env.WORDS._m.get(day));
+  ok(junk.status === 200 && d.view === 2 && !('drop table' in d),
+    '모르는 칸은 버리고 아는 것만 센다', JSON.stringify(d));
+  const none = await beat({ steps: ['nope'] });
+  ok(none.status === 400, '아는 칸이 하나도 없으면 400', String(none.status));
+
+  /* 들어온 곳은 키 이름에 그대로 들어간다 — `:`나 긴 글자가 섞이면 줄이 깨진다 */
+  await beat({ steps: ['visit'], fresh: true, from: 'http://evil/x:y' }, '2.2.2.2');
+  const logs = [...env.WORDS._m.keys()].filter((k) => k.startsWith('hl:'));
+  ok(logs.every((k) => k.split(':').length === 4),
+    '이상한 주소는 키를 깨뜨리지 못한다', logs.join(' | '));
+
+  ok(!JSON.stringify([...env.WORDS._m.entries()]).includes('1.1.1.1')
+     || [...env.WORDS._m.keys()].filter((k) => k.includes('1.1.1.1')).every((k) => k.startsWith('rh:')),
+    'IP는 빗장 말고 아무 데도 안 남는다');
+
+  const nokv = await call(new Request('https://x/api/hit', { method: 'POST', body: '{}' }), {});
+  ok(nokv.status === 503, 'KV가 없으면 503이다', String(nokv.status));
+  const meth = await call(new Request('https://x/api/hit'), env);
+  ok(meth.status === 405, '읽기로는 못 부른다', String(meth.status));
+}
+
+head('발자국 — 빗장');
+{
+  const env = { WORDS: fakeKV() };
+  const beat = (ip) => call(new Request('https://x/api/hit', {
+    method: 'POST', headers: { 'cf-connecting-ip': ip }, body: JSON.stringify({ steps: ['visit'] }),
+  }), env);
+  let last;
+  for (let i = 0; i < 12; i++) last = await beat('9.9.9.9');
+  ok(last.status === 429, '한 주소가 1분에 열 번을 넘기면 막는다', String(last.status));
+
+  /* **빗장은 하는 일마다 따로다.** 글과 한 빗장을 나눠 쓰면, 마을을 둘러본 사람이
+     정작 한마디를 남기려 할 때 막힌다 */
+  const word = await call(new Request('https://x/api/word', {
+    method: 'POST', headers: { 'content-type': 'application/json', 'cf-connecting-ip': '9.9.9.9' },
+    body: JSON.stringify({ text: '막히면 안 된다' }),
+  }), env);
+  ok(word.status === 200, '발자국이 막혀도 한마디는 들어간다', String(word.status));
+}
+
+head('발자국 — 읽기');
+{
+  const env = { WORDS: fakeKV(), ADMIN_KEY: 'zzz' };
+  await call(new Request('https://x/api/hit', {
+    method: 'POST', headers: { 'cf-connecting-ip': '3.3.3.3' },
+    body: JSON.stringify({ steps: ['visit', 'view'], fresh: true, from: 'dada-town.com' }),
+  }), env);
+
+  const open = await call(new Request('https://x/api/hits'), env);
+  ok(open.status === 403, '열쇠 없이는 아무것도 안 준다', String(open.status));
+
+  const res = await call(new Request('https://x/api/hits?key=zzz&days=3'), env);
+  const out = await res.json();
+  ok(out.ok === true && out.days.length === 3, '달라는 날수만큼 준다', String(out.days?.length));
+  ok(out.days[0].visit === 1 && out.days[0].view === 1, '오늘 것이 맨 앞이다', JSON.stringify(out.days[0]));
+  ok(out.days[1].visit === undefined, '아무 일도 없던 날은 빈 칸이다', JSON.stringify(out.days[1]));
+
+  const one = out.recent[0];
+  ok(out.recent.length === 1 && one.from === 'dada-town.com' && /^\d{4}-\d{2}-\d{2}T/.test(one.at),
+    '최근 방문은 키 이름만으로 읽힌다 (줄마다 다시 읽지 않는다)', JSON.stringify(one));
+
+  /* 90일을 넘겨 부르면 그만큼 읽는다 — 한도를 안 두면 주소 하나로 KV를 긁어낼 수 있다 */
+  const big = await (await call(new Request('https://x/api/hits?key=zzz&days=9999'), env)).json();
+  ok(big.days.length === 90, '아무리 크게 불러도 90일에서 멈춘다', String(big.days.length));
+
+  const noKey = await call(new Request('https://x/api/hits?key=zzz'), { WORDS: fakeKV() });
+  ok((await noKey.json()).error === 'no_admin_key',
+    '서버에 열쇠가 없으면 읽기가 통째로 막힌다 (설정 안 된 자물쇠는 열린 자물쇠다)');
+}
+
 console.log(`\n${fail ? '❌' : '✅'}  통과 ${pass} · 실패 ${fail}`);
 process.exit(fail ? 1 : 0);
