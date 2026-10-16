@@ -86,7 +86,7 @@
 
 | 항목 | 타입 | URL |
 |---|---|---|
-| 캘린더X | 🖥 | calendar-x.pages.dev |
+| 캘린더X | 🖥 | calendarx.dada-town.com |
 | 클리어 위크 | 🖥 | clear-week.pages.dev |
 | 트래커 | 🖥 | dada-tracker.pages.dev |
 
