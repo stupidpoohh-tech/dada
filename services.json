@@ -502,19 +502,6 @@
       "needsReview": false
     },
     {
-      "id": "balance-calendar",
-      "no": 14,
-      "name": "잔고캘린더 + 상환 시뮬레이션",
-      "district": "bank",
-      "type": "app",
-      "url": "https://tide-over.stupidpoohh.workers.dev/",
-      "description": "다음 월급 전까지 버티기",
-      "date": "2026-08",
-      "icon": "📅",
-      "status": "live",
-      "needsReview": false
-    },
-    {
       "id": "olrw",
       "no": 17,
       "name": "Our love, rightly written",

@@ -576,7 +576,14 @@ if (head('크롤러 시점')) {
   await p.goto(BASE + '/list.html', { waitUntil: 'load' });
   const text = (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
   ok(text.length > 800, `JS 없이도 본문이 충분하다 (${text.length}자)`);
-  ok(/고등영어 학습웹/.test(text) && /잔고캘린더/.test(text), 'JS 없이 항목 이름이 보인다');
+  /* **이름을 손으로 적어 두지 않는다.** 예전에는 두 항목을 적어 뒀는데, 그중
+     하나를 마을에서 내리는 순간 이 검사가 터졌다 — 깨진 것은 생성물이 아니라
+     검사였다. services.json에서 골라 와 **지금 있는 것**으로 본다 */
+  const names = await p.evaluate(() => fetch('/services.json').then((r) => r.json())
+    .then((d) => d.items.filter((i) => i.url).map((i) => i.name)));
+  const missing = names.filter((n) => !text.includes(n));
+  ok(names.length >= 10 && missing.length === 0,
+    `JS 없이 항목 이름이 전부 보인다 (${names.length}개)`, missing.join(', '));
 
   const r = await p.goto(BASE + '/robots.txt', { waitUntil: 'load' });
   ok(r && r.ok() && (await r.text()).includes('Sitemap:'), 'robots.txt가 sitemap을 가리킨다');
