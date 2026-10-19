@@ -105,16 +105,15 @@ const first = async (opts = { viewport: { width: 1280, height: 900 } }) => {
   return p;
 };
 const desktop = () => browser.newPage({ viewport: { width: 1280, height: 900 } }).then(watch);
-/** 마을을 열고 **날아다니는 쪽지를 첫 길목(빈 땅)에 세워 둔다.**
- *  쪽지는 지도에서 가장 높이 떠 있어 지나가는 자리의 클릭을 받는다 — 실제로도 그게
- *  맞지만, 그러면 「건물을 누른다」 검사가 쪽지가 마침 그 위를 지나느냐에 따라 흔들린다.
- *  움직이는 배경을 한자리에 묶어 두고 상호작용만 보는 것이다. */
+/** 마을을 연다.
+ *
+ *  **예전에는 날아다니는 쪽지를 첫 길목에 세워 두고 시작했다.** 지도에서 가장 높이
+ *  떠 있어 지나가는 자리의 클릭을 받는 물건이라, 그대로 두면 「건물을 누른다」 검사가
+ *  쪽지가 마침 그 위를 지나느냐에 따라 흔들렸다. **쪽지를 걷으면서(2026-10)
+ *  그 일이 사라졌다** — 지금 돌아다니는 문은 물고기뿐이고, 그것은 강물 위만
+ *  오가므로 건물 위를 지나지 않는다. */
 const town = async (p, url = BASE) => {
   await p.goto(url, { waitUntil: 'networkidle' });
-  await p.waitForSelector('.note-spot', { timeout: 4000 }).catch(() => {});
-  await p.evaluate(() => document.getAnimations()
-    .filter((a) => (a.animationName || '').startsWith('note-'))
-    .forEach((a) => { a.pause(); a.currentTime = 0; }));
 };
 const phone = () => browser.newPage({
   viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
@@ -228,7 +227,8 @@ if (head('캐릭터 판정 영역')) {
      크므로, 작은 것 둘이 가까이 서면 손가락이 어느 쪽으로 갈지 알 수 없다 —
      세모집 마당에서 확성기를 오른쪽으로 옮긴 뒤 우편함과 24px이 겹쳐, 우편함을
      누르려는데 노래가 나왔다. 지금은 우편함이 길 왼편에 있다.
-     쪽지(.note-spot)는 뺀다 — 마을 위를 도는 것이라 무엇과도 잠깐씩 겹친다. */
+     한때 쪽지(.note-spot)를 뺐었다 — 마을 위를 도느라 무엇과도 잠깐씩 겹쳐서다.
+     쪽지를 걷은 뒤로는 뺄 것이 없다(물고기는 강물 위만 오간다). */
   const clash = await p.evaluate(() => {
     const rect = (n) => {
       const r = n.getBoundingClientRect();
@@ -290,7 +290,25 @@ if (head('마을 박자')) {
   await d.waitForTimeout(900);
   ok((await beat(d)).spread === 0, '처음부터 한 박자');
 
-  await d.click('.spot[data-district="bank"]'); await d.waitForTimeout(700);
+  /* **건물이 새로 들어와도 숨은 쉬어야 한다.** 도서관이 들어오던 날(2026-10-19)
+     확인한 것인데, 이건 눈으로만 보이고 화면이 깨지지도 않아서 한 채만 가만히
+     서 있어도 알아차릴 길이 없다. `services.json`에서 건물 있는 구역을 세어
+     그만큼 `bldg-idle`이 도는지 본다 */
+  const pops = await d.evaluate(async () => {
+    const data = await fetch('/services.json').then((r) => r.json());
+    const want = data.districts.filter((x) => x.building).map((x) => x.id);
+    const off = want.filter((id) => {
+      const pop = document.querySelector(`.spot[data-district="${id}"] .pop`);
+      if (!pop) return true;
+      const cs = getComputedStyle(pop);
+      return cs.animationName !== 'bldg-idle' || cs.animationDuration !== '2.4s';
+    });
+    return { want: want.length, off };
+  });
+  ok(pops.want >= 7 && pops.off.length === 0,
+    `건물마다 같은 숨(bldg-idle 2.4s)을 쉰다 (${pops.want}채)`, pops.off.join(', '));
+
+  await d.click('.spot[data-district="library"]'); await d.waitForTimeout(700);
   await d.click('.panel-close'); await d.mouse.move(5, 5); await d.waitForTimeout(500);
   let b = await beat(d);
   ok(b.spread === 0, '팝오버를 열었다 닫아도 박자가 유지된다', b.spread + 'ms 어긋남');
@@ -304,7 +322,7 @@ if (head('마을 박자')) {
   const m = await phone();
   await town(m);
   await m.waitForTimeout(900);
-  for (const id of ['bank', 'school', 'company']) {
+  for (const id of ['library', 'school', 'company']) {
     await m.tap(`.spot[data-district="${id}"]`); await m.waitForTimeout(400);
     await m.tap('.panel-close'); await m.waitForTimeout(500);
   }
@@ -325,7 +343,7 @@ if (head('안내 문구')) {
 
   ok(await shown(), '처음에 보인다');
   for (const [open, close, label] of [
-    [() => p.click('.spot[data-district="bank"]'), () => p.click('.panel-close'), '구역 팝오버'],
+    [() => p.click('.spot[data-district="library"]'), () => p.click('.panel-close'), '구역 팝오버'],
     [() => p.click('.spot[data-district="house"]'), () => p.keyboard.press('Escape'), '카탈로그'],
     [() => p.click('#openList'), () => p.click('#closeList'), '목록 모달'],
     [() => p.click('.me-spot'), () => p.click('.panel-close'), '캐릭터'],
@@ -448,9 +466,9 @@ if (head('데이터 단일 소스')) {
   const chip = await p.evaluate(() => document.querySelector('#chips .chip')?.textContent.trim());
   ok(chip === `전체 ${data.items.length}`, `전체 칩 개수가 맞다 (${chip})`);
 
-  /* 지도 위의 문(쪽지 · 물고기)이 이미 들고 있는 항목은 구역 패널에도 안 뜬다
+  /* 묶음을 든 문(지금은 물고기 하나)이 이미 들고 있는 항목은 구역 패널에도 안 뜬다
      — app.js의 byDistrict 필터와 같은 규칙이다 */
-  const held = new Set([data.floater, data.fish]
+  const held = new Set([data.fish]
     .flatMap((m) => m?.bundle?.items || []).map((e) => e.id));
   for (const d of data.districts) {
     const n = data.items.filter((i) => i.district === d.id && !held.has(i.id)).length;
@@ -806,24 +824,26 @@ if (head('미리보기 그림')) {
   await p.close();
 }
 
-/* **같은 것의 이름이 두 군데 적힌다.** 쪽지 묶음(`floater.bundle`)에도 `items`에도
-   이름이 있는데, 화면에 나오는 것은 **주소가 있으면 `items` 쪽**이다. 그래서 쪽지
-   쪽 이름이 낡아도 **화면에는 티가 안 난다** — 조용히 틀린 데이터로 남는다.
-   실제로 「캘린더」를 「캘린더X」로 고칠 때 한쪽만 고칠 뻔했다 (2026-08-24). */
+/* **같은 것의 이름이 두 군데 적힌다.** 묶음(`fish.bundle`)에도 `items`에도 이름이
+   있는데, 화면에 나오는 것은 **주소가 있으면 `items` 쪽**이다. 그래서 묶음 쪽
+   이름이 낡아도 **화면에는 티가 안 난다** — 조용히 틀린 데이터로 남는다.
+   실제로 「캘린더」를 「캘린더X」로 고칠 때 한쪽만 고칠 뻔했다 (2026-08-24).
+   그때 걸린 것은 쪽지 묶음이었는데, 쪽지를 걷은 뒤로도 규칙은 그대로다 —
+   묶음을 든 문은 또 생긴다. */
 if (head('이름이 두 군데 — 어긋나지 않는다')) {
   const p = await desktop();
   await p.goto(BASE + '/', { waitUntil: 'networkidle' });
   const data = await p.evaluate(() => fetch('/services.json').then((r) => r.json()));
-  const off = (data.floater?.bundle?.items || [])
+  const off = (data.fish?.bundle?.items || [])
     .map((e) => ({ e, it: data.items.find((i) => i.id === e.id) }))
-    .filter(({ e, it }) => it && it.name !== e.name)
-    .map(({ e, it }) => `${e.id}: 쪽지「${e.name}」 items「${it.name}」`);
-  ok(off.length === 0, '쪽지 묶음과 items의 이름이 같다', off.join(' / '));
+    .filter(({ e, it }) => it && e.name && it.name !== e.name)
+    .map(({ e, it }) => `${e.id}: 묶음「${e.name}」 items「${it.name}」`);
+  ok(off.length === 0, '묶음과 items의 이름이 같다', off.join(' / '));
   await p.close();
 }
 
-/* **아직 주소가 없는 것도 목록에는 선다** (2026-08-24). 캘린더와 트래커는 쪽지
-   묶음에만 있어서 「만든 것 전부」를 보여주는 자리에서 통째로 빠져 있었다.
+/* **아직 주소가 없는 것도 목록에는 선다** (2026-08-24). 캘린더와 트래커는 그때
+   쪽지 묶음에만 있어서 「만든 것 전부」를 보여주는 자리에서 통째로 빠져 있었다.
    다만 **누를 수 있으면 안 된다** — 없는 곳으로 가는 링크를 두지 않는 것이
    이 저장소의 규칙이고, 목록·모달·구역 패널은 그동안 `href="#"`를 물려
    눌리기는 하는데 맨 위로만 튀는 카드를 만들고 있었다. */
@@ -1348,141 +1368,25 @@ if (head('마당의 확성기')) {
   // 노래를 들으며 다른 구역을 열어도 조용히 멈춘다
   await p.click('.horn-spot');
   await p.waitForTimeout(600);
-  await p.click('.spot[data-district="bank"]');
+  await p.click('.spot[data-district="library"]');
   await p.waitForTimeout(400);
   // 다른 패널을 열면 panel.textContent가 통째로 갈리므로 <audio>가 아예 없어진다 —
   // 없어졌다는 것 자체가 「멈췄다」는 가장 강한 증거다. stopSong()이 먼저 안 불렀다면
   // 이 요소가 사라지는 순간에도 어딘가에서 계속 소리가 났을 것이다.
-  const switched = await p.evaluate(() => ({
-    audioGone: !document.querySelector('.song-audio'),
-    title: document.querySelector('.panel-title')?.textContent,
-  }));
-  ok(switched.audioGone && switched.title === '🏦 은행',
-    '노래를 듣다 다른 구역을 눌러도 조용히 멈추고 그 구역이 열린다', JSON.stringify(switched));
-  await p.close();
-}
-
-/* ── 13. 날아다니는 쪽지 ──────────────────────────────────
-   마을 위를 도는 유일한 것이다 — 구름·새·자동차를 걷어낸 뒤로 「지나가는 것」은
-   이것뿐이라, 움직이면 곧 눌러볼 것이라는 뜻이 된다.
-   깨진 적 있음: 지도 위 가장 높이 뜬 채로 늘 잡히게 뒀더니 **건물 위를 지날 때
-   그 건물의 클릭을 가로챘다** — 미술관을 누르려는데 쪽지가 먹었다.
-   지금은 멈춰 선 동안만 잡히고, 머무는 자리는 전부 건물이 없는 빈 땅이다. */
-if (head('날아다니는 쪽지')) {
-  const p = await desktop();
-  await town(p);
-  await p.waitForTimeout(900);
-
-  ok(await p.locator('.note-spot').count() === 1, '마을 위에 쪽지가 한 장 떠 있다');
-
-  const how = await p.evaluate(() => {
-    const n = document.querySelector('.note-spot');
-    const g = (name) => document.getAnimations().find((a) => a.animationName === name);
-    // 지도 위 다른 문들(우편함 4 · "나" 5 · 확성기 3)보다 위여야 한다
-    const others = ['.mbox-spot', '.me-spot', '.horn-spot']
-      .map((s) => document.querySelector(s))
-      .filter(Boolean)
-      .map((e) => +getComputedStyle(e).zIndex || 0);
+  /* **표제를 손으로 적어 두지 않는다.** 은행이 도서관이 되던 날(2026-10-19)
+     이 검사가 터졌다 — 깨진 것은 마을이 아니라 검사였다. 구역 이름은
+     services.json이 들고 있으므로 거기서 가져와 견준다 */
+  const switched = await p.evaluate(async () => {
+    const d = await fetch('/services.json').then((r) => r.json());
+    const lib = d.districts.find((x) => x.id === 'library');
     return {
-      z: +getComputedStyle(n).zIndex,
-      under: Math.max(...others),
-      flapDur: g('note-f-up') && g('note-f-up').effect.getTiming().duration,
-      hit: parseFloat(getComputedStyle(n, '::after').width),
+      audioGone: !document.querySelector('.song-audio'),
+      title: document.querySelector('.panel-title')?.textContent,
+      want: `${lib.icon} ${lib.name}`,
     };
   });
-  ok(how.z > how.under, `마을의 다른 문들보다 위에 뜬다 (쪽지 ${how.z} > ${how.under})`);
-  ok(how.hit >= 44, `판정이 터치 기준을 넘는다 (${Math.round(how.hit)}px)`);
-  // 마을은 2.4초 한 박자다. 쪽지는 그 박자를 타지 않는다 — 마을 위에 온 것이라서
-  ok(how.flapDur > 0 && how.flapDur !== 2400,
-    `펄럭임이 마을 박자가 아니다 (${how.flapDur}ms)`);
-
-  // 파장처럼 커졌다 작아진다. 새와 구름은 크기가 변하지 않는다 — 갈리는 신호다
-  const pulse = await p.evaluate(() => {
-    const el = document.querySelector('.note-fig');
-    const a = document.getAnimations().find((x) => x.animationName === 'note-bob');
-    if (!a) return null;
-    const read = (t) => { a.pause(); a.currentTime = t;
-      return new DOMMatrix(getComputedStyle(el).transform).a; };
-    const d = a.effect.getTiming().duration;
-    return { big: read(d * 0.25), small: read(d * 0.75), dur: d };
-  });
-  ok(pulse && pulse.big > 1.1 && pulse.small < 0.9,
-    `파장처럼 커졌다 작아진다 (${pulse && pulse.big.toFixed(2)} ↔ ${pulse && pulse.small.toFixed(2)})`);
-  ok(pulse && pulse.dur !== 2400, `뽀잉 박자가 마을과 다르다 (${pulse && pulse.dur}ms)`);
-
-  // 길목마다 멈춘다 — 같은 좌표가 두 번 연속 찍혀 있으면 그 구간이 「머무름」이다
-  const rules = await p.evaluate(() => {
-    const out = {};
-    for (const s of document.styleSheets) {
-      for (const r of s.cssRules) {
-        if (r.name === 'note-fly') {
-          out[r.name] = [...r.cssRules].map((k) => ({
-            at: k.keyText, pos: k.style.left + ',' + k.style.top,
-            pe: k.style.pointerEvents,
-          }));
-        }
-      }
-    }
-    return out;
-  });
-  const same = rules['note-fly'].filter((k, i, a) => i && k.pos === a[i - 1].pos).length;
-  ok(same >= 3, `길목마다 멈춰 선다 (멈춤 ${same}곳)`);
-
-  // 멈춰 서는 자리는 전부 빈 땅이어야 한다 — 건물 위에서 멈추면 그 건물 클릭을 먹는다
-  const clash = await p.evaluate(async () => {
-    const data = await fetch('services.json').then((r) => r.json());
-    const rects = data.districts.filter((d) => d.rect).map((d) => d.rect);
-    // 폭은 지도 폭의 %, 높이는 지도 높이의 %다 — 그림 비율(174x120)에 지도 비율을 곱한다
-    const w = data.floater.w, h = w * (120 / 174) * (1792 / 1434);
-    return data.floater.path.filter((s) => s.stop).filter((s) => {
-      const a = { x: s.at[0] - w * 0.6, X: s.at[0] + w * 0.6,      // 판정 상자 120% x 150%
-                  y: s.at[1] - h * 0.75, Y: s.at[1] + h * 0.75 };
-      return rects.some(([rx, ry, rw, rh]) =>
-        a.x < rx + rw && rx < a.X && a.y < ry + rh && ry < a.Y);
-    }).map((s) => s.at.join(','));
-  });
-  ok(clash.length === 0, '멈춰 서는 자리가 구역 위에 없다', clash.join(' / '));
-
-  // **언제든 잡혀야 한다.** 한때 멈춰 있는 동안만 잡히게 해 뒀더니 한 바퀴의 5분의 1만
-  // 눌리는 물건이 됐다 — 누르려다 안 눌리는 문은 문이 아니다. 날고 있는 중에도 눌러 본다.
-  await p.evaluate(() => document.getAnimations()
-    .filter((a) => a.animationName === 'note-fly')
-    .forEach((a) => { a.pause(); a.currentTime = 52000 * 0.62; }));   // 두 길목 사이
-  await p.waitForTimeout(150);
-  ok(await p.evaluate(() =>
-    getComputedStyle(document.querySelector('.note-spot')).pointerEvents) === 'auto',
-    '날고 있는 중에도 잡힌다');
-
-  await p.locator('.note-spot').click();
-  await p.waitForTimeout(500);
-  const panel = await p.evaluate(() => ({
-    cards: document.querySelectorAll('#panel .card').length,
-    links: document.querySelectorAll('#panel a.card').length,
-    names: [...document.querySelectorAll('#panel .card-name')].map((n) => n.firstChild.textContent),
-    held: getComputedStyle(document.querySelector('.note-spot')).animationPlayState,
-  }));
-  /* **이름을 여기 박아 두지 않는다.** 항목 이름이 바뀔 때마다 검사가 같이 깨지는데,
-     그건 「깨진 것」이 아니라 「바뀐 것」이다. 무엇이 뜰지는 데이터가 정하고,
-     검사는 **데이터대로 떴는가**만 본다.
-
-     묶음의 이름은 두 군데에 적힌다 — 쪽지(`floater.bundle`)와 `items`. 주소가
-     있으면 `items` 쪽이, 없으면 쪽지 쪽이 화면에 나온다. 그래서 어느 쪽이든
-     맞는 것을 골라 견준다 (둘이 어긋나지 않는지는 아래 「이름이 두 군데」가 본다). */
-  const bundleNames = await p.evaluate(() => fetch('/services.json').then((r) => r.json())
-    .then((d) => d.floater.bundle.items.map((e) =>
-      (d.items.find((i) => i.id === e.id && i.url) || e).name)));
-  ok(panel.cards === bundleNames.length && panel.names.join(',') === bundleNames.join(','),
-    `묶음이 데이터대로 열린다 (${bundleNames.length}자리)`,
-    `${JSON.stringify(panel.names)} / 데이터 ${JSON.stringify(bundleNames)}`);
-  ok(/paused/.test(panel.held), '열려 있는 동안 쪽지는 날아가지 않는다', panel.held);
-  // 주소가 있는 것만 링크가 된다. 없는 것은 누를 수 없어야 한다 — 죽은 링크를 만들지 않는다
-  const withUrl = await p.evaluate(async () => {
-    const d = await fetch('services.json').then((r) => r.json());
-    return d.floater.bundle.items.filter((e) =>
-      e.url || (d.items.find((i) => i.id === e.id) || {}).url).length;
-  });
-  ok(panel.links === withUrl,
-    `주소가 있는 것만 링크가 된다 (${panel.links} / ${withUrl})`);
+  ok(switched.audioGone && switched.title === switched.want,
+    '노래를 듣다 다른 구역을 눌러도 조용히 멈추고 그 구역이 열린다', JSON.stringify(switched));
   await p.close();
 }
 

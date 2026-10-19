@@ -163,10 +163,10 @@
       }
     },
     {
-      "id": "bank",
-      "name": "은행",
-      "icon": "🏦",
-      "label": "BANK",
+      "id": "library",
+      "name": "도서관",
+      "icon": "📚",
+      "label": "LIBRARY",
       "rect": [
         72,
         38,
@@ -174,12 +174,12 @@
         29
       ],
       "building": {
-        "src": "building-bank.webp",
+        "src": "building-library.webp",
         "at": [
-          84.3,
+          86.5,
           67.3
         ],
-        "w": 12.6
+        "w": 14.2
       }
     },
     {
@@ -297,106 +297,6 @@
       ]
     }
   ],
-  "floater": {
-    "name": "날아다니는 쪽지",
-    "label": "MEMO",
-    "icon": "✉️",
-    "w": 7,
-    "dur": 52,
-    "path": [
-      {
-        "at": [
-          14,
-          80
-        ],
-        "stop": true
-      },
-      {
-        "at": [
-          7,
-          52
-        ]
-      },
-      {
-        "at": [
-          19,
-          20
-        ]
-      },
-      {
-        "at": [
-          42,
-          9
-        ]
-      },
-      {
-        "at": [
-          67,
-          16
-        ]
-      },
-      {
-        "at": [
-          89,
-          33
-        ]
-      },
-      {
-        "at": [
-          66,
-          78
-        ],
-        "stop": true
-      },
-      {
-        "at": [
-          42,
-          78
-        ],
-        "stop": true
-      },
-      {
-        "at": [
-          26,
-          88
-        ],
-        "stop": true
-      },
-      {
-        "at": [
-          14,
-          80
-        ]
-      }
-    ],
-    "frames": {
-      "down": "note-down.png",
-      "mid": "note-mid.png",
-      "up": "note-up.png"
-    },
-    "bundle": {
-      "title": "매일 쓰는 것들",
-      "items": [
-        {
-          "id": "calendar",
-          "name": "캘린더X",
-          "icon": "🗓",
-          "date": "2026-05"
-        },
-        {
-          "id": "planner",
-          "name": "클리어 위크",
-          "icon": "🗒"
-        },
-        {
-          "id": "tracker",
-          "name": "트래커",
-          "icon": "📈",
-          "date": "2026-05"
-        }
-      ]
-    }
-  },
   "items": [
     {
       "id": "art-portfolio",
@@ -575,8 +475,7 @@
       "id": "calendar",
       "no": 29,
       "name": "캘린더X",
-      "district": "me",
-      "group": "매일 쓰는 것들",
+      "district": "library",
       "type": "app",
       "url": "https://calendarx.dada-town.com/",
       "description": "할 일, 아이디어, 그리고 자금까지 한 캘린더 안에서",
@@ -589,8 +488,7 @@
       "id": "planner",
       "no": 25,
       "name": "클리어 위크",
-      "district": "me",
-      "group": "매일 쓰는 것들",
+      "district": "library",
       "type": "app",
       "url": "https://clear-week.pages.dev/",
       "description": "주간 캘린더에 적고, 지우는 경험을 그대로",
@@ -603,8 +501,7 @@
       "id": "tracker",
       "no": 30,
       "name": "트래커",
-      "district": "me",
-      "group": "매일 쓰는 것들",
+      "district": "library",
       "type": "app",
       "url": "https://dada-tracker.pages.dev/",
       "description": "무드, 에너지, 수면, 생리주기까지 한번에 관리",
