@@ -50,6 +50,8 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
 - `services.json`을 고쳤으면 **`python3 tools/build_list.py`** — `list.html`·
   `sitemap.xml`이 생성물이다. 잊으면 `npm test`가 잡는다.
 - 좌표를 잴 때는 `node tools/shot.mjs --grid --crop 72,68,100,100`
+- **건물 자리는 눈으로 찍지 않는다** — `node tools/fit_building.mjs [구역] [--sweep]`.
+  나무를 물고 있어도 찍어 보면 그럴듯해서 눈으로는 못 찾는다 (나무+길 0.2% 안쪽)
 - 마을 말고 다른 쪽을 찍을 때는 `--url`. **긴 문서는 `--el`로 절씩 찍는다** —
   한 장으로 떠내면 `<img>`만 백지로 나온다 (`node tools/shot.mjs --url /case/playgrown.html --el '.plan'`)
 - 케이스 스터디 그림을 다시 자를 일이 생기면 `node tools/cut_case.mjs`
