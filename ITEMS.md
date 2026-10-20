@@ -16,7 +16,7 @@
 
 ---
 
-## 수록 완료 (20)
+## 수록 완료 (19)
 
 이름과 설명은 **만든 사람이 직접 쓴 문장**이다 (`needsReview` 전부 해제).
 
@@ -44,14 +44,13 @@
 |---|---|---|
 | 성균관 체험 호스팅 | 🔗 | www.airbnb.co.kr/rp/9f027d |
 
-### 🌳 사람들 (5)
+### 🌳 사람들 (4)
 
 | 항목 | 타입 | URL |
 |---|---|---|
 | Our love, rightly written | 🖥 | olrw-8pt.pages.dev |
 | 씰룩 Seal Look | 🖥 | remotwerk.pages.dev |
 | 지금日지도 | 🖥 | now.dada-town.com |
-| OPERATION:SAVE BO | 🖥 | love-story-7so.pages.dev/teaser |
 | 보이ㄷㅏ | 🖥 | letlight.pages.dev |
 
 「지금日지도」는 **강물의 물고기**가 들고 있어서 구역 패널에는 안 뜬다 —
