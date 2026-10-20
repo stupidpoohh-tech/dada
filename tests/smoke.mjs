@@ -455,6 +455,38 @@ if (head('책이 건물에서 날아온다')) {
 
 /* ── 7. 데이터와 화면이 어긋나지 않는가 ────────────────────
    services.json만 고치면 지도·목록·칩이 함께 바뀌어야 한다. */
+/* **장부(ITEMS.md)가 조용히 따로 논다.** 수록 항목을 손으로 옮겨 적는 표인데,
+   services.json만 고치고 거기를 잊으면 어디에도 표시가 안 난다 — 실제로 여덟 항목이
+   빠지고 도서관으로 옮겨 간 셋이 두 군데에 적힌 채로 몇 주를 갔다(2026-10-20에 알았다).
+   그 표를 보고 「이건 아직 안 올렸네」 하고 판단하게 되므로 틀린 장부는 없는 것보다 나쁘다. */
+if (head('수록 항목 장부 (ITEMS.md)')) {
+  const p = await desktop();
+  await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+  const data = await p.evaluate(() => fetch('/services.json').then((r) => r.json()));
+  /* `.assetsignore`에 `*.md`가 있어 **배포에는 안 올라가는 파일**이다. 여기서는
+     저장소 루트를 그대로 내주는 로컬 서버라서 읽힌다 */
+  const all = await p.evaluate(() => fetch('/ITEMS.md').then((r) => r.text()));
+  /* **「수록 완료」 절만 본다.** 아래쪽 「폐기」와 「앞으로」 표도 생김새가 같아서,
+     파일 전체를 훑으면 폐기한 후보들이 전부 「장부에 없는 것」으로 걸린다 */
+  const from = all.indexOf('## 수록 완료 (');
+  const to = all.indexOf('\n## ', from + 1);
+  const md = all.slice(from, to < 0 ? undefined : to);
+  /* 표의 첫 칸만 본다 — 「| 이름 | 🖥 |」 꼴. 둘레의 기획 글은 건드리지 않는다 */
+  const rows = [...md.matchAll(/^\| (.+?) \| [🖥📄🎬🔗]/gm)].map((m) => m[1].trim());
+  const names = data.items.map((i) => i.name);
+  const missing = names.filter((n) => !rows.includes(n));
+  const extra = rows.filter((n) => !names.includes(n));
+  ok(missing.length === 0, '마을에 있는 것이 장부에 다 적혀 있다', missing.join(', '));
+  ok(extra.length === 0, '장부에 없는 것이 적혀 있지 않다', extra.join(', '));
+  /* 같은 것이 두 구역에 적히면 「옮겼는데 옛 자리를 안 지운 것」이다 */
+  const dup = rows.filter((n, i) => rows.indexOf(n) !== i);
+  ok(dup.length === 0, '같은 항목이 두 번 적혀 있지 않다', dup.join(', '));
+  const head20 = md.match(/^## 수록 완료 \((\d+)\)/);
+  ok(head20 && Number(head20[1]) === names.length,
+    `표제의 개수가 맞다 (${head20 && head20[1]} / ${names.length})`);
+  await p.close();
+}
+
 if (head('데이터 단일 소스')) {
   const p = await desktop();
   await town(p);

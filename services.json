@@ -446,6 +446,19 @@
       "needsReview": false
     },
     {
+      "id": "save-bo",
+      "no": 37,
+      "name": "OPERATION:SAVE BO",
+      "district": "park",
+      "type": "app",
+      "url": "https://love-story-7so.pages.dev/teaser",
+      "description": "한 사람을 위한 어드벤처, 실제 상황!",
+      "date": "2026-10",
+      "icon": "🕵️",
+      "status": "live",
+      "needsReview": false
+    },
+    {
       "id": "boida",
       "no": 36,
       "name": "보이ㄷㅏ",
