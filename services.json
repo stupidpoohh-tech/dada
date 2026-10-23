@@ -446,6 +446,19 @@
       "needsReview": false
     },
     {
+      "id": "eatiming",
+      "no": 37,
+      "name": "잇타이밍 EATIMING",
+      "district": "park",
+      "type": "app",
+      "url": "https://eatiming.stupidpoohh.workers.dev/",
+      "description": "내 몸의 타이밍에 맞는 한 끼.",
+      "date": "2026-10",
+      "icon": "🍽",
+      "status": "live",
+      "needsReview": false
+    },
+    {
       "id": "boida",
       "no": 36,
       "name": "보이ㄷㅏ",
