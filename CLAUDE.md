@@ -49,6 +49,9 @@ node tools/shot.mjs --phone      # 폰 화면 찍기 (서버는 알아서 띄운
 
 - `services.json`을 고쳤으면 **`python3 tools/build_list.py`** — `list.html`·
   `sitemap.xml`이 생성물이다. 잊으면 `npm test`가 잡는다.
+- 항목을 넣고 뺐으면 **`ITEMS.md`의 「수록 완료」 표도 같이** 고친다 (`npm test`가 잡는다).
+- **항목은 `date` 내림차순으로 선다 — 배열 어디에 적든 상관없다.** 구역 패널·목록·
+  검색이 전부 날짜로 세우므로 `services.json`의 순서를 손으로 맞추려 들지 않는다.
 - 좌표를 잴 때는 `node tools/shot.mjs --grid --crop 72,68,100,100`
 - **건물 자리는 눈으로 찍지 않는다** — `node tools/fit_building.mjs [구역] [--sweep]`.
   나무를 물고 있어도 찍어 보면 그럴듯해서 눈으로는 못 찾는다 (나무+길 0.2% 안쪽)

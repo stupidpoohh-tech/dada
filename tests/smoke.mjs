@@ -487,6 +487,43 @@ if (head('수록 항목 장부 (ITEMS.md)')) {
   await p.close();
 }
 
+/* **구역 패널은 최근에 만든 것부터 선다.** 예전에는 services.json에 적힌 순서를
+   그대로 썼는데, 그러면 새 항목을 배열 어디에 끼워 넣느냐에 따라 순서가 갈린다 —
+   회사 구역이 26.09 · 26.08 · 26.10 · 26.07로 섰다(2026-11-04에 다원님이 잡았다).
+   화면이 깨지는 것이 아니라 **그냥 뒤죽박죽으로 보이는** 종류라, 올릴 때마다 눈으로
+   확인하지 않으면 모른다. 목록·검색 모달은 원래부터 날짜로 세운다 — 셋을 같이 본다. */
+if (head('만든 시기 순서')) {
+  const p = await desktop();
+  await town(p);
+  await p.waitForTimeout(500);
+  const data = await p.evaluate(() => fetch('/services.json').then((r) => r.json()));
+  const held = new Set([data.fish].flatMap((m) => m?.bundle?.items || []).map((e) => e.id));
+
+  for (const d of data.districts) {
+    const n = data.items.filter((i) => i.district === d.id && !held.has(i.id)).length;
+    if (n < 2) continue;
+    /* 패널이 안 열리는 문은 건너뛴다 — 바로 책을 펼치는 구역(`direct`)과
+       프로필이 뜨는 「나」(`character`)다. 여기는 세울 카드가 없다 */
+    if (d.direct || d.character) continue;
+    await p.click(`.spot[data-district="${d.id}"]`);
+    await p.waitForTimeout(350);
+    const dates = await p.$$eval('#panel .cards .card .card-date', (ns) =>
+      ns.map((x) => x.textContent.trim()));
+    const down = dates.every((v, i) => i === 0 || v <= dates[i - 1]);
+    ok(dates.length === n && down,
+      `${d.name} — 최근 것부터 선다`, dates.join(' → '));
+    await p.click('.panel-close');
+    await p.waitForTimeout(200);
+  }
+
+  await p.click('#openList'); await p.waitForTimeout(400);
+  const listed = await p.$$eval('#modalBody .card .card-date', (ns) =>
+    ns.map((x) => x.textContent.trim()));
+  ok(listed.length > 5 && listed.every((v, i) => i === 0 || v <= listed[i - 1]),
+    '목록 모달도 최근 것부터 선다', listed.slice(0, 6).join(' → '));
+  await p.close();
+}
+
 if (head('데이터 단일 소스')) {
   const p = await desktop();
   await town(p);
