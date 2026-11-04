@@ -16,7 +16,7 @@
 
 ---
 
-## 수록 완료 (20)
+## 수록 완료 (21)
 
 이름과 설명은 **만든 사람이 직접 쓴 문장**이다 (`needsReview` 전부 해제).
 
@@ -57,12 +57,13 @@
 「지금日지도」는 **강물의 물고기**가 들고 있어서 구역 패널에는 안 뜬다 —
 묶음에 든 항목은 구역 패널에서 빠진다(같은 카드가 두 문에서 뜨면 중복이다).
 
-### 🏢 회사 (3)
+### 🏢 회사 (4)
 
 | 항목 | 타입 | URL |
 |---|---|---|
 | UX Review Board | 🖥 | selfpay-ag5.pages.dev |
 | 낭만백수달 협업 | 🔗 | www.instagram.com/reel/DcQVLM9uumI |
+| 사업시뮬레이션 | 🖥 | buri-simulation.pages.dev |
 | 사업팀 운영보드 | 🖥 | sindorang-team.pages.dev (demo) |
 
 ### ☕ 카페 (2)

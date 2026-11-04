@@ -370,6 +370,19 @@
       "needsReview": false
     },
     {
+      "id": "buri-simulation",
+      "no": 38,
+      "name": "사업시뮬레이션",
+      "district": "company",
+      "type": "app",
+      "url": "https://buri-simulation.pages.dev/",
+      "description": "사업 판단을 위한 시뮬레이션 계산기",
+      "date": "2026-10",
+      "icon": "🧮",
+      "status": "live",
+      "needsReview": false
+    },
+    {
       "id": "sindorang-demo",
       "featured": 1,
       "no": 9,
