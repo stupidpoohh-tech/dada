@@ -184,11 +184,11 @@ gitignore 규칙상 어느 깊이에서나 걸려서, 이름이 같은 `assets/s
 ```json
 {
   "id": "english-learn",
-  "name": "고등영어 학습웹",
+  "name": "학습웹",
   "district": "school",
   "type": "app",
   "url": "https://dada-learn.pages.dev/",
-  "description": "문법, 리스닝, 패턴까지 3가지 학습도구",
+  "description": "문법, 리스닝, 패턴, 보카맵까지 4가지 학습도구",
   "date": "2026-06",
   "icon": "📚",
   "status": "live"

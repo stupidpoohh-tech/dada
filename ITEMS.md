@@ -36,7 +36,7 @@
 | 항목 | 타입 | URL |
 |---|---|---|
 | 매일 AI 한장 | 🖥 | everyday-ai-school.com |
-| 고등영어 학습웹 | 🖥 | dada-learn.pages.dev |
+| 학습웹 | 🖥 | dada-learn.pages.dev |
 
 ### 🏛 성균관 (1)
 
