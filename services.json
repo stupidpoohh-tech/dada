@@ -459,6 +459,19 @@
       "needsReview": false
     },
     {
+      "id": "slol",
+      "no": 39,
+      "name": "SLOL",
+      "district": "park",
+      "type": "app",
+      "url": "https://sindoh-legends-portfolio.pages.dev",
+      "description": "부장님 퇴직 기념 콘텐츠",
+      "date": "2026-11",
+      "icon": "🏆",
+      "status": "live",
+      "needsReview": false
+    },
+    {
       "id": "boida",
       "no": 36,
       "name": "보이ㄷㅏ",
