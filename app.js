@@ -885,6 +885,43 @@
     a.appendChild(body);
 
     a.appendChild(el('span', 'card-go', '›'));
+
+    /* ── 갈 곳이 둘 이상인 카드 (`links`) ────────────
+     *  낭만백수달 협업처럼 **같은 일인데 결과물이 여럿**인 것이 있다(릴스 두 편).
+     *  따로 두 항목으로 올리면 목록에 같은 이름이 두 번 서고, 하나만 걸면 나머지가
+     *  어디에도 안 남는다.
+     *
+     *  **그때는 카드 자체를 링크로 두지 않는다.** 갈 곳이 둘인데 겉이 링크면 어디로
+     *  가는지 알 수 없고, 그 안에 또 링크를 넣는 것은 안 되는 마크업이다(집게와 같은
+     *  이유). 카드를 `<div>`로 바꾸고 번호 단추를 안에 세운다 — 화살표(`.card-go`)는
+     *  갈 곳이 하나일 때의 표시라 같이 걷는다.
+     *
+     *  `url`은 그대로 둔다. 목록(`/list.html`)·사이트맵·검색이 전부 그것을 보고
+     *  움직이므로, 비우면 이 항목이 「준비 중」으로 읽힌다. **`links[0]`과 같은
+     *  주소를 적어 둔다.** */
+    const many = Array.isArray(item.links) && item.links.filter((l) => l && l.url);
+    if (many && many.length > 1) {
+      const box = el('div', 'card');
+      while (a.firstChild) box.appendChild(a.firstChild);
+      box.querySelector('.card-go').remove();
+      const nums = el('div', 'card-nums');
+      many.forEach((l, i) => {
+        const n = el('a', 'card-num', l.label || String(i + 1));
+        n.href = l.url;
+        n.target = '_blank';
+        n.rel = 'noopener';
+        const label = `${item.name} ${l.label || i + 1}`;
+        n.setAttribute('aria-label', label);
+        n.title = label;
+        n.addEventListener('click', () => track('item_click', {
+          item: `${item.id}-${l.label || i + 1}`, item_type: item.type, from: from || 'card-num',
+        }));
+        nums.appendChild(n);
+      });
+      box.appendChild(nums);
+      return box;
+    }
+
     if (!item.file || !item.file.url) return a;
 
     /* 딸린 파일(참고문서)이 있으면 카드 오른쪽 위 모서리에 집게를 하나 얹는다.
@@ -1137,6 +1174,8 @@
        「열어보기」가 조용히 문 두드리기로 떨어진다 — 그러면 `tour_open`은
        남는데 `item_click`은 안 남아 통계에 구멍이 난다. 상자면 속의 링크를 꺼낸다. */
     if (a.classList && a.classList.contains('card-slot')) a = a.querySelector('a') || a;
+    // 갈 곳이 둘인 카드는 `<div>`다 — 투어는 첫 번째(`links[0]`)로 연다
+    if (a.tagName !== 'A') a = a.querySelector && a.querySelector('.card-num') || a;
     if (a.tagName !== 'A') return null;
     const stays = !!a.target;              // target="_blank" — 새 탭이라 이 페이지는 남는다
     const leaves = !stays && item.open !== 'book' && item.open !== 'song';

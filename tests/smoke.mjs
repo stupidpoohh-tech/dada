@@ -492,6 +492,66 @@ if (head('수록 항목 장부 (ITEMS.md)')) {
    회사 구역이 26.09 · 26.08 · 26.10 · 26.07로 섰다(2026-11-04에 다원님이 잡았다).
    화면이 깨지는 것이 아니라 **그냥 뒤죽박죽으로 보이는** 종류라, 올릴 때마다 눈으로
    확인하지 않으면 모른다. 목록·검색 모달은 원래부터 날짜로 세운다 — 셋을 같이 본다. */
+/* **갈 곳이 둘 이상인 카드**(`links`). 같은 일인데 결과물이 여럿인 것이 있다
+   (낭만백수달 협업 — 릴스 두 편). 따로 두 항목으로 올리면 목록에 같은 이름이 두 번
+   서고, 하나만 걸면 나머지가 어디에도 안 남는다.
+
+   **여기서 조용히 깨지는 것은 마크업이다.** 갈 곳이 둘인데 겉이 링크면 어디로
+   가는지 알 수 없고, 링크 안에 링크를 넣으면 브라우저가 제멋대로 풀어 놓는다 —
+   화면에는 멀쩡해 보이고 스크린리더에서만 어긋난다. */
+if (head('갈 곳이 둘인 카드')) {
+  const p = await desktop();
+  await town(p);
+  await p.waitForTimeout(500);
+  const data = await p.evaluate(() => fetch('/services.json').then((r) => r.json()));
+  const multi = data.items.filter((i) => (i.links || []).filter((l) => l && l.url).length > 1);
+  ok(multi.length >= 1, '갈 곳이 둘 이상인 항목이 있다 (아래 검사의 전제)',
+    multi.map((i) => i.name).join(', '));
+
+  for (const it of multi) {
+    /* **`url`은 비우지 않는다.** 목록·사이트맵·검색이 전부 그것을 보고 움직여서,
+       비우면 이 항목이 「준비 중」으로 읽힌다 */
+    ok(it.url === it.links[0].url,
+      `${it.name} — url이 첫 번째 주소와 같다`, `${it.url} / ${it.links[0].url}`);
+  }
+
+  const it = multi[0];
+  await p.click(`.spot[data-district="${it.district}"]`);
+  await p.waitForTimeout(400);
+  const seen = await p.evaluate((name) => {
+    const box = [...document.querySelectorAll('#panel .card')]
+      .find((n) => n.querySelector('.card-name')?.textContent.startsWith(name));
+    if (!box) return null;
+    return {
+      tag: box.tagName,
+      inner: box.querySelectorAll('a').length,
+      nums: [...box.querySelectorAll('.card-num')].map((a) => [a.textContent, a.getAttribute('href'), a.target]),
+      go: !!box.querySelector('.card-go'),
+    };
+  }, it.name);
+  ok(seen && seen.tag === 'DIV', '카드 자체는 링크가 아니다 (갈 곳이 둘이다)',
+    JSON.stringify(seen && seen.tag));
+  ok(seen && seen.nums.length === it.links.length, `번호 단추가 ${it.links.length}개 선다`,
+    JSON.stringify(seen && seen.nums.map((n) => n[0])));
+  ok(seen && seen.nums.every(([, href], i) => href === it.links[i].url),
+    '번호마다 제 주소로 간다', JSON.stringify(seen && seen.nums.map((n) => n[1])));
+  ok(seen && seen.nums.every(([, , t]) => t === '_blank'),
+    '남의 집이라 새 탭으로 연다');
+  /* 링크 안의 링크는 안 되는 마크업이다 — 단추 말고 다른 링크가 있으면 안 된다 */
+  ok(seen && seen.inner === seen.nums.length, '카드 안에 번호 단추 말고 다른 링크가 없다',
+    `${seen && seen.inner} / ${seen && seen.nums.length}`);
+  ok(seen && !seen.go, '화살표는 걷는다 (갈 곳이 하나일 때의 표시다)');
+
+  /* `/list.html`에도 둘 다 적힌다 — 제목은 첫 번째로 가므로, 안 적으면
+     두 번째 결과물이 크롤러에게는 통째로 없는 것이 된다 */
+  await p.goto(BASE + '/list.html', { waitUntil: 'load' });
+  const listed = await p.evaluate((url) =>
+    [...document.querySelectorAll('a')].filter((a) => a.getAttribute('href') === url).length,
+    it.links[1].url);
+  ok(listed >= 1, '목록에도 두 번째 주소가 있다', String(listed));
+  await p.close();
+}
+
 if (head('만든 시기 순서')) {
   const p = await desktop();
   await town(p);

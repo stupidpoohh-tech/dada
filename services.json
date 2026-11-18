@@ -363,6 +363,10 @@
       "district": "company",
       "type": "external",
       "url": "https://www.instagram.com/reel/DcQVLM9uumI/?igsh=a2Y1bTl1N3ZidXBt",
+      "links": [
+        { "label": "1", "url": "https://www.instagram.com/reel/DcQVLM9uumI/?igsh=a2Y1bTl1N3ZidXBt" },
+        { "label": "2", "url": "https://www.instagram.com/reel/DfrM9chtRZx/" }
+      ],
       "description": "신도리코x낭만백수달 협업",
       "date": "2026-08",
       "icon": "🦦",
@@ -377,7 +381,7 @@
       "type": "app",
       "url": "https://buri-simulation.pages.dev/",
       "description": "사업 판단을 위한 시뮬레이션 계산기",
-      "date": "2026-10",
+      "date": "2026-11",
       "icon": "🧮",
       "status": "live",
       "needsReview": false

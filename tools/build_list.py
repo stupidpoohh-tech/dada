@@ -70,6 +70,15 @@ def item_html(item):
              if live else f'{e(item["icon"])} {e(item["name"])}')
     # 설명이 빈 항목은 빈 문단을 남기지 않는다 — 아직 한 줄을 못 받은 것뿐이다
     body = f'\n        <p>{desc}</p>' if desc else ''
+    # **갈 곳이 둘 이상이면 번호를 같이 건다**(`links`). 제목은 첫 번째로 가므로,
+    # 여기 안 적으면 두 번째 결과물이 크롤러에게는 통째로 없는 것이 된다
+    many = [l for l in (item.get('links') or []) if l.get('url')]
+    if len(many) > 1:
+        nums = ' · '.join(
+            f'<a href="{e(l["url"])}" target="_blank" rel="noopener">'
+            f'{e(l.get("label") or str(i + 1))}</a>'
+            for i, l in enumerate(many))
+        body += f'\n        <p class="doc-nums">{nums}</p>'
     return f'''      <article class="doc-item">
         <h3>{title}
           {' '.join(badges)}</h3>{body}
