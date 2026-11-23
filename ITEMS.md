@@ -104,7 +104,7 @@
 
 | 항목 | 타입 | URL |
 |---|---|---|
-| My Excercise | 🖥 | myexercise.pages.dev |
+| My Exercise | 🖥 | myexercise.pages.dev |
 
 **먼저 사람이 서는 자리다.** 손 흔드는 캐릭터를 누르면 `services.json`의
 `profile`(이름 · 한 줄 정체성 · 경력 · 학력 · 이메일)이 열린다. 별도 「약력도」
