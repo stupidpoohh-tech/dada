@@ -463,6 +463,19 @@
       "needsReview": false
     },
     {
+      "id": "my-exercise",
+      "no": 40,
+      "name": "My Excercise",
+      "district": "me",
+      "type": "app",
+      "url": "https://myexercise.pages.dev/",
+      "description": "나랑 같이 스쿼트할래?",
+      "date": "2026-11",
+      "icon": "🏋",
+      "status": "live",
+      "needsReview": false
+    },
+    {
       "id": "slol",
       "no": 39,
       "name": "SLOL",
